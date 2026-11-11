@@ -1,0 +1,16 @@
+{
+  "name": "drift-club",
+  "version": "1.0.0",
+  "description": "Tiny multiplayer top-down racing game for friends. Host a room, share a 4-letter code, race.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

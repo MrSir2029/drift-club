@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "drift-club",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "cwd": "C:\Users\jen_c\Projects\drift-club",
+      "port": 3000
+    }
+  ]
+}

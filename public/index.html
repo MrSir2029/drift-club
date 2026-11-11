@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drift Club</title>
+  <meta name="description" content="Race your friends. Host a room, share the code, go.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ff8a3d'/%3E%3Cpath d='M7 20l5-9h8l5 9z' fill='%231d2230'/%3E%3Ccircle cx='11' cy='22' r='3' fill='%231d2230'/%3E%3Ccircle cx='21' cy='22' r='3' fill='%231d2230'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen">
+    <div class="panel home">
+      <h1 class="logo"><span>DRIFT</span><span>CLUB</span></h1>
+      <p class="tag">Race your friends. No downloads, no sign-ups.</p>
+
+      <label class="field">
+        <span>Your name</span>
+        <input id="name" maxlength="12" placeholder="Racer" autocomplete="off" spellcheck="false">
+      </label>
+
+      <div class="field">
+        <span>Car colour</span>
+        <div id="colors" class="swatches"></div>
+      </div>
+
+      <button id="btn-create" class="btn primary big">Host a race</button>
+
+      <div class="divider"><span>or join a friend</span></div>
+
+      <div class="joinrow">
+        <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">
+        <button id="btn-join" class="btn">Join</button>
+      </div>
+    </div>
+    <p class="foot">Arrows / WASD to drive &middot; R to respawn &middot; up to 20 racers per room</p>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="screen-lobby" class="screen hidden">
+    <div class="lobby-top">
+      <div class="panel codebox">
+        <div class="label">Room code</div>
+        <div id="lobby-code" class="code">----</div>
+        <button id="btn-copy" class="btn small">Copy invite link</button>
+        <div class="hint">Friends open the link, or type the code on the home screen.</div>
+      </div>
+      <div class="panel players">
+        <div class="label">Racers <span id="player-count">0</span>/20</div>
+        <div id="player-list" class="chips"></div>
+      </div>
+    </div>
+    <div class="lobby-bottom">
+      <div class="panel tracks">
+        <div class="label">Track <span id="track-hint" class="muted"></span></div>
+        <div id="track-list" class="trackcards"></div>
+      </div>
+      <div class="lobby-actions">
+        <button id="btn-start" class="btn primary big">Start race</button>
+        <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
+        <button id="btn-leave" class="btn ghost small">Leave room</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RACE HUD -->
+  <section id="screen-race" class="screen hidden">
+    <div class="hud-left">
+      <div class="hud-block">
+        <div class="hud-label">Lap</div>
+        <div class="hud-value"><span id="hud-lap">1</span><small>/<span id="hud-laps">3</span></small></div>
+      </div>
+      <div class="hud-block">
+        <div class="hud-label">Pos</div>
+        <div class="hud-value"><span id="hud-pos">1</span><small id="hud-pos-of">/1</small></div>
+      </div>
+      <div class="hud-block">
+        <div class="hud-label">Time</div>
+        <div class="hud-value mono" id="hud-time">0:00.00</div>
+      </div>
+    </div>
+    <div class="hud-right">
+      <canvas id="minimap" width="180" height="180"></canvas>
+      <div id="standings" class="standings"></div>
+    </div>
+    <div class="hud-speed"><span id="hud-speed">0</span><small>km/h</small></div>
+    <div id="countdown" class="countdown hidden"></div>
+    <div id="toast-race" class="toast-race hidden"></div>
+    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; press <b>R</b> to respawn</div>
+
+    <div id="results" class="results hidden">
+      <div class="panel">
+        <div class="label">Results</div>
+        <ol id="results-list" class="results-list"></ol>
+        <button id="btn-lobby" class="btn primary">Back to lobby</button>
+        <div id="results-wait" class="waiting hidden">Waiting for the host&hellip;</div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="/game.js"></script>
+</body>
+</html>

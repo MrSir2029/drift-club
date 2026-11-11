@@ -1,0 +1,10 @@
+# Render blueprint: lets Render set up the service from this repo in one click.
+services:
+  - type: web
+    name: drift-club
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
