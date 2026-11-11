@@ -20,6 +20,26 @@ Open http://localhost:3000. Friends on the same wifi can join at
 `ifconfig` on Mac). Windows may ask to allow Node through the firewall the
 first time.
 
+## Play from GitHub Codespaces (needs nothing but GitHub)
+
+Good when hosting sites are blocked on your network but github.com works.
+Only the host does this; friends just open the link.
+
+1. Open https://github.com/MrSir2029/drift-club, click the green **Code**
+   button, pick the **Codespaces** tab, then **Create codespace on main**.
+   The first time takes a minute or two. After that it reopens in seconds.
+2. The game server starts by itself. A **Ports** tab appears at the bottom
+   of the editor with a row called **Drift Club** on port 3000.
+3. Right-click that row, choose **Port Visibility**, then **Public**.
+   (Without this, friends get a GitHub sign-in page instead of the game.)
+4. Hover the row, click the globe icon to open the game, and copy the URL.
+   It looks like `https://something-3000.app.github.dev`. Share that, or
+   host a race and share the invite link.
+
+Keep the codespace tab open while you play. It stops after 30 minutes of
+no activity in the editor, which ends the game server; reopen it to play
+again. Free personal accounts get 60 hours a month at this size.
+
 ## Run it on the internet (so friends can join from anywhere)
 
 The server is one Node process with no database, so any host that runs Node
