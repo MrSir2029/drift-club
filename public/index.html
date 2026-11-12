@@ -37,7 +37,7 @@
         <button id="btn-join" class="btn">Join</button>
       </div>
     </div>
-    <p class="foot">Arrows / WASD to drive &middot; R to respawn &middot; up to 20 racers per room</p>
+    <p class="foot">WASD / arrows drive &middot; Space handbrake &middot; R respawn &middot; M sound &middot; up to 20 racers</p>
   </section>
 
   <!-- LOBBY -->
@@ -82,12 +82,18 @@
         <div class="hud-label">Time</div>
         <div class="hud-value mono" id="hud-time">0:00.00</div>
       </div>
+      <div class="hud-block">
+        <div class="hud-label">Best lap</div>
+        <div class="hud-value mono" id="hud-best">--</div>
+      </div>
     </div>
     <div class="hud-right">
       <canvas id="minimap" width="180" height="180"></canvas>
       <div id="standings" class="standings"></div>
+      <button id="btn-sound" class="btn small" title="M toggles sound">Sound on</button>
     </div>
     <div class="hud-speed"><span id="hud-speed">0</span><small>km/h</small></div>
+    <div id="lights" class="lights hidden"><span></span><span></span><span></span><span></span><span></span></div>
     <div id="countdown" class="countdown hidden"></div>
     <div id="toast-race" class="toast-race hidden"></div>
     <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; press <b>R</b> to respawn</div>

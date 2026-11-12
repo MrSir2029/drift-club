@@ -236,6 +236,7 @@ wss.on('connection', (ws) => {
           lap: Math.max(0, Math.min(TOTAL_LAPS + 1, (msg.lap | 0))),
           cp: Math.max(0, msg.cp | 0),
           pr: Math.max(0, Math.min(1, +msg.pr || 0)),
+          b: msg.b ? 1 : 0,
         };
         room.lastStates.set(player.id, s);
         break;

@@ -4,8 +4,9 @@
     {
       "name": "drift-club",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js"],
-      "cwd": "C:\Users\jen_c\Projects\drift-club",
+      "runtimeArgs": [
+        "C:/Users/jen_c/Projects/drift-club/server.js"
+      ],
       "port": 3000
     }
   ]

@@ -14,8 +14,9 @@ export const TRACKS = [
   },
   {
     name: 'Ridge Run',
-    blurb: 'Hills, crests and a blind drop. Mind the jumps.',
+    blurb: 'Gravel rally stage over the hills. Slide it.',
     width: 15,
+    surface: 'gravel',
     points: [
       [0, 0, 0], [85, 0, -10], [155, 9, -45], [205, 18, 5], [185, 15, 75],
       [115, 6, 95], [45, 12, 125], [-40, 14, 85], [-90, 5, 30], [-75, 0, -8],
@@ -25,6 +26,7 @@ export const TRACKS = [
     name: 'Overpass',
     blurb: 'A figure-eight with a bridge over the straight.',
     width: 15,
+    pillars: true,
     points: [
       [-25, 0, -20], [0, 0, 0], [75, 0, 60], [140, 0, 40], [140, 0, -40],
       [75, 0, -60], [0, 13, 0], [-75, 13, 60], [-140, 11, 40], [-140, 4, -40], [-75, 0, -60],
@@ -62,7 +64,7 @@ export function buildTrack(def) {
   const box = new THREE.Box3();
   for (const s of samples) box.expandByPoint(s.p);
 
-  return { def, name: def.name, N, samples, hw: def.width / 2, cps, bounds: box, length };
+  return { def, name: def.name, surface: def.surface || 'tarmac', N, samples, hw: def.width / 2, cps, bounds: box, length };
 }
 
 // Find the sample nearest to a world position. `hint` narrows the search to a
