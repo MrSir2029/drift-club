@@ -100,6 +100,7 @@ function roomSnapshot(room) {
     code: room.code,
     hostId: room.hostId,
     trackId: room.trackId,
+    car: room.car,
     phase: room.phase,
     laps: TOTAL_LAPS,
     maxPlayers: MAX_PLAYERS,
@@ -115,6 +116,7 @@ function createRoom(hostPlayer) {
     code,
     hostId: hostPlayer.id,
     trackId: 0,
+    car: 'open',    // open | rally: everyone in the room drives the same class
     phase: 'lobby', // lobby | countdown | racing | results
     players: new Map(),
     startAt: 0,
@@ -170,7 +172,7 @@ function startRace(room, mode) {
 }
 
 function startMessage(room, extra) {
-  return { t: 'start', mode: room.mode, startAt: room.startAt, endAt: room.startAt + QUALI_MS, trackId: room.trackId, laps: TOTAL_LAPS, grid: room.mode === 'race' ? room.grid : null, now: Date.now(), ...extra };
+  return { t: 'start', mode: room.mode, startAt: room.startAt, endAt: room.startAt + QUALI_MS, trackId: room.trackId, car: room.car, laps: TOTAL_LAPS, grid: room.mode === 'race' ? room.grid : null, now: Date.now(), ...extra };
 }
 
 // Qualifying ends on the clock: fastest lap first, no-time drivers at the back.
@@ -244,6 +246,12 @@ wss.on('connection', (ws) => {
           room.trackId = id;
           broadcast(room, roomSnapshot(room));
         }
+        break;
+      }
+      case 'car': {
+        if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
+        const car = msg.car === 'rally' ? 'rally' : 'open';
+        if (room.car !== car) { room.car = car; room.grid = null; broadcast(room, roomSnapshot(room)); }
         break;
       }
       case 'start': {

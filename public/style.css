@@ -206,3 +206,15 @@ input:focus { border-color: var(--blue); }
 
 .pausepanel { display: flex; flex-direction: column; gap: 10px; width: min(340px, 92vw); }
 #pause { z-index: 5; }
+
+.carrow { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+@media (min-width: 761px) { .trackcard canvas { height: 76px; } }
+.carrow .label { margin: 0; }
+.carpicks { display: flex; gap: 10px; flex: 1; }
+.carpick { flex: 1; text-align: left; font: inherit; color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; }
+.carpick b { font-weight: 900; }
+.carpick span { font-size: 12px; font-weight: 600; color: var(--muted); }
+.carpick.on { background: var(--orange); }
+.carpick.on span { color: var(--ink); }
+.carpicks.locked .carpick { cursor: default; }
+@media (max-width: 760px) { .carpick span { display: none; } .carrow { margin-top: 8px; } }
