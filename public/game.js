@@ -1191,6 +1191,9 @@ function stepRemotes(now, dt) {
 // camera
 // ---------------------------------------------------------------------------
 const camTarget = new THREE.Vector3();
+const cockpitEye = new THREE.Vector3(0, 1.22, 0.62); // just ahead of the halo strut so nothing blocks the view
+const faceForward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); // cameras look down -z, the car drives toward +z
+try { app.camMode = localStorage.getItem('dc-cam') === 'cockpit' ? 'cockpit' : 'chase'; } catch { app.camMode = 'chase'; }
 const camPos = new THREE.Vector3();
 let camInit = false;
 
@@ -1210,6 +1213,22 @@ function updateCamera(dt) {
     return;
   }
   const car = app.local;
+  sun.position.set(car.pos.x + 80, car.pos.y + 140, car.pos.z + 60);
+  sun.target.position.copy(car.pos);
+  if (app.camMode === 'cockpit') {
+    // driver's eye: just above the helmet, locked to the car so it pitches and rolls with it
+    const g = car.mesh.group;
+    g.updateMatrixWorld();
+    camera.position.copy(cockpitEye).applyMatrix4(g.matrixWorld);
+    camera.quaternion.copy(g.quaternion).multiply(faceForward);
+    const k = clamp(Math.abs(car.speed) / PHYS.maxSpeed, 0, 1);
+    camera.fov = lerp(camera.fov, 78 + k * 12, 1 - Math.exp(-dt * 4));
+    camera.near = 0.12;
+    camera.updateProjectionMatrix();
+    camInit = false; // so the chase camera snaps into place when you switch back
+    return;
+  }
+  camera.near = 0.5;
   // look half-way between where the nose points and where the car is actually
   // going, so a slide reads as the car rotating under the camera
   let dirx = Math.sin(car.h), dirz = Math.cos(car.h);
@@ -1231,9 +1250,6 @@ function updateCamera(dt) {
   camera.fov = lerp(camera.fov, 68 + speedK * 16, 1 - Math.exp(-dt * 4));
   camera.updateProjectionMatrix();
   camInit = true;
-
-  sun.position.set(car.pos.x + 80, car.pos.y + 140, car.pos.z + 60);
-  sun.target.position.copy(car.pos);
 }
 
 // ---------------------------------------------------------------------------
@@ -1407,7 +1423,24 @@ function showScreen(name) {
   for (const s of ['home', 'lobby', 'race']) $(`#screen-${s}`).classList.toggle('hidden', s !== name);
 }
 
+const inRace = () => app.phase === 'countdown' || app.phase === 'racing' || app.phase === 'results';
+function setMenu(open) {
+  app.menuOpen = open;
+  if (open) app.keys = {};
+  $('#pause').classList.toggle('hidden', !open);
+}
+function toggleCamera() {
+  app.camMode = app.camMode === 'cockpit' ? 'chase' : 'cockpit';
+  try { localStorage.setItem('dc-cam', app.camMode); } catch {}
+  $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
+  if (inRace()) raceToast(app.camMode === 'cockpit' ? 'Cockpit camera' : 'Chase camera', 1200);
+}
+
 function goHome() {
+  setMenu(false);
+  $('#results').classList.add('hidden');
+  $('#lights').classList.add('hidden');
+  $('#countdown').classList.add('hidden');
   app.phase = 'home';
   app.room = null;
   clearCars();
@@ -1416,6 +1449,7 @@ function goHome() {
 }
 
 function showLobby() {
+  setMenu(false);
   app.phase = 'lobby';
   showScreen('lobby');
   $('#results').classList.add('hidden');
@@ -1535,6 +1569,11 @@ function wireUI() {
   $('#btn-quali').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'quali' }); });
   $('#btn-endq').addEventListener('click', (e) => { e.currentTarget.blur(); send({ t: 'endquali' }); });
   $('#btn-leave').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
+  $('#btn-resume').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); });
+  $('#btn-quit').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
+  $('#btn-cam').addEventListener('click', (e) => { e.currentTarget.blur(); toggleCamera(); });
+  $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
+  $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
   $('#btn-sound').addEventListener('click', (e) => { initAudio(); setSound(!audio.on); e.currentTarget.blur(); });
   $('#btn-sound').textContent = audio.on ? 'Sound on' : 'Sound off';
@@ -1544,6 +1583,9 @@ function wireUI() {
     if (e.target.tagName === 'INPUT') return;
     if (!e.repeat) initAudio();
     if (e.code === 'KeyM' && !e.repeat) setSound(!audio.on);
+    if (e.code === 'KeyC' && !e.repeat) toggleCamera();
+    if (e.code === 'Escape' && !e.repeat && inRace()) { setMenu(!app.menuOpen); return; }
+    if (app.menuOpen) return;
     app.keys[e.code] = true;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
     if (e.code === 'KeyR' && app.local && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local);
@@ -1751,7 +1793,7 @@ function frame(now) {
   last = now;
 
   if (app.local && (app.phase === 'countdown' || app.phase === 'racing' || app.phase === 'results')) {
-    const canDrive = app.phase === 'racing' || (app.phase === 'results' && app.finished);
+    const canDrive = !app.menuOpen && (app.phase === 'racing' || (app.phase === 'results' && app.finished));
     stepLocal(app.local, dt, canDrive);
     stepRemotes(now, dt);
     updateHud(now);
