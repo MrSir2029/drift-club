@@ -11,9 +11,10 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_PLAYERS = 20;
 const TOTAL_LAPS = 3;
-const TRACK_COUNT = 3;
+const TRACK_COUNT = 4;
 const RESULTS_GRACE_MS = 45000; // after the first finisher, wait this long for the rest
 const BROADCAST_HZ = 20;
+const QUALI_MS = 240000; // qualifying session length
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -102,6 +103,7 @@ function roomSnapshot(room) {
     phase: room.phase,
     laps: TOTAL_LAPS,
     maxPlayers: MAX_PLAYERS,
+    grid: room.grid,
     players: [...room.players.values()].map(p => ({ id: p.id, name: p.name, color: p.color })),
   };
 }
@@ -116,6 +118,9 @@ function createRoom(hostPlayer) {
     phase: 'lobby', // lobby | countdown | racing | results
     players: new Map(),
     startAt: 0,
+    mode: 'race',   // race | quali
+    grid: null,     // player ids in qualifying order, used for the next race start
+    endTimer: null,
     results: [],
     resultsTimer: null,
     lastStates: new Map(),
@@ -139,6 +144,7 @@ function removePlayer(player) {
   player.room = null;
   if (room.players.size === 0) {
     if (room.resultsTimer) clearTimeout(room.resultsTimer);
+    if (room.endTimer) clearTimeout(room.endTimer);
     rooms.delete(room.code);
     return;
   }
@@ -147,17 +153,34 @@ function removePlayer(player) {
   }
   broadcast(room, { t: 'left', id: player.id });
   broadcast(room, roomSnapshot(room));
-  if (room.phase === 'racing') maybeFinishRace(room);
+  if (room.phase === 'racing' && room.mode === 'race') maybeFinishRace(room);
 }
 
-function startRace(room) {
+function startRace(room, mode) {
+  room.mode = mode === 'quali' ? 'quali' : 'race';
   room.phase = 'countdown';
   room.results = [];
   room.lastStates.clear();
-  for (const p of room.players.values()) p.finished = false;
+  for (const p of room.players.values()) { p.finished = false; p.best = null; }
   room.startAt = Date.now() + 4000;
-  broadcast(room, { t: 'start', startAt: room.startAt, trackId: room.trackId, laps: TOTAL_LAPS, now: Date.now() });
+  broadcast(room, startMessage(room));
   setTimeout(() => { if (room.phase === 'countdown') room.phase = 'racing'; }, 4000);
+  if (room.endTimer) clearTimeout(room.endTimer);
+  room.endTimer = room.mode === 'quali' ? setTimeout(() => endQualifying(room), 4000 + QUALI_MS) : null;
+}
+
+function startMessage(room, extra) {
+  return { t: 'start', mode: room.mode, startAt: room.startAt, endAt: room.startAt + QUALI_MS, trackId: room.trackId, laps: TOTAL_LAPS, grid: room.mode === 'race' ? room.grid : null, now: Date.now(), ...extra };
+}
+
+// Qualifying ends on the clock: fastest lap first, no-time drivers at the back.
+function endQualifying(room) {
+  if (room.mode !== 'quali' || (room.phase !== 'racing' && room.phase !== 'countdown')) return;
+  room.endTimer = null;
+  room.phase = 'results';
+  const order = [...room.players.values()].sort((a, b) => (a.best ?? Infinity) - (b.best ?? Infinity));
+  room.grid = order.map(p => p.id);
+  broadcast(room, { t: 'results', quali: true, results: order.map(p => ({ id: p.id, name: p.name, color: p.color, time: p.best ?? null })) });
 }
 
 function maybeFinishRace(room) {
@@ -166,7 +189,7 @@ function maybeFinishRace(room) {
 }
 
 function showResults(room) {
-  if (room.phase !== 'racing') return;
+  if (room.phase !== 'racing' || room.mode !== 'race') return;
   room.phase = 'results';
   if (room.resultsTimer) { clearTimeout(room.resultsTimer); room.resultsTimer = null; }
   const dnf = [...room.players.values()].filter(p => !p.finished).map(p => ({ id: p.id, name: p.name, color: p.color, time: null }));
@@ -205,10 +228,11 @@ wss.on('connection', (ws) => {
         if (target.players.size >= MAX_PLAYERS) return send(ws, { t: 'error', msg: 'That room is full (20 racers max).' });
         player.name = cleanName(msg.name);
         player.color = cleanColor(msg.color);
-        player.finished = target.phase === 'racing' || target.phase === 'countdown'; // late joiners spectate
+        player.best = null;
+        player.finished = target.mode === 'race' && (target.phase === 'racing' || target.phase === 'countdown'); // late joiners spectate a race, but can join qualifying
         addPlayer(target, player);
         if (target.phase === 'countdown' || target.phase === 'racing') {
-          send(ws, { t: 'start', startAt: target.startAt, trackId: target.trackId, laps: TOTAL_LAPS, now: Date.now(), spectate: true });
+          send(ws, startMessage(target, { spectate: target.mode === 'race' }));
         }
         break;
       }
@@ -216,6 +240,7 @@ wss.on('connection', (ws) => {
         if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
         const id = Number(msg.trackId);
         if (Number.isInteger(id) && id >= 0 && id < TRACK_COUNT) {
+          if (room.trackId !== id) room.grid = null; // a grid only counts for the track it was set on
           room.trackId = id;
           broadcast(room, roomSnapshot(room));
         }
@@ -223,7 +248,23 @@ wss.on('connection', (ws) => {
       }
       case 'start': {
         if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
-        startRace(room);
+        startRace(room, msg.mode);
+        break;
+      }
+      case 'lap': {
+        if (!room || room.mode !== 'quali' || room.phase !== 'racing') return;
+        const time = +msg.time;
+        if (!(time > 5000 && time < 3600000)) return;
+        if (player.best == null || time < player.best) {
+          player.best = Math.round(time);
+          broadcast(room, { t: 'best', id: player.id, time: player.best });
+        }
+        break;
+      }
+      case 'endquali': {
+        if (!room || room.hostId !== player.id) return;
+        if (room.endTimer) clearTimeout(room.endTimer);
+        endQualifying(room);
         break;
       }
       case 'state': {
@@ -242,7 +283,7 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'finish': {
-        if (!room || room.phase !== 'racing' || player.finished) return;
+        if (!room || room.phase !== 'racing' || room.mode !== 'race' || player.finished) return;
         const time = Math.max(0, Math.min(3600000, +msg.time || 0));
         player.finished = true;
         room.results.push({ id: player.id, name: player.name, color: player.color, time });

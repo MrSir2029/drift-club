@@ -61,6 +61,7 @@
       </div>
       <div class="lobby-actions">
         <button id="btn-start" class="btn primary big">Start race</button>
+        <button id="btn-quali" class="btn">Qualifying</button>
         <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
         <button id="btn-leave" class="btn ghost small">Leave room</button>
       </div>
@@ -96,11 +97,12 @@
     <div id="lights" class="lights hidden"><span></span><span></span><span></span><span></span><span></span></div>
     <div id="countdown" class="countdown hidden"></div>
     <div id="toast-race" class="toast-race hidden"></div>
-    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; press <b>R</b> to respawn</div>
+    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or press <b>R</b> to reset</div>
+    <button id="btn-endq" class="btn small endq hidden">End qualifying</button>
 
     <div id="results" class="results hidden">
       <div class="panel">
-        <div class="label">Results</div>
+        <div class="label" id="results-title">Results</div>
         <ol id="results-list" class="results-list"></ol>
         <button id="btn-lobby" class="btn primary">Back to lobby</button>
         <div id="results-wait" class="waiting hidden">Waiting for the host&hellip;</div>

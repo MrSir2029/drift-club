@@ -93,7 +93,7 @@ input:focus { border-color: var(--blue); }
 .chip.host::after { content: "HOST"; font-size: 10px; letter-spacing: .1em; background: var(--ink); color: #fff; padding: 2px 6px; border-radius: 999px; }
 .chip.me { background: var(--paper-2); }
 
-.trackcards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.trackcards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .trackcard {
   border: 3px solid var(--ink); border-radius: 12px; background: #fff; padding: 10px; cursor: pointer; text-align: left;
   font: inherit; color: var(--ink); transition: transform .08s;
@@ -188,7 +188,7 @@ input:focus { border-color: var(--blue); }
 @media (max-width: 760px) {
   #screen-lobby { justify-content: flex-start; gap: 10px; overflow-y: auto; pointer-events: auto; padding: 10px; }
   .panel { padding: 12px; }
-  .trackcards { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .trackcards { grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .trackcard canvas { height: 48px; }
   .trackcard .tblurb { display: none; }
   .trackcard .tname { font-size: 13px; }
@@ -200,3 +200,6 @@ input:focus { border-color: var(--blue); }
   #minimap { width: 110px; height: 110px; }
   .hud-right { right: 8px; top: 8px; }
 }
+
+.endq { position: absolute; left: 16px; bottom: 16px; }
+.chip .gridpos { font-size: 11px; font-weight: 900; color: var(--muted); }

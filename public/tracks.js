@@ -4,32 +4,44 @@ import * as THREE from 'three';
 
 export const TRACKS = [
   {
-    name: 'Meadow Loop',
-    blurb: 'Flat and friendly. Learn the handling here.',
+    name: 'Meadow GP',
+    blurb: 'Fast sweepers, a chicane and two hairpins. Start here.',
     width: 16,
     points: [
-      [0, 0, 0], [100, 0, 0], [160, 0, 35], [150, 0, 100], [85, 0, 120],
-      [40, 0, 80], [-20, 0, 100], [-85, 0, 70], [-100, 0, 15], [-70, 0, -5],
+      [0, 0, 0], [70, 0, 0], [130, 0, 10], [165, 2, 45], [150, 4, 90], [105, 4, 95],
+      [85, 2, 60], [50, 0, 70], [40, 0, 115], [75, 0, 150], [60, 0, 190], [5, 0, 195],
+      [-25, 2, 150], [-70, 3, 140], [-110, 2, 105], [-95, 0, 55], [-120, 0, 15], [-80, 0, -10],
     ],
   },
   {
-    name: 'Ridge Run',
-    blurb: 'Gravel rally stage over the hills. Slide it.',
+    name: 'Ridge Rally',
+    blurb: 'Gravel stage over the hills. Crests, dips, slides.',
     width: 15,
     surface: 'gravel',
     points: [
-      [0, 0, 0], [85, 0, -10], [155, 9, -45], [205, 18, 5], [185, 15, 75],
-      [115, 6, 95], [45, 12, 125], [-40, 14, 85], [-90, 5, 30], [-75, 0, -8],
+      [0, 0, 0], [80, 0, -10], [150, 8, -40], [205, 18, 0], [215, 22, 60], [170, 16, 90],
+      [140, 8, 55], [95, 6, 70], [90, 12, 125], [130, 18, 165], [100, 20, 205], [40, 14, 190],
+      [20, 8, 140], [-35, 12, 120], [-85, 16, 150], [-130, 10, 110], [-100, 4, 55], [-125, 0, 5], [-75, 0, -15],
     ],
   },
   {
     name: 'Overpass',
-    blurb: 'A figure-eight with a bridge over the straight.',
+    blurb: 'A twisting figure-eight with a bridge over the straight.',
     width: 15,
-    pillars: true,
     points: [
-      [-25, 0, -20], [0, 0, 0], [75, 0, 60], [140, 0, 40], [140, 0, -40],
-      [75, 0, -60], [0, 13, 0], [-75, 13, 60], [-140, 11, 40], [-140, 4, -40], [-75, 0, -60],
+      [-25, 0, -20], [0, 0, 0], [75, 0, 60], [130, 0, 70], [175, 0, 35], [150, 0, -10],
+      [175, 0, -55], [130, 0, -85], [75, 0, -60], [0, 13, 0], [-75, 13, 60], [-125, 12, 85],
+      [-170, 9, 50], [-145, 6, 5], [-175, 3, -45], [-130, 0, -80], [-75, 0, -60],
+    ],
+  },
+  {
+    name: 'Switchback',
+    blurb: 'Tight and technical. Brake late, be patient.',
+    width: 14,
+    points: [
+      [0, 0, 0], [60, 0, 0], [95, 1, 25], [95, 3, 65], [60, 4, 80], [60, 5, 120],
+      [100, 5, 140], [150, 3, 125], [170, 2, 160], [140, 1, 200], [80, 0, 195], [30, 0, 170],
+      [-10, 2, 190], [-55, 3, 170], [-50, 4, 120], [-90, 3, 100], [-110, 1, 55], [-70, 0, 35], [-60, 0, -5],
     ],
   },
 ];
@@ -39,7 +51,7 @@ export const CHECKPOINT_COUNT = 6;
 const UP = new THREE.Vector3(0, 1, 0);
 
 export function buildTrack(def) {
-  const k = def.scale || 1.35; // tracks are authored small, then scaled up for longer laps
+  const k = def.scale || 1.6; // tracks are authored small, then scaled up for longer laps
   const pts = def.points.map(p => new THREE.Vector3(p[0] * k, p[1], p[2] * k));
   const curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal', 0.5);
   const length = curve.getLength();
