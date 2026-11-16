@@ -8,6 +8,10 @@ import { UPDATES } from '/updates.js';
 const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff];
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30;
+// Typed on the keyboard by the host in the lobby, this opens the secrets
+// panel (and typing it again hides it). Letters and numbers only; change it
+// to anything you like.
+const SECRET_CODE = '9LAT2';
 
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -2974,9 +2978,8 @@ function renderLobby() {
   $('#btn-quali').classList.toggle('hidden', !isHost);
   $('#laps-val').textContent = r.laps || 3;
   for (const id of ['#laps-minus', '#laps-plus']) $(id).classList.toggle('hidden', !isHost);
-  $('#btn-secrets').classList.toggle('hidden', !isHost);
-  if (!isHost) $('#secrets').classList.add('hidden');
-  $('#car-hint').textContent = r.car === 'camry' ? '— Toyota Camry (secret)' : '';
+  $('#secrets').classList.toggle('hidden', !(isHost && app.secrets));
+  $('#car-hint').textContent = r.car === 'camry' ? '— Toyota Camry' : '';
   $('#wait-host').classList.toggle('hidden', isHost);
   $('#track-list').classList.toggle('locked', !isHost);
   $('#track-hint').textContent = isHost ? '— you pick' : '— host picks';
@@ -3042,6 +3045,8 @@ function readName() {
   return n;
 }
 
+let secretTyped = ''; // the last few keys pressed, checked against SECRET_CODE
+
 function wireUI() {
   try {
     const n = localStorage.getItem('dc-name'); if (n) $('#name').value = n;
@@ -3079,7 +3084,6 @@ function wireUI() {
   $('#btn-start').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'race' }); });
   $('#btn-quali').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'quali' }); });
   $('#btn-dash').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'dash' }); });
-  $('#btn-secrets').addEventListener('click', (e) => { e.currentTarget.blur(); $('#secrets').classList.toggle('hidden'); });
   // what's new
   const seen = (() => { try { return localStorage.getItem('dc-seen'); } catch { return null; } })();
   $('#ver').textContent = 'v' + UPDATES[0].v;
@@ -3117,6 +3121,15 @@ function wireUI() {
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Escape' && !$('#settings').classList.contains('hidden')) { $('#settings').classList.add('hidden'); return; }
+    if (e.key && e.key.length === 1) {
+      secretTyped = (secretTyped + e.key.toUpperCase()).slice(-SECRET_CODE.length);
+      if (secretTyped === SECRET_CODE && app.phase === 'lobby' && app.room?.hostId === app.myId) {
+        secretTyped = '';
+        app.secrets = !app.secrets;
+        renderLobby();
+        toast(app.secrets ? 'Secrets unlocked' : 'Secrets hidden');
+      }
+    }
     if (!e.repeat) initAudio();
     if (e.code === 'KeyM' && !e.repeat) setSound(!audio.on);
     if (e.code === 'KeyC' && !e.repeat) toggleCamera();
