@@ -11,6 +11,7 @@ export const UPDATES = [
       'Hosts choose how many laps a race has, from 1 to 10.',
       'Open seater brakes are gentler and build up over a moment instead of slamming on.',
       'Fixed the rear wing side plates glitching through the rear tyres.',
+      'The Secrets, Settings and Leave room buttons in the lobby are solid now, so you can actually see them.',
     ],
   },
   {

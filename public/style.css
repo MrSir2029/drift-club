@@ -262,3 +262,5 @@ input:focus { border-color: var(--blue); }
 .lapsbox { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 10px; }
 .lapsbox .label { margin: 0; }
 #laps-val { font-size: 22px; font-weight: 900; min-width: 30px; text-align: center; }
+.lobby-row { display: flex; gap: 10px; }
+.lobby-row .btn { flex: 1; }
