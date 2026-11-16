@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.4', date: '16 Nov 2026', title: 'Contact!',
+    items: [
+      'Cars are solid now: you can bump, block and get knocked wide.',
+      'Qualifying shows a ghost of your best lap to chase.',
+    ],
+  },
+  {
     v: '1.3', date: '16 Nov 2026', title: 'Secrets, medium graphics, and this list',
     items: [
       'A Secrets button in the lobby. Hosts: have a look.',

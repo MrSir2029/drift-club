@@ -591,6 +591,60 @@ function collideWalls(car) {
   return hit;
 }
 
+// Car against car. Each player's game only moves their own car: it treats the
+// others (three circles each, where they're drawn on this screen) as moving
+// obstacles, steps out of any overlap and takes half the knock. The other
+// player's game does the same from its side, so both cars react.
+function collideCars(car) {
+  if (app.phase !== 'racing' && app.phase !== 'results') return 0;
+  const R = 0.95, offs = [1.7, 0, -1.6], fx = Math.sin(car.h), fz = Math.cos(car.h);
+  let hit = 0;
+  for (const c of app.cars.values()) {
+    if (!c.shown) continue;
+    const ddx = car.pos.x - c.sx, ddz = car.pos.z - c.sz;
+    if (ddx * ddx + ddz * ddz > 36 || Math.abs(car.pos.y - c.sy) > 2.5) continue;
+    const ox = Math.sin(c.sh), oz = Math.cos(c.sh);
+    for (const a of offs) for (const b of offs) {
+      const dx = car.pos.x + fx * a - (c.sx + ox * b), dz = car.pos.z + fz * a - (c.sz + oz * b), d2 = dx * dx + dz * dz;
+      // the knock is felt a touch before the bodies meet: the other car stops
+      // itself at the surface on its own screen, so it never quite overlaps here
+      if (d2 >= (2 * R + 0.4) ** 2 || d2 < 1e-6) continue;
+      const d = Math.sqrt(d2), nx = dx / d, nz = dz / d;
+      if (d < 2 * R) { car.pos.x += nx * (2 * R - d) * 0.6; car.pos.z += nz * (2 * R - d) * 0.6; }
+      const vn = (car.vx - (c.svx || 0)) * nx + (car.vz - (c.svz || 0)) * nz;
+      if (vn >= 0) continue;
+      car.vx -= 0.7 * vn * nx; car.vz -= 0.7 * vn * nz;
+      car.yawRate += clamp(a * (fz * nx - fx * nz) * -vn * 0.04, -1.5, 1.5); // a knock on the nose or tail turns the car
+      hit = Math.max(hit, -vn);
+    }
+  }
+  return hit;
+}
+
+// Qualifying ghost: your best lap so far, replayed as a see-through car that
+// sets off each time you start a new lap.
+function updateGhost(now) {
+  const car = app.local, lap = app.ghostLap;
+  const on = car && lap && app.mode === 'quali' && app.phase === 'racing';
+  if (!on) { if (app.ghost) app.ghost.group.visible = false; return; }
+  if (!app.ghost) {
+    app.ghost = makeCarMesh(app.color, '', true);
+    app.ghost.group.traverse(m => { if (m.material) { m.material.transparent = true; m.material.opacity = 0.32; m.material.depthWrite = false; m.castShadow = false; } });
+    carsGroup.add(app.ghost.group);
+  }
+  const t = now - car.lapStart, g = app.ghost.group;
+  let i = app.ghostI || 0;
+  if (i >= lap.length || lap[i].t > t) i = 0;
+  while (i < lap.length - 2 && lap[i + 1].t <= t) i++;
+  app.ghostI = i;
+  const a = lap[i], b = lap[i + 1];
+  if (!b || t > lap[lap.length - 1].t) { g.visible = false; return; }
+  const u = clamp((t - a.t) / (b.t - a.t), 0, 1);
+  g.position.set(lerp(a.x, b.x, u), lerp(a.y, b.y, u), lerp(a.z, b.z, u));
+  g.rotation.set(0, lerpAngle(a.h, b.h, u), 0);
+  g.visible = (g.position.x - car.pos.x) ** 2 + (g.position.z - car.pos.z) ** 2 > 9; // not when it's sitting on top of you
+}
+
 // Crowd: every spectator is one instance of a body box and a head box. They
 // bob about, and jump when a car comes past.
 function makePeople(max, rnd) {
@@ -1918,6 +1972,7 @@ function clearCars() {
   app.cars.clear();
   if (app.local) carsGroup.remove(app.local.mesh.group);
   app.local = null;
+  if (app.ghost) { carsGroup.remove(app.ghost.group); app.ghost = null; }
 }
 
 function spawnLocal(slot) {
@@ -2295,6 +2350,7 @@ function stepLocal(car, dt, canDrive) {
     car.pos.z += car.vz * dt / steps;
     bump = Math.max(bump, collideWalls(car));
   }
+  bump = Math.max(bump, collideCars(car));
   if (bump > 0) {
     car.speed = car.vx * fx2 + car.vz * fz2;
     car.yawRate *= 0.8;
@@ -2351,6 +2407,8 @@ function stepLocal(car, dt, canDrive) {
           car.lapStart = nowP;
           if (!app.bestLap || lapTime < app.bestLap) app.bestLap = lapTime;
           app.myLaps.push(lapTime);
+          if (lapTime === app.bestLap) app.ghostLap = app.rec;
+          app.rec = [];
           car.lap++;
           if (app.mode === 'quali') { send({ t: 'lap', time: Math.round(lapTime) }); raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500); }
           else if (car.lap > app.laps) finishRace();
@@ -2453,6 +2511,7 @@ function stepRemotes(now, dt) {
     g.rotation.set(0, 0, 0);
     g.rotateY(c.sh); g.rotateX(pitch); g.rotateZ(roll);
     g.visible = true;
+    c.svx = vx; c.svz = vz;
     c.wheelSpin += (vx * Math.sin(h) + vz * Math.cos(h)) * dt / 0.42;
     for (const w of c.mesh.wheels) w.mesh.rotation.x = c.wheelSpin;
     c.mesh.brakeMat.emissive.setHex(buf[buf.length - 1].b ? 0xff2020 : 0x000000);
@@ -2629,6 +2688,7 @@ function beginRace(msg) {
   app.myPlace = 0;
   app.bests = new Map();
   app.myLaps = [];
+  app.rec = []; app.ghostLap = null;
   app.sessionOver = false;
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Time left' : 'Time';
   if (app.trackId !== msg.trackId || !app.track) buildWorld(msg.trackId);
@@ -3156,6 +3216,11 @@ function frame(now) {
     const canDrive = !app.menuOpen && (app.phase === 'racing' || (app.phase === 'results' && app.finished));
     stepLocal(app.local, dt, canDrive);
     stepRemotes(now, dt);
+    if (app.mode === 'quali' && app.phase === 'racing') {
+      const c = app.local, r = app.rec, t = now - c.lapStart;
+      if (!r.length || t - r[r.length - 1].t >= 50) r.push({ t, x: c.pos.x, y: c.pos.y, z: c.pos.z, h: c.h });
+    }
+    updateGhost(now);
     updateHud(now);
     updateAudio(app.local, dt);
     if (now - app.lastSend >= 1000 / SEND_HZ - 4 && app.phase !== 'results') {
