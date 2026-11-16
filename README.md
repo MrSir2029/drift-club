@@ -120,10 +120,12 @@ moves is marked `userData.dyn` so it's left alone.
 
 ## Secrets
 
-The host has a **Secrets** button in the lobby. Behind it: **Race to
-9LAT2** (no laps or gates, first car to reach the 9LAT2 building wins;
-follow the arrow and the beam of light) and **Toyota Camry**, a car class
-where everyone drives the same family saloon.
+There's no button for these. The host opens the secrets panel by typing a
+code on the keyboard while in the lobby (typing it again hides it); the code
+is `SECRET_CODE` at the top of `public/game.js`. Inside: **Race to 9LAT2**
+(no laps or gates, first car to reach the 9LAT2 building wins; follow the
+arrow and the beam of light) and **Toyota Camry**, a car class where
+everyone drives the same family saloon.
 
 ## Telling players what's new
 

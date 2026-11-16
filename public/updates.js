@@ -11,7 +11,7 @@ export const UPDATES = [
       'Hosts choose how many laps a race has, from 1 to 10.',
       'Open seater brakes are gentler and build up over a moment instead of slamming on.',
       'Fixed the rear wing side plates glitching through the rear tyres.',
-      'The Secrets, Settings and Leave room buttons in the lobby are solid now, so you can actually see them.',
+      'The Settings and Leave room buttons in the lobby are solid now, so you can actually see them.',
     ],
   },
   {
@@ -24,7 +24,7 @@ export const UPDATES = [
   {
     v: '1.3', date: '16 Nov 2026', title: 'Secrets, medium graphics, and this list',
     items: [
-      'A Secrets button in the lobby. Hosts: have a look.',
+      'There are secrets now, for hosts who know where to look.',
       'Graphics now has a medium setting between high and low (Esc menu).',
       'This "What\'s new" list, so you can see what changed and when.',
     ],
