@@ -107,7 +107,20 @@ found on that map. A TV helicopter follows the race leader.
 
 On **auto** (the default) the game watches its own frame rate and lowers
 the detail until it runs smoothly. Esc opens the menu, where the Graphics
-button switches between auto, high and low.
+button switches between auto, high, medium and low.
+
+## Secrets
+
+The host has a **Secrets** button in the lobby. Behind it: **Race to
+9LAT2** (no laps or gates, first car to reach the 9LAT2 building wins;
+follow the arrow and the beam of light) and **Toyota Camry**, a car class
+where everyone drives the same family saloon.
+
+## Telling players what's new
+
+`public/updates.js` is the list behind the **What's new** button on the
+home screen. Add an entry at the top whenever you ship something; players
+get a red dot on the button until they've read it.
 
 ## How it works
 

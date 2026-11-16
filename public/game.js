@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TRACKS, buildTrack, locate, startSlot, CHECKPOINT_COUNT } from '/tracks.js';
+import { UPDATES } from '/updates.js';
 
 // ---------------------------------------------------------------------------
 // constants
@@ -166,7 +167,7 @@ function buildTerrain(track) {
       if (w > 0) H[j * n1 + i] = lerp(H[j * n1 + i], y, w);
     }
   };
-  for (const [name, r, mode] of [['lake', 30, ''], ['castle', 23, 'high'], ['fair', 27, 'near'], ['village', 31, ''], ['stones', 12, ''], ['camp', 13, ''], ['windmill', 9, ''], ['mast', 7, 'high']]) {
+  for (const [name, r, mode] of [['lake', 30, ''], ['lat9', 18, 'far'], ['castle', 23, 'high'], ['fair', 27, 'near'], ['village', 31, ''], ['stones', 12, ''], ['camp', 13, ''], ['windmill', 9, ''], ['mast', 7, 'high']]) {
     let best = null;
     for (let k = 0; k < 140; k++) {
       const a = srnd() * 6.2832, d = Math.sqrt(srnd()) * (lim.r - r - 24);
@@ -174,7 +175,7 @@ function buildTerrain(track) {
       const gap = roadGap(track, x, z);
       if (gap < hw + r + 26 || taken.some(o => Math.hypot(o.x - x, o.z - z) < o.r + r + 26)) continue;
       const y = terrainHeight(x, z);
-      const score = mode === 'high' ? y : mode === 'near' ? -gap : 0;
+      const score = mode === 'high' ? y : mode === 'near' ? -gap : mode === 'far' ? Math.hypot(x - samples[0].p.x, z - samples[0].p.z) : 0;
       if (!best || score > best.score) best = { x, z, y, r, score };
       if (!mode) break;
     }
@@ -237,8 +238,9 @@ const GFX_LEVELS = [
   { px: 0.8, shadows: false, far: 460 },
   { px: 0.62, shadows: false, far: 380 },
 ];
+const GFX_FIXED = { high: 0, medium: 2, low: 3 }; // which detail level each fixed setting uses
 const gfx = { mode: 'auto', level: 0, acc: 0, frames: 0, slow: 0, fast: 0, hold: 0 };
-try { const m = localStorage.getItem('dc-gfx'); if (m === 'high' || m === 'low') gfx.mode = m; } catch {}
+try { const m = localStorage.getItem('dc-gfx'); if (m === 'high' || m === 'medium' || m === 'low') gfx.mode = m; } catch {}
 function applyGfx(level) {
   gfx.level = level;
   const L = GFX_LEVELS[level];
@@ -251,7 +253,7 @@ function setGfxMode(mode) {
   gfx.mode = mode;
   try { localStorage.setItem('dc-gfx', mode); } catch {}
   gfx.slow = gfx.fast = gfx.acc = gfx.frames = 0;
-  applyGfx(mode === 'high' ? 0 : mode === 'low' ? 3 : Math.min(gfx.level, 1));
+  applyGfx(mode in GFX_FIXED ? GFX_FIXED[mode] : Math.min(gfx.level, 1));
   const el = $('#btn-gfx'); if (el) el.textContent = 'Graphics: ' + mode;
 }
 function watchFrameRate(ms, now) {
@@ -277,7 +279,7 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
-applyGfx(gfx.mode === 'low' ? 3 : 0);
+applyGfx(GFX_FIXED[gfx.mode] ?? 0);
 resize();
 
 // ---------------------------------------------------------------------------
@@ -338,6 +340,7 @@ function buildWorld(trackId) {
   track.walls = [];  // solid line segments
   track.solids = []; // solid circles: trees, posts, rocks, towers
   track.lake = null;
+  track.goal = null;
   buildTerrain(track);
   for (const st of Object.values(track.sites)) claim(st.x, st.z, st.r + 3);
 
@@ -1099,6 +1102,37 @@ function buildLandmarks(track) {
     star('Lake', g, 0, -4, 2.4);
   }
 
+  // ---- 9LAT2: a brick classroom block with its name on the roof. In the
+  // "Race to 9LAT2" mode the pad outside its door is the finish. ----
+  if (S.lat9) {
+    const st = S.lat9, lim = track.limit;
+    const g = start(st, Math.atan2(lim.x - st.x, lim.z - st.z)); // front door faces the middle of the map
+    box(g, 20, 10, 11, 0xb8553f, 0, 2, 0);
+    box(g, 20.8, 0.5, 11.8, 0x3b4250, 0, 7.25, 0);
+    box(g, 20.1, 0.5, 11.1, 0xe9e4d8, 0, 3.4, 0);
+    for (const y of [1.9, 5.2]) for (let k = 0; k < 6; k++) { const x = -8 + k * 3.2; if (y < 3 && Math.abs(x) < 2) continue; box(g, 1.9, 1.6, 0.14, 0x9ad0ff, x, y, 5.5); }
+    box(g, 2.8, 3, 0.16, 0x26303f, 0, 1.5, 5.5); box(g, 4.4, 0.25, 2.2, 0x3b4250, 0, 3.25, 6.4);
+    for (const x of [-2, 2]) box(g, 0.2, 3.2, 0.2, 0x3b4250, x, 1.6, 7.3);
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#1d2230'; ctx.fillRect(0, 0, 512, 128); ctx.fillStyle = '#ffd23f'; ctx.fillRect(8, 8, 496, 112);
+    ctx.fillStyle = '#1d2230'; ctx.font = '900 100px "Segoe UI", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('9LAT2', 256, 68);
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const signMat = new THREE.MeshBasicMaterial({ map: tex });
+    for (const [w, h, y, z, ry] of [[10, 2.5, 9.4, 0.12, 0], [10, 2.5, 9.4, -0.12, Math.PI], [5.2, 1.3, 4.35, 5.6, 0]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), signMat); m.position.set(0, y, z); m.rotation.y = ry; g.add(m); }
+    for (const x of [-4.4, 4.4]) box(g, 0.25, 2.2, 0.25, 0x3b4250, x, 8.3, 0);
+    for (const x of [-7, 7]) { box(g, 2.6, 0.2, 0.7, 0x7a4a2a, x, 0.55, 8); box(g, 2.2, 0.5, 0.2, 0x5a6372, x, 0.25, 8); }
+    rect(g, 0, 0, 20, 11);
+    { const [wx, wz] = g.userData.w(8.5, 4); flags.add(wx, st.y + 7.5, wz, 0x3d8bff, 4.5); }
+    const [gx, gz] = g.userData.w(0, 13);
+    track.goal = { x: gx, z: gz, y: st.y, r: 5.5 };
+    // finish pad and a beam of light you can steer by, shown only in that mode
+    const fx = new THREE.Group(); fx.position.set(0, 0, 13); g.add(fx);
+    const pad = new THREE.Mesh(new THREE.RingGeometry(3.6, 5.5, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd23f })); pad.position.y = 0.12; fx.add(pad);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 160, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, fog: false })); beam.position.y = 80; fx.add(beam);
+    anim.push((t) => { fx.visible = app.mode === 'dash' && inRace(); beam.material.opacity = 0.26 + Math.sin(t * 3) * 0.08; });
+  }
+
   // ---- castle on the highest ground: drive in through the gate ----
   if (S.castle) {
     const g = start(S.castle, rnd() * 6.28), stone = 0xa9a79a, dark = 0x8d8c80, W = 13;
@@ -1343,7 +1377,7 @@ function buildHelicopter(track) {
     let tx, ty, tz;
     const car = app.local;
     if (car && (app.phase === 'countdown' || app.phase === 'racing' || app.phase === 'results')) {
-      if (tick++ % 30 === 0) { const lead = app.mode === 'race' ? standingsOrder().find(e => !e.finished) : null; leadId = lead && !lead.me ? lead.id : 0; }
+      if (tick++ % 30 === 0) { const lead = app.mode !== 'quali' ? standingsOrder().find(e => !e.finished) : null; leadId = lead && !lead.me ? lead.id : 0; }
       const other = leadId && app.cars.get(leadId);
       const p = other?.shown ? other.mesh.group.position : car.pos;
       tx = p.x; ty = p.y; tz = p.z;
@@ -1667,7 +1701,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass) {
   K.box = (w, h, d, mat, x, y, z, shadow = true) => K.add(new THREE.BoxGeometry(w, h, d), mat, x, y, z, shadow);
   K.rod = (a, b, th, mat) => { const m = strut(V(...a), V(...b), th, th, mat); g.add(m); return m; };
 
-  const wheelSpec = cls === 'rally' ? buildRallyBody(K) : buildOpenBody(K);
+  const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
 
   const wheels = [];
   for (const [x, z, w, r] of wheelSpec.wheels) {
@@ -1689,7 +1723,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass) {
   let label = null;
   if (!isMe) {
     label = makeLabel(name, COLOR_CSS[colorIdx]);
-    label.position.y = cls === 'rally' ? 2.8 : 2.5;
+    label.position.y = cls === 'rally' ? 2.8 : cls === 'camry' ? 2.7 : 2.5;
     g.add(label);
   }
   return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls };
@@ -1821,6 +1855,36 @@ function buildRallyBody(K) {
   }
   box(1.5, 0.05, 1.2, carbon, 0, 0.27, 1.2);                                     // sump guard
   return { wheels, rim: K.lightCar ? K.rim : K.accent, hub: dark, band: null };
+}
+
+// Family saloon: three boxes (bonnet, cabin, boot), chrome grille, hubcaps.
+function buildCamryBody(K) {
+  const { add, box, rod, body, dark, glass } = K;
+  add(slab(0.9, 0.92, 0.26, 0.7, 2.32, 2.38, -2.38, -2.32), body, 0, 0, 0);              // lower body, bumper to bumper
+  add(slab(0.92, 0.88, 0.7, 0.9, 2.38, 2.2, 0.95, 0.95), body, 0, 0, 0);                  // bonnet
+  add(slab(0.92, 0.9, 0.7, 0.96, 0.95, 0.95, -1.35, -1.35), body, 0, 0, 0);               // doors up to the window line
+  add(slab(0.92, 0.88, 0.7, 0.96, -1.35, -1.35, -2.26, -2.38), body, 0, 0, 0);            // boot
+  add(slab(0.86, 0.7, 0.94, 1.43, 0.95, 0.3, -1.0, -1.72), glass, 0, 0, 0);               // glasshouse
+  add(slab(0.72, 0.7, 1.43, 1.48, 0.36, 0.28, -0.96, -1.04), body, 0, 0, 0);              // roof
+  for (const sx of [-1, 1]) {
+    rod([sx * 0.86, 0.95, 0.95], [sx * 0.7, 1.45, 0.3], 0.08, body);
+    rod([sx * 0.87, 0.95, -0.2], [sx * 0.71, 1.45, -0.3], 0.09, body);
+    rod([sx * 0.86, 0.95, -1.72], [sx * 0.7, 1.45, -1.0], 0.09, body);
+    box(0.36, 0.14, 0.08, K.lamp, sx * 0.62, 0.74, 2.32, false);                           // headlights
+    box(0.4, 0.14, 0.06, K.brake, sx * 0.6, 0.8, -2.34, false);                            // tail lights
+    box(0.16, 0.1, 0.1, body, sx * 0.99, 1.0, 0.75, false);                                // mirrors
+    for (const z of [0.2, -0.75]) box(0.03, 0.04, 0.2, K.rim, sx * 0.925, 0.84, z, false); // door handles
+    box(0.02, 0.05, 3.3, dark, sx * 0.925, 0.48, -0.05, false);                            // rubbing strip
+  }
+  box(0.9, 0.2, 0.06, K.rim, 0, 0.66, 2.38, false);                                        // chrome grille
+  box(0.86, 0.04, 0.07, dark, 0, 0.66, 2.385, false);
+  box(1.5, 0.12, 0.05, dark, 0, 0.4, 2.39, false);                                         // lower intake
+  box(0.5, 0.13, 0.03, K.accent, 0, 0.52, -2.37, false);                                   // number plate
+  box(0.16, 0.05, 0.02, K.rim, 0, 0.84, -2.36, false);                                     // badge
+  add(new THREE.CylinderGeometry(0.05, 0.05, 0.25, 6).rotateX(Math.PI / 2), dark, -0.5, 0.3, -2.36, false);
+  rod([-0.45, 1.47, -0.9], [-0.45, 1.75, -1.1], 0.02, dark);                               // aerial
+  const wheels = [[-0.84, 1.45, 0.24, 0.34], [0.84, 1.45, 0.24, 0.34], [-0.84, -1.45, 0.24, 0.34], [0.84, -1.45, 0.24, 0.34]];
+  return { wheels, rim: K.rim, hub: K.rim, band: null };
 }
 
 function makeLabel(text, color) {
@@ -2006,6 +2070,30 @@ const CAR_CLASSES = { open: {
   downFront: 0.45,
   maxSteerLow: 0.55,
   maxSteerHigh: 0.12,
+  gravity: 9.81,
+}, camry: {
+  // A sensible family saloon doing something it was never meant to do: soft,
+  // heavy, modest power, ordinary tyres. Everyone has the same one.
+  label: 'Toyota Camry',
+  eye: [0.36, 1.22, 0.2],
+  gears: [8, 14, 20, 27, 34, 41, 47],
+  engine: [45, 330],
+  grip: { tarmac: 0.84, gravel: 0.88, grass: 0.9 },
+  mass: 1500,
+  a: 1.25, b: 1.5,
+  h: 0.55,
+  inertia: 2400,
+  power: 140000,
+  maxDrive: 6800,
+  topSpeed: 46,
+  reverseSpeed: 8,
+  brakeForce: 25000,
+  brakeFront: 0.65,
+  dragCoef: 0.6,
+  downforce: 0.3,
+  downFront: 0.5,
+  maxSteerLow: 0.55,
+  maxSteerHigh: 0.1,
   gravity: 9.81,
 } };
 let CAR = CAR_CLASSES.open;
@@ -2246,7 +2334,10 @@ function stepLocal(car, dt, canDrive) {
   car.offTrackTimer = onTrack ? 0 : car.offTrackTimer + dt;
 
   // ---- checkpoints & laps ----
-  if (onTrack && app.phase === 'racing' && !app.finished) {
+  const goal = app.track.goal;
+  if (app.mode === 'dash') {
+    if (goal && app.phase === 'racing' && !app.finished && (car.pos.x - goal.x) ** 2 + (car.pos.z - goal.z) ** 2 < goal.r * goal.r) finishRace();
+  } else if (onTrack && app.phase === 'racing' && !app.finished) {
     const N = app.track.N;
     const d = (car.idx - car.lastIdx + N) % N;
     if (d > 0 && d < N / 2) {
@@ -2520,7 +2611,7 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
-    case 'results': showResults(msg.results, !!msg.quali); break;
+    case 'results': showResults(msg.results, !!msg.quali, msg.mode === 'dash'); break;
   }
 }
 
@@ -2533,7 +2624,7 @@ function beginRace(msg) {
   app.laps = msg.laps;
   app.finished = false;
   app.spectate = !!msg.spectate;
-  app.mode = msg.mode === 'quali' ? 'quali' : 'race';
+  app.mode = msg.mode === 'quali' ? 'quali' : msg.mode === 'dash' && app.track?.goal !== undefined ? 'dash' : 'race';
   app.endAt = (msg.endAt || 0) - offset;
   app.myPlace = 0;
   app.bests = new Map();
@@ -2557,6 +2648,11 @@ function beginRace(msg) {
   showScreen('race');
   $('#results').classList.add('hidden');
   $('#hud-laps').textContent = app.mode === 'quali' ? '∞' : app.laps;
+  const dash = app.mode === 'dash';
+  $('#hud-lap-label').textContent = dash ? 'To go' : 'Lap';
+  $('#hud-laps').parentElement.style.display = dash ? 'none' : '';
+  $('#dash-nav').classList.toggle('hidden', !dash);
+  if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
   if (app.mode === 'quali') raceToast('Qualifying: fastest lap sets the grid', 3500);
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
@@ -2573,11 +2669,11 @@ function raceStartPerf() {
   return performance.now() - (Date.now() - app.startAt);
 }
 
-function showResults(results, quali) {
+function showResults(results, quali, dash) {
   app.phase = 'results';
   app.finished = true;
   if (quali) app.finishTime = 0;
-  $('#results-title').textContent = quali ? 'Qualifying — this is the grid for the next race' : 'Race results';
+  $('#results-title').textContent = quali ? 'Qualifying — this is the grid for the next race' : dash ? 'Race to 9LAT2 — results' : 'Race results';
   $('#btn-endq').classList.add('hidden');
   const list = $('#results-list');
   list.innerHTML = '';
@@ -2650,6 +2746,7 @@ function goHome() {
   $('#results').classList.add('hidden');
   $('#lights').classList.add('hidden');
   $('#countdown').classList.add('hidden');
+  $('#dash-nav').classList.add('hidden');
   app.phase = 'home';
   app.room = null;
   clearCars();
@@ -2680,6 +2777,9 @@ function renderLobby() {
   const isHost = r.hostId === app.myId;
   $('#btn-start').classList.toggle('hidden', !isHost);
   $('#btn-quali').classList.toggle('hidden', !isHost);
+  $('#btn-secrets').classList.toggle('hidden', !isHost);
+  if (!isHost) $('#secrets').classList.add('hidden');
+  $('#car-hint').textContent = r.car === 'camry' ? '— Toyota Camry (secret)' : '';
   $('#wait-host').classList.toggle('hidden', isHost);
   $('#track-list').classList.toggle('locked', !isHost);
   $('#track-hint').textContent = isHost ? '— you pick' : '— host picks';
@@ -2781,13 +2881,26 @@ function wireUI() {
   }));
   $('#btn-start').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'race' }); });
   $('#btn-quali').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'quali' }); });
+  $('#btn-dash').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'dash' }); });
+  $('#btn-secrets').addEventListener('click', (e) => { e.currentTarget.blur(); $('#secrets').classList.toggle('hidden'); });
+  // what's new
+  const seen = (() => { try { return localStorage.getItem('dc-seen'); } catch { return null; } })();
+  $('#ver').textContent = 'v' + UPDATES[0].v;
+  $('#updates-dot').classList.toggle('hidden', seen === UPDATES[0].v);
+  $('#updates-list').innerHTML = UPDATES.map(u => `<h3><span class="tagv">v${esc(u.v)}</span>${esc(u.title)}<small>${esc(u.date)}</small></h3><ul>${u.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`).join('');
+  $('#btn-updates').addEventListener('click', () => {
+    $('#updates').classList.remove('hidden'); $('#updates-dot').classList.add('hidden');
+    try { localStorage.setItem('dc-seen', UPDATES[0].v); } catch {}
+  });
+  $('#btn-updates-close').addEventListener('click', () => $('#updates').classList.add('hidden'));
+  $('#updates').addEventListener('click', (e) => { if (e.target.id === 'updates') $('#updates').classList.add('hidden'); });
   $('#btn-endq').addEventListener('click', (e) => { e.currentTarget.blur(); send({ t: 'endquali' }); });
   $('#btn-leave').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
   $('#btn-resume').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); });
   $('#btn-quit').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
   $('#btn-cam').addEventListener('click', (e) => { e.currentTarget.blur(); toggleCamera(); });
   $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
-  $('#btn-gfx').addEventListener('click', (e) => { e.currentTarget.blur(); setGfxMode({ auto: 'high', high: 'low', low: 'auto' }[gfx.mode]); });
+  $('#btn-gfx').addEventListener('click', (e) => { e.currentTarget.blur(); setGfxMode({ auto: 'high', high: 'medium', medium: 'low', low: 'auto' }[gfx.mode]); });
   $('#btn-gfx').textContent = 'Graphics: ' + gfx.mode;
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
@@ -2827,6 +2940,15 @@ function standingsOrder() {
     if (p.id === app.myId) continue;
     const c = app.cars.get(p.id);
     entries.push({ id: p.id, name: p.name, color: p.color, finished: !!c?.finished, place: c?.place || 0, lap: c?.lap || 1, key: c ? (c.lap - 1) * N + c.pr * N : -1, me: false });
+  }
+  if (app.mode === 'dash' && app.track.goal) {
+    // order by how far each car still has to go
+    const g = app.track.goal;
+    for (const e of entries) {
+      const c = e.me ? null : app.cars.get(e.id);
+      e.togo = e.me ? Math.hypot(app.local.pos.x - g.x, app.local.pos.z - g.z) : c?.shown ? Math.hypot(c.sx - g.x, c.sz - g.z) : 99999;
+      e.key = -e.togo;
+    }
   }
   if (app.mode === 'quali') {
     for (const e of entries) { e.best = e.me ? (app.bestLap || null) : (app.bests?.get(e.id) ?? null); e.finished = false; }
@@ -2871,8 +2993,14 @@ function updateHud(now) {
     $('#hud-time').textContent = fmtTime(t);
     if (app.mode === 'quali' && app.phase === 'racing' && t <= 0 && !app.sessionOver) { app.sessionOver = true; raceToast('Session over — results coming up', 3000); }
   }
-  $('#hud-lap').textContent = app.mode === 'quali' ? car.lap : Math.min(car.lap, app.laps);
-  $('#respawn-tip').classList.toggle('hidden', car.onTrack || app.phase === 'countdown');
+  const goal = app.mode === 'dash' ? app.track.goal : null;
+  if (goal) {
+    const dx = goal.x - car.pos.x, dz = goal.z - car.pos.z, d = Math.round(Math.hypot(dx, dz));
+    $('#hud-lap').textContent = d + 'm';
+    $('#dash-dist').textContent = d + ' m';
+    $('#dash-arrow').style.transform = `rotate(${(-(Math.atan2(dx, dz) - car.h)).toFixed(2)}rad)`; // points where 9LAT2 is, relative to the nose
+  } else $('#hud-lap').textContent = app.mode === 'quali' ? car.lap : Math.min(car.lap, app.laps);
+  $('#respawn-tip').classList.toggle('hidden', car.onTrack || app.phase === 'countdown' || app.mode === 'dash');
 
   if (++hudTick % 6 === 0) {
     const order = standingsOrder();
@@ -2884,7 +3012,7 @@ function updateHud(now) {
     $('#hud-pos-of').textContent = '/' + order.length;
     const st = $('#standings');
     st.innerHTML = order.slice(0, 20).map((e, i) =>
-      `<div class="standing${e.me ? ' me' : ''}${e.finished ? ' done' : ''}"><span class="n">${i + 1}</span><span class="dot" style="background:${COLOR_CSS[e.color]}"></span><span>${esc(e.name)}</span><span class="lap">${app.mode === 'quali' ? (e.best ? fmtTime(e.best) : '--') : e.finished ? 'FIN' : 'L' + Math.min(e.lap, app.laps)}</span></div>`
+      `<div class="standing${e.me ? ' me' : ''}${e.finished ? ' done' : ''}"><span class="n">${i + 1}</span><span class="dot" style="background:${COLOR_CSS[e.color]}"></span><span>${esc(e.name)}</span><span class="lap">${app.mode === 'quali' ? (e.best ? fmtTime(e.best) : '--') : e.finished ? 'FIN' : app.mode === 'dash' ? (e.togo < 99999 ? Math.round(e.togo) + 'm' : '--') : 'L' + Math.min(e.lap, app.laps)}</span></div>`
     ).join('');
   }
 
@@ -2918,6 +3046,11 @@ function drawMinimap() {
     mmCtx.beginPath(); mmCtx.arc(x * sc + ox, z * sc + oz, r, 0, Math.PI * 2);
     mmCtx.fillStyle = css; mmCtx.fill(); mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2; mmCtx.stroke();
   };
+  if (app.mode === 'dash' && app.track.goal && inRace()) {
+    const g = app.track.goal, x = clamp(g.x * sc + ox, 8, mm.width - 8), y = clamp(g.z * sc + oz, 8, mm.height - 8);
+    mmCtx.fillStyle = '#ffd23f'; mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2;
+    mmCtx.fillRect(x - 6, y - 6, 12, 12); mmCtx.strokeRect(x - 6, y - 6, 12, 12);
+  }
   for (const c of app.cars.values()) if (c.mesh.group.visible) dot(c.mesh.group.position.x, c.mesh.group.position.z, COLOR_CSS[c.color], 4);
   if (app.local) dot(app.local.pos.x, app.local.pos.z, COLOR_CSS[app.color], 6);
 }

@@ -36,6 +36,7 @@
         <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">
         <button id="btn-join" class="btn">Join</button>
       </div>
+      <button id="btn-updates" class="btn ghost small whatsnew">What's new <span id="ver"></span><i id="updates-dot" class="dot-new hidden"></i></button>
     </div>
     <p class="foot">WASD / arrows drive &middot; Space handbrake &middot; C camera &middot; Esc menu &middot; R reset</p>
   </section>
@@ -59,7 +60,7 @@
         <div class="label">Track <span id="track-hint" class="muted"></span></div>
         <div id="track-list" class="trackcards"></div>
         <div class="carrow">
-          <div class="label">Cars</div>
+          <div class="label">Cars <span id="car-hint" class="muted"></span></div>
           <div id="car-list" class="carpicks">
             <button class="carpick on" data-car="open"><b>Open seater</b><span>Fast and grippy on tarmac</span></button>
             <button class="carpick" data-car="rally"><b>Rally</b><span>Slides, and loves gravel</span></button>
@@ -70,6 +71,13 @@
         <button id="btn-start" class="btn primary big">Start race</button>
         <button id="btn-quali" class="btn">Qualifying</button>
         <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
+        <button id="btn-secrets" class="btn ghost small">Secrets</button>
+        <div id="secrets" class="panel secrets hidden">
+          <div class="label">Secrets</div>
+          <button id="btn-dash" class="btn">Race to 9LAT2</button>
+          <div class="hint">No laps, no gates. First car to reach the 9LAT2 building wins.</div>
+          <button class="carpick" data-car="camry"><b>Toyota Camry</b><span>Everyone drives a Camry</span></button>
+        </div>
         <button id="btn-leave" class="btn ghost small">Leave room</button>
       </div>
     </div>
@@ -79,7 +87,7 @@
   <section id="screen-race" class="screen hidden">
     <div class="hud-left">
       <div class="hud-block">
-        <div class="hud-label">Lap</div>
+        <div class="hud-label" id="hud-lap-label">Lap</div>
         <div class="hud-value"><span id="hud-lap">1</span><small>/<span id="hud-laps">3</span></small></div>
       </div>
       <div class="hud-block">
@@ -106,6 +114,7 @@
     <div id="lights" class="lights hidden"><span></span><span></span><span></span><span></span><span></span></div>
     <div id="countdown" class="countdown hidden"></div>
     <div id="toast-race" class="toast-race hidden"></div>
+    <div id="dash-nav" class="dash-nav hidden"><span id="dash-arrow">&#9650;</span><b>9LAT2</b><span id="dash-dist"></span></div>
     <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or press <b>R</b> to reset</div>
     <button id="btn-endq" class="btn small endq hidden">End qualifying</button>
 
@@ -131,6 +140,14 @@
       </div>
     </div>
   </section>
+
+  <div id="updates" class="overlay hidden">
+    <div class="panel updates">
+      <div class="label">What's new in Drift Club</div>
+      <div id="updates-list" class="updates-list"></div>
+      <button id="btn-updates-close" class="btn primary">Close</button>
+    </div>
+  </div>
 
   <div id="toast" class="toast hidden"></div>
 
