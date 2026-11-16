@@ -1,0 +1,34 @@
+// What's new. Add a new entry at the TOP of this list whenever the game is
+// updated: players see it behind the "What's new" button on the home screen,
+// and the button shows a dot until they've opened the latest one.
+export const UPDATES = [
+  {
+    v: '1.3', date: '16 Nov 2026', title: 'Secrets, medium graphics, and this list',
+    items: [
+      'A Secrets button in the lobby. Hosts: have a look.',
+      'Graphics now has a medium setting between high and low (Esc menu).',
+      'This "What\'s new" list, so you can see what changed and when.',
+    ],
+  },
+  {
+    v: '1.2', date: '16 Nov 2026', title: 'Smooth multiplayer and a bigger world',
+    items: [
+      'Other players\' cars now glide instead of stuttering.',
+      'Trees, rocks, buildings and posts are solid, and a wall rings the map.',
+      'New places to find: lake, castle, fairground, village, stone circle, campsite, windmill, radio mast. Each hides a gold star.',
+      'The helicopter follows the race leader.',
+      'Results show gaps and every lap you set. The lobby keeps the qualifying grid.',
+      'Graphics adjust themselves to keep the game running smoothly.',
+    ],
+  },
+  {
+    v: '1.1', date: '12 Nov 2026', title: 'Rally cars and qualifying',
+    items: [
+      'Rally car class that loves gravel.',
+      'Qualifying sessions that set the grid.',
+      'Four longer tracks, cockpit camera (C), Esc menu.',
+      'Engine sound, start lights, new driving physics.',
+    ],
+  },
+  { v: '1.0', date: '11 Nov 2026', title: 'Drift Club opens', items: ['Host a room, share the code, race your friends.'] },
+];

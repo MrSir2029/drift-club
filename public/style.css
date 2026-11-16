@@ -231,3 +231,20 @@ input:focus { border-color: var(--blue); }
 .mylaps span.lap.best { background: #ffd23f; }
 .chip .gridtime { font-size: 11px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .found { background: rgba(255,250,240,.9); border: 2px solid var(--ink); border-radius: 8px; padding: 3px 8px; font-weight: 800; font-size: 13px; }
+
+.whatsnew { margin-top: 14px; width: 100%; position: relative; }
+.dot-new { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e6453a; border: 2px solid var(--ink); margin-left: 6px; vertical-align: middle; }
+.overlay { position: fixed; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: rgba(29,34,48,.45); padding: 16px; }
+.updates { width: min(520px, 100%); max-height: 86vh; display: flex; flex-direction: column; }
+.updates-list { overflow: auto; margin-bottom: 14px; }
+.updates-list h3 { margin: 12px 0 4px; font-size: 17px; font-weight: 900; }
+.updates-list h3 small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 6px; }
+.updates-list h3 .tagv { background: var(--orange); border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; margin-right: 6px; }
+.updates-list ul { margin: 0; padding-left: 20px; font-weight: 600; font-size: 14px; line-height: 1.45; }
+.secrets { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.secrets .label { margin: 0; }
+.secrets .hint { font-size: 12px; font-weight: 600; color: var(--muted); }
+.secrets.locked .carpick, .secrets.locked .btn { cursor: default; opacity: .6; }
+.dash-nav { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; font-weight: 900; box-shadow: 0 4px 0 var(--ink); }
+#dash-arrow { display: inline-block; font-size: 24px; color: var(--orange-dark); line-height: 1; }
+#dash-dist { font-variant-numeric: tabular-nums; color: var(--muted); }
