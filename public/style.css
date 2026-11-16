@@ -218,3 +218,16 @@ input:focus { border-color: var(--blue); }
 .carpick.on span { color: var(--ink); }
 .carpicks.locked .carpick { cursor: default; }
 @media (max-width: 760px) { .carpick span { display: none; } .carrow { margin-top: 8px; } }
+
+.results-sub { font-weight: 900; font-size: 22px; margin: -2px 0 12px; }
+.results-sub:empty { display: none; }
+.results-list li .gap { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; min-width: 62px; text-align: right; }
+.results-list li .time { margin-left: 0; min-width: 70px; text-align: right; color: var(--ink); }
+.results-list li .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mylaps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; align-items: center; font-weight: 800; font-size: 13px; }
+.mylaps:empty { display: none; }
+.mylaps .lbl { color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; width: 100%; }
+.mylaps span.lap { border: 2px solid var(--ink); border-radius: 8px; padding: 2px 8px; background: #fff; font-variant-numeric: tabular-nums; }
+.mylaps span.lap.best { background: #ffd23f; }
+.chip .gridtime { font-size: 11px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.found { background: rgba(255,250,240,.9); border: 2px solid var(--ink); border-radius: 8px; padding: 3px 8px; font-weight: 800; font-size: 13px; }

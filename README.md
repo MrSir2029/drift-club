@@ -2,7 +2,8 @@
 
 A tiny multiplayer racing game you play in the browser with friends. One person
 hosts, gets a 4-letter room code, and everyone else joins with the code or the
-invite link. Up to 20 racers per room, three laps, three tracks, low-poly 3D.
+invite link. Up to 20 racers per room, three laps, four tracks, two car
+classes (open seater and rally), qualifying sessions, low-poly 3D.
 
 No accounts, no chat, no ads, no trackers, no downloads. Everything the game
 needs is served from this folder, including the 3D library, so it works on a
@@ -75,17 +76,48 @@ that usually make that an easy "yes":
 | W / Up | accelerate |
 | S / Down | brake, reverse |
 | A / D or Left / Right | steer |
-| R | respawn at the last checkpoint |
+| Space | handbrake |
+| R | reset to the last gate |
+| C | chase / cockpit camera |
+| M | sound on / off |
+| Esc | menu: resume, camera, graphics, leave |
 
 Drive through the orange gates in order. The glowing one is your next gate.
-Cutting across the grass doesn't count. Off the track for a while, or falling
-off the bridge, puts you back at your last gate automatically.
+Cutting across the grass doesn't count. There is no automatic reset: drive
+back on, or press R.
+
+## Hosting a session
+
+The host picks the track and the car class in the lobby, then either starts
+a race or runs **Qualifying** first. Qualifying is four minutes of free
+laps (the host can end it early); everyone's fastest lap sets the grid for
+the next race. The results screen shows the order, the gaps, and every lap
+you set, and the lobby keeps the grid and times on show.
+
+## The map
+
+Barriers, fences, buildings, trees, big rocks and posts are solid, and a
+stone wall rings the edge of the map. Away from the circuit there are
+places to find: a lake you can wade through, a castle, a fairground, a
+village, a stone circle, a campsite, a windmill and a radio mast. Each
+hides a gold star; the counter under the standings shows how many you've
+found on that map. A TV helicopter follows the race leader.
+
+## Graphics
+
+On **auto** (the default) the game watches its own frame rate and lowers
+the detail until it runs smoothly. Esc opens the menu, where the Graphics
+button switches between auto, high and low.
 
 ## How it works
 
 - `server.js`: static files + WebSocket rooms. Each client sends its car
-  position 20 times a second; the server relays everyone's positions to the
-  room at 20 Hz. Finish order is decided by the order finish messages arrive.
+  position, velocity and a timestamp 30 times a second; the server batches
+  whatever changed and relays it to the room at 30 Hz. Finish order is
+  decided by the order finish messages arrive.
+- Other players' cars are drawn a fraction of a second in the past, on a
+  curve between two real positions, so they glide however unevenly the
+  network delivers the packets. The delay adapts to the connection.
 - `public/game.js`: Three.js scene, car physics, camera, HUD and networking.
 - `public/tracks.js`: tracks are a list of control points. Add a new one by
   adding an entry to `TRACKS` and bumping `TRACK_COUNT` in `server.js`.

@@ -87,7 +87,7 @@
         <div class="hud-value"><span id="hud-pos">1</span><small id="hud-pos-of">/1</small></div>
       </div>
       <div class="hud-block">
-        <div class="hud-label">Time</div>
+        <div class="hud-label" id="hud-time-label">Time</div>
         <div class="hud-value mono" id="hud-time">0:00.00</div>
       </div>
       <div class="hud-block">
@@ -98,6 +98,7 @@
     <div class="hud-right">
       <canvas id="minimap" width="180" height="180"></canvas>
       <div id="standings" class="standings"></div>
+      <div id="found" class="found hidden" title="Landmarks found on this map"></div>
       <button id="btn-sound" class="btn small" title="M toggles sound">Sound on</button>
       <button id="btn-menu" class="btn small" title="Esc opens the menu">Menu</button>
     </div>
@@ -113,6 +114,7 @@
         <div class="label">Paused for you &mdash; the race carries on</div>
         <button id="btn-resume" class="btn primary">Resume</button>
         <button id="btn-cam" class="btn">Camera: chase</button>
+        <button id="btn-gfx" class="btn">Graphics: auto</button>
         <button id="btn-quit" class="btn">Leave to main menu</button>
         <div class="hint">Esc menu &middot; C camera &middot; M sound &middot; R reset to last gate</div>
       </div>
@@ -121,7 +123,9 @@
     <div id="results" class="results hidden">
       <div class="panel">
         <div class="label" id="results-title">Results</div>
+        <div id="results-sub" class="results-sub"></div>
         <ol id="results-list" class="results-list"></ol>
+        <div id="results-laps" class="mylaps"></div>
         <button id="btn-lobby" class="btn primary">Back to lobby</button>
         <div id="results-wait" class="waiting hidden">Waiting for the host&hellip;</div>
       </div>
