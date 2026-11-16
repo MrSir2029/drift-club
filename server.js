@@ -13,8 +13,8 @@ const MAX_PLAYERS = 20;
 const TOTAL_LAPS = 3;
 const TRACK_COUNT = 4;
 const RESULTS_GRACE_MS = 45000; // after the first finisher, wait this long for the rest
-const BROADCAST_HZ = 20;
-const QUALI_MS = 240000; // qualifying session length
+const BROADCAST_HZ = 30;
+const QUALI_MS = +process.env.QUALI_MS || 240000; // qualifying session length
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -105,6 +105,7 @@ function roomSnapshot(room) {
     laps: TOTAL_LAPS,
     maxPlayers: MAX_PLAYERS,
     grid: room.grid,
+    times: room.gridTimes, // best qualifying lap per player id, for the lobby
     players: [...room.players.values()].map(p => ({ id: p.id, name: p.name, color: p.color })),
   };
 }
@@ -122,6 +123,8 @@ function createRoom(hostPlayer) {
     startAt: 0,
     mode: 'race',   // race | quali
     grid: null,     // player ids in qualifying order, used for the next race start
+    gridTimes: null,
+    dirty: new Set(), // players whose position changed since the last broadcast
     endTimer: null,
     results: [],
     resultsTimer: null,
@@ -143,6 +146,7 @@ function removePlayer(player) {
   if (!room) return;
   room.players.delete(player.id);
   room.lastStates.delete(player.id);
+  room.dirty.delete(player.id);
   player.room = null;
   if (room.players.size === 0) {
     if (room.resultsTimer) clearTimeout(room.resultsTimer);
@@ -163,6 +167,7 @@ function startRace(room, mode) {
   room.phase = 'countdown';
   room.results = [];
   room.lastStates.clear();
+  room.dirty.clear();
   for (const p of room.players.values()) { p.finished = false; p.best = null; }
   room.startAt = Date.now() + 4000;
   broadcast(room, startMessage(room));
@@ -182,6 +187,8 @@ function endQualifying(room) {
   room.phase = 'results';
   const order = [...room.players.values()].sort((a, b) => (a.best ?? Infinity) - (b.best ?? Infinity));
   room.grid = order.map(p => p.id);
+  room.gridTimes = {};
+  for (const p of order) if (p.best != null) room.gridTimes[p.id] = p.best;
   broadcast(room, { t: 'results', quali: true, results: order.map(p => ({ id: p.id, name: p.name, color: p.color, time: p.best ?? null })) });
 }
 
@@ -242,7 +249,7 @@ wss.on('connection', (ws) => {
         if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
         const id = Number(msg.trackId);
         if (Number.isInteger(id) && id >= 0 && id < TRACK_COUNT) {
-          if (room.trackId !== id) room.grid = null; // a grid only counts for the track it was set on
+          if (room.trackId !== id) room.grid = room.gridTimes = null; // a grid only counts for the track it was set on
           room.trackId = id;
           broadcast(room, roomSnapshot(room));
         }
@@ -251,7 +258,7 @@ wss.on('connection', (ws) => {
       case 'car': {
         if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
         const car = msg.car === 'rally' ? 'rally' : 'open';
-        if (room.car !== car) { room.car = car; room.grid = null; broadcast(room, roomSnapshot(room)); }
+        if (room.car !== car) { room.car = car; room.grid = room.gridTimes = null; broadcast(room, roomSnapshot(room)); }
         break;
       }
       case 'start': {
@@ -276,18 +283,21 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'state': {
+        // [t, x, y, z, heading, vx, vz, yawRate, pitch, roll, lap, nextGate, progress, flags]
+        // t is the sender's own clock: receivers use it to space the positions
+        // out evenly however unevenly the network delivers them.
         if (!room || (room.phase !== 'racing' && room.phase !== 'countdown')) return;
-        if (++player.stateCount > 40) return; // per-second budget, reset by the ticker
-        const s = {
-          id: player.id,
-          x: +msg.x || 0, y: +msg.y || 0, z: +msg.z || 0,
-          h: +msg.h || 0, v: +msg.v || 0,
-          lap: Math.max(0, Math.min(TOTAL_LAPS + 1, (msg.lap | 0))),
-          cp: Math.max(0, msg.cp | 0),
-          pr: Math.max(0, Math.min(1, +msg.pr || 0)),
-          b: msg.b ? 1 : 0,
-        };
-        room.lastStates.set(player.id, s);
+        if (++player.stateCount > 70) return; // per-second budget, reset by the ticker
+        const a = msg.s;
+        if (!Array.isArray(a) || a.length < 14) return;
+        const n = (i, lo, hi) => { const v = +a[i]; return v >= lo && v <= hi ? v : 0; };
+        room.lastStates.set(player.id, [
+          player.id, n(0, 0, 1e12),
+          n(1, -5000, 5000), n(2, -500, 500), n(3, -5000, 5000),
+          n(4, -1e4, 1e4), n(5, -200, 200), n(6, -200, 200), n(7, -20, 20), n(8, -2, 2), n(9, -2, 2),
+          Math.max(0, Math.min(999, a[10] | 0)), Math.max(0, Math.min(99, a[11] | 0)), n(12, 0, 1), a[13] & 7,
+        ]);
+        room.dirty.add(player.id);
         break;
       }
       case 'finish': {
@@ -306,6 +316,7 @@ wss.on('connection', (ws) => {
         if (!room || room.hostId !== player.id || room.phase !== 'results') return;
         room.phase = 'lobby';
         room.lastStates.clear();
+        room.dirty.clear();
         broadcast(room, roomSnapshot(room));
         break;
       }
@@ -320,12 +331,17 @@ wss.on('connection', (ws) => {
   ws.on('error', () => removePlayer(player));
 });
 
-// Position broadcast tick: everyone in a racing room gets everyone else's last state.
+// Position broadcast tick: everyone in a racing room gets the positions that
+// changed since the last tick, in one small message.
 setInterval(() => {
   for (const room of rooms.values()) {
-    if (room.phase !== 'racing' && room.phase !== 'countdown') continue;
-    if (room.lastStates.size === 0) continue;
-    broadcast(room, { t: 'states', s: [...room.lastStates.values()] });
+    if (room.dirty.size === 0) continue;
+    if (room.phase === 'racing' || room.phase === 'countdown') {
+      const list = [];
+      for (const id of room.dirty) { const s = room.lastStates.get(id); if (s) list.push(s); }
+      if (list.length) broadcast(room, { t: 's', s: list });
+    }
+    room.dirty.clear();
   }
 }, 1000 / BROADCAST_HZ);
 
