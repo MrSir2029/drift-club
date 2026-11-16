@@ -10,7 +10,8 @@ const { WebSocketServer } = require('ws');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_PLAYERS = 20;
-const TOTAL_LAPS = 3;
+const TOTAL_LAPS = 3; // default; the host can pick 1 to MAX_LAPS
+const MAX_LAPS = 10;
 const TRACK_COUNT = 4;
 const RESULTS_GRACE_MS = 45000; // after the first finisher, wait this long for the rest
 const BROADCAST_HZ = 30;
@@ -102,7 +103,7 @@ function roomSnapshot(room) {
     trackId: room.trackId,
     car: room.car,
     phase: room.phase,
-    laps: TOTAL_LAPS,
+    laps: room.laps,
     maxPlayers: MAX_PLAYERS,
     grid: room.grid,
     times: room.gridTimes, // best qualifying lap per player id, for the lobby
@@ -118,6 +119,7 @@ function createRoom(hostPlayer) {
     hostId: hostPlayer.id,
     trackId: 0,
     car: 'open',    // open | rally | camry: everyone in the room drives the same class
+    laps: TOTAL_LAPS,
     phase: 'lobby', // lobby | countdown | racing | results
     players: new Map(),
     startAt: 0,
@@ -177,7 +179,7 @@ function startRace(room, mode) {
 }
 
 function startMessage(room, extra) {
-  return { t: 'start', mode: room.mode, startAt: room.startAt, endAt: room.startAt + QUALI_MS, trackId: room.trackId, car: room.car, laps: TOTAL_LAPS, grid: room.mode !== 'quali' ? room.grid : null, now: Date.now(), ...extra };
+  return { t: 'start', mode: room.mode, startAt: room.startAt, endAt: room.startAt + QUALI_MS, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, now: Date.now(), ...extra };
 }
 
 // Qualifying ends on the clock: fastest lap first, no-time drivers at the back.
@@ -202,7 +204,9 @@ function showResults(room) {
   room.phase = 'results';
   if (room.resultsTimer) { clearTimeout(room.resultsTimer); room.resultsTimer = null; }
   const dnf = [...room.players.values()].filter(p => !p.finished).map(p => ({ id: p.id, name: p.name, color: p.color, time: null }));
-  broadcast(room, { t: 'results', mode: room.mode, results: [...room.results, ...dnf] });
+  // a photo finish is decided by the times, not by whose message arrived first
+  const done = [...room.results].sort((a, b) => a.time - b.time);
+  broadcast(room, { t: 'results', mode: room.mode, results: [...done, ...dnf] });
 }
 
 // ---------- websocket handling ----------
@@ -259,6 +263,12 @@ wss.on('connection', (ws) => {
         if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
         const car = msg.car === 'rally' || msg.car === 'camry' ? msg.car : 'open';
         if (room.car !== car) { room.car = car; room.grid = room.gridTimes = null; broadcast(room, roomSnapshot(room)); }
+        break;
+      }
+      case 'laps': {
+        if (!room || room.hostId !== player.id || room.phase !== 'lobby') return;
+        const n = msg.laps | 0;
+        if (n >= 1 && n <= MAX_LAPS && n !== room.laps) { room.laps = n; broadcast(room, roomSnapshot(room)); }
         break;
       }
       case 'start': {
