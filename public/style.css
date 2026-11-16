@@ -248,3 +248,17 @@ input:focus { border-color: var(--blue); }
 .dash-nav { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; font-weight: 900; box-shadow: 0 4px 0 var(--ink); }
 #dash-arrow { display: inline-block; font-size: 24px; color: var(--orange-dark); line-height: 1; }
 #dash-dist { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+.homerow { display: flex; gap: 8px; margin-top: 14px; }
+.homerow .whatsnew { margin-top: 0; flex: 1; }
+.settings { width: min(460px, 100%); display: flex; flex-direction: column; gap: 12px; }
+.settings .label { margin: 0; }
+.setrow { display: flex; flex-direction: column; gap: 6px; }
+.seg { display: flex; border: 3px solid var(--ink); border-radius: 12px; overflow: hidden; }
+.seg button { flex: 1; font: inherit; font-weight: 800; padding: 8px 4px; border: 0; border-left: 3px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; }
+.seg button:first-child { border-left: 0; }
+.seg button.on { background: var(--orange); }
+.warn { font-size: 13px; font-weight: 700; background: #fff3c4; border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px; }
+.lapsbox { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 10px; }
+.lapsbox .label { margin: 0; }
+#laps-val { font-size: 22px; font-weight: 900; min-width: 30px; text-align: center; }

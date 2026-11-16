@@ -36,7 +36,10 @@
         <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">
         <button id="btn-join" class="btn">Join</button>
       </div>
-      <button id="btn-updates" class="btn ghost small whatsnew">What's new <span id="ver"></span><i id="updates-dot" class="dot-new hidden"></i></button>
+      <div class="homerow">
+        <button id="btn-updates" class="btn ghost small whatsnew">What's new <span id="ver"></span><i id="updates-dot" class="dot-new hidden"></i></button>
+        <button id="btn-settings" class="btn ghost small whatsnew">Settings</button>
+      </div>
     </div>
     <p class="foot">WASD / arrows drive &middot; Space handbrake &middot; C camera &middot; Esc menu &middot; R reset</p>
   </section>
@@ -68,6 +71,7 @@
         </div>
       </div>
       <div class="lobby-actions">
+        <div class="lapsbox"><span class="label">Laps</span><button id="laps-minus" class="btn small">&minus;</button><b id="laps-val">3</b><button id="laps-plus" class="btn small">+</button></div>
         <button id="btn-start" class="btn primary big">Start race</button>
         <button id="btn-quali" class="btn">Qualifying</button>
         <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
@@ -78,6 +82,7 @@
           <div class="hint">No laps, no gates. First car to reach the 9LAT2 building wins.</div>
           <button class="carpick" data-car="camry"><b>Toyota Camry</b><span>Everyone drives a Camry</span></button>
         </div>
+        <button id="btn-settings-lobby" class="btn ghost small">Settings</button>
         <button id="btn-leave" class="btn ghost small">Leave room</button>
       </div>
     </div>
@@ -123,7 +128,7 @@
         <div class="label">Paused for you &mdash; the race carries on</div>
         <button id="btn-resume" class="btn primary">Resume</button>
         <button id="btn-cam" class="btn">Camera: chase</button>
-        <button id="btn-gfx" class="btn">Graphics: auto</button>
+        <button id="btn-settings-pause" class="btn">Graphics &amp; map</button>
         <button id="btn-quit" class="btn">Leave to main menu</button>
         <div class="hint">Esc menu &middot; C camera &middot; M sound &middot; R reset to last gate</div>
       </div>
@@ -146,6 +151,17 @@
       <div class="label">What's new in Drift Club</div>
       <div id="updates-list" class="updates-list"></div>
       <button id="btn-updates-close" class="btn primary">Close</button>
+    </div>
+  </div>
+
+  <div id="settings" class="overlay hidden">
+    <div class="panel settings">
+      <div class="label">Settings</div>
+      <div class="setrow"><b>Graphics</b><div id="seg-gfx" class="seg"><button data-v="auto">Auto</button><button data-v="high">High</button><button data-v="medium">Medium</button><button data-v="low">Low</button></div></div>
+      <div class="setrow"><b>Expanded map &amp; Easter eggs</b><div id="seg-map" class="seg"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
+      <div class="warn">&#9888; Adds a lake, castle, fairground, village and more to explore, with hidden stars to find. It can make the game run slower, especially on school laptops and older computers.</div>
+      <div id="map-note" class="hint"></div>
+      <button id="btn-settings-close" class="btn primary">Done</button>
     </div>
   </div>
 

@@ -3,6 +3,17 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.5', date: '16 Nov 2026', title: 'Much smoother, plus laps and settings',
+    items: [
+      'Big speed-up: the map and cars are now drawn in far fewer pieces, so the game runs much smoother on school laptops.',
+      'New Settings button (home screen, lobby and Esc menu) for graphics and the map.',
+      'The expanded map and Easter eggs (lake, castle, fairground, village, hidden stars) are now optional and off unless you turn them on, because they can slow older computers down.',
+      'Hosts choose how many laps a race has, from 1 to 10.',
+      'Open seater brakes are gentler and build up over a moment instead of slamming on.',
+      'Fixed the rear wing side plates glitching through the rear tyres.',
+    ],
+  },
+  {
     v: '1.4', date: '16 Nov 2026', title: 'Contact!',
     items: [
       'Cars are solid now: you can bump, block and get knocked wide.',

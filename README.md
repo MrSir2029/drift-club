@@ -2,7 +2,7 @@
 
 A tiny multiplayer racing game you play in the browser with friends. One person
 hosts, gets a 4-letter room code, and everyone else joins with the code or the
-invite link. Up to 20 racers per room, three laps, four tracks, two car
+invite link. Up to 20 racers per room, 1 to 10 laps, four tracks, two car
 classes (open seater and rally), qualifying sessions, low-poly 3D.
 
 No accounts, no chat, no ads, no trackers, no downloads. Everything the game
@@ -88,7 +88,8 @@ back on, or press R.
 
 ## Hosting a session
 
-The host picks the track and the car class in the lobby, then either starts
+The host picks the track, the car class and the number of laps (1 to 10)
+in the lobby, then either starts
 a race or runs **Qualifying** first. Qualifying is four minutes of free
 laps (the host can end it early); everyone's fastest lap sets the grid for
 the next race. The results screen shows the order, the gaps, and every lap
@@ -101,13 +102,21 @@ stone wall rings the edge of the map. Away from the circuit there are
 places to find: a lake you can wade through, a castle, a fairground, a
 village, a stone circle, a campsite, a windmill and a radio mast. Each
 hides a gold star; the counter under the standings shows how many you've
-found on that map. A TV helicopter follows the race leader.
+found on that map. These are the **expanded map**, which is off unless a
+player turns it on under Settings, because it can slow older computers
+down. The 9LAT2 building is always there. A TV helicopter follows the race leader.
 
 ## Graphics
 
 On **auto** (the default) the game watches its own frame rate and lowers
-the detail until it runs smoothly. Esc opens the menu, where the Graphics
-button switches between auto, high, medium and low.
+the detail until it runs smoothly. The Settings button (home screen, lobby,
+or Graphics & map in the Esc menu) switches between auto, high, medium and
+low, and turns the expanded map on or off.
+
+Still scenery and each car's body are merged into a few big meshes when a
+track loads (`mergeStatic` in `game.js`), because the number of separate
+objects, not the resolution, is what slows weak laptops down. Anything that
+moves is marked `userData.dyn` so it's left alone.
 
 ## Secrets
 
