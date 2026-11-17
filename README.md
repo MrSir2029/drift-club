@@ -82,6 +82,12 @@ that usually make that an easy "yes":
 | M | sound on / off |
 | Esc | menu: resume, camera, graphics, leave |
 
+On a phone or tablet, buttons appear on screen: the arrows on the left
+steer; Gas, Brake and Handbrake are on the right; Reset and Camera sit above
+the arrows, and Menu is top right. A thumb can slide from one button to the
+next without lifting. The buttons show up when you touch the screen and hide
+again when you press a driving key. Turn a phone sideways for the best view.
+
 Drive through the orange gates in order. The glowing one is your next gate.
 Cutting across the grass doesn't count. There is no automatic reset: drive
 back on, or press R.

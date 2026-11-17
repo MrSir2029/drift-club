@@ -41,7 +41,7 @@
       </div>
     </div>
     <button id="btn-updates" class="btn small corner-btn">What's new <span id="ver"></span><i id="updates-dot" class="dot-new hidden"></i></button>
-    <p class="foot">WASD / arrows drive &middot; Space handbrake &middot; C camera &middot; Esc menu &middot; R reset</p>
+    <p class="foot"><span class="kb-only">WASD / arrows drive &middot; Space handbrake &middot; C camera &middot; Esc menu &middot; R reset</span><span class="touch-only">Phone or tablet? Turn it sideways: steer on the left, pedals on the right</span></p>
   </section>
 
   <!-- LOBBY -->
@@ -121,8 +121,22 @@
     <div id="countdown" class="countdown hidden"></div>
     <div id="toast-race" class="toast-race hidden"></div>
     <div id="dash-nav" class="dash-nav hidden"><span id="dash-arrow">&#9650;</span><b>9LAT2</b><span id="dash-dist"></span></div>
-    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or press <b>R</b> to reset</div>
+    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or <span class="kb-only">press <b>R</b> to reset</span><span class="touch-only">tap <b>Reset</b></span></div>
     <button id="btn-endq" class="btn small endq hidden">End qualifying</button>
+
+    <!-- touch controls: shown on phones and tablets (body.touch) -->
+    <div id="touch" class="tc-layer">
+      <button class="tc tc-left" data-tc="ArrowLeft" data-pad="steer" tabindex="-1" aria-label="Steer left"><svg viewBox="0 0 24 24"><path d="M16 3 5 12l11 9z"/></svg></button>
+      <button class="tc tc-right" data-tc="ArrowRight" data-pad="steer" tabindex="-1" aria-label="Steer right"><svg viewBox="0 0 24 24"><path d="m8 3 11 9-11 9z"/></svg></button>
+      <button class="tc tc-hand" data-tc="Space" data-pad="pedals" tabindex="-1">Handbrake</button>
+      <button class="tc tc-brake" data-tc="ArrowDown" data-pad="pedals" tabindex="-1">Brake</button>
+      <button class="tc tc-gas" data-tc="ArrowUp" data-pad="pedals" tabindex="-1">Gas</button>
+      <div class="tc-row">
+        <button id="tc-reset" class="tc tc-small" tabindex="-1">Reset</button>
+        <button id="tc-cam" class="tc tc-small" tabindex="-1">Camera</button>
+      </div>
+    </div>
+    <div class="rotate-tip">Turn your phone sideways for the best view</div>
 
     <div id="pause" class="results hidden">
       <div class="panel pausepanel">

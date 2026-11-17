@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.16', date: '17 Nov 2026', title: 'Touch controls',
+    items: [
+      'Race on a phone or tablet: steer with the arrows on the left; gas, brake and handbrake on the right; Reset and Camera above the arrows. You can slide your thumb from one button to the next without lifting it.',
+      'The buttons appear when you touch the screen and hide again when you use the keyboard.',
+      'On a phone held sideways, the home screen and lobby now scroll, so Start is always in reach.',
+    ],
+  },
+  {
     v: '1.15', date: '17 Nov 2026', title: 'Car lights',
     items: [
       'Car lights are back to how they were: no headlight beams or glows at night, and tail lights only light up when you brake.',
