@@ -299,6 +299,7 @@ function setGfxMode(mode) {
 function renderSettings() {
   document.querySelectorAll('#seg-gfx button').forEach(b => b.classList.toggle('on', b.dataset.v === gfx.mode));
   document.querySelectorAll('#seg-map button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.expanded));
+  document.querySelectorAll('#seg-sound button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === audio.on));
 }
 function setExpanded(on) {
   if (on !== app.expanded) {
@@ -782,13 +783,22 @@ function collideCars(car) {
 function updateGhost(now) {
   const car = app.local, lap = app.ghostLap;
   const on = car && lap && app.mode === 'quali' && app.phase === 'racing';
-  if (!on) { if (app.ghost) app.ghost.group.visible = false; return; }
+  if (!on) { if (app.ghost) app.ghost.group.visible = false; app.ghostDelta = null; return; }
   if (!app.ghost) {
     app.ghost = makeCarMesh(app.color, '', true);
-    app.ghost.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.32; m.material.depthWrite = false; m.castShadow = false; } });
+    app.ghost.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.45; m.material.color?.setHex(0xbfe4ff); m.material.depthWrite = false; m.castShadow = false; } });
     carsGroup.add(app.ghost.group);
   }
   const t = now - car.lapStart, g = app.ghost.group;
+  // the gap: how long the ghost took to reach the point you're at now, against
+  // your own time so far this lap (negative: you're ahead)
+  let j = app.dI || 0;
+  if (j >= lap.length || lap[j].i > car.idx + 30) j = 0;
+  while (j < lap.length - 2 && lap[j + 1].i <= car.idx) j++;
+  app.dI = j;
+  const pa = lap[j], pb = lap[j + 1];
+  if (pa && pb && pb.i > pa.i && car.lap > 1) app.ghostDelta = (t - lerp(pa.t, pb.t, clamp((car.idx - pa.i) / (pb.i - pa.i), 0, 1))) / 1000;
+  else app.ghostDelta = null;
   let i = app.ghostI || 0;
   if (i >= lap.length || lap[i].t > t) i = 0;
   while (i < lap.length - 2 && lap[i + 1].t <= t) i++;
@@ -2910,7 +2920,7 @@ function stepLocal(car, dt, canDrive) {
           if (!app.bestLap || lapTime < app.bestLap) app.bestLap = lapTime;
           app.myLaps.push(lapTime);
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
-          app.rec = [];
+          app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
           if (app.mode === 'quali') { send({ t: 'lap', time: Math.round(lapTime) }); raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500); }
           else if (car.lap > app.laps) finishRace();
@@ -3213,7 +3223,7 @@ function beginRace(msg) {
   app.myPlace = 0;
   app.bests = new Map();
   app.myLaps = [];
-  app.rec = []; app.ghostLap = null;
+  app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.sessionOver = false;
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Time left' : 'Time';
   if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
@@ -3502,8 +3512,7 @@ function wireUI() {
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
-  $('#btn-sound').addEventListener('click', (e) => { initAudio(); setSound(!audio.on); e.currentTarget.blur(); });
-  $('#btn-sound').textContent = audio.on ? 'Sound on' : 'Sound off';
+  document.querySelectorAll('#seg-sound button').forEach(b => b.addEventListener('click', () => { initAudio(); setSound(b.dataset.v === 'on'); }));
   for (const id of ['#btn-create', '#btn-join']) $(id).addEventListener('click', initAudio);
 
   window.addEventListener('keydown', (e) => {
@@ -3519,7 +3528,7 @@ function wireUI() {
       }
     }
     if (!e.repeat) initAudio();
-    if (e.code === 'KeyM' && !e.repeat) setSound(!audio.on);
+    if (e.code === 'KeyM' && !e.repeat) { setSound(!audio.on); if (inRace()) raceToast(audio.on ? 'Sound on' : 'Sound off', 1000); }
     if (e.code === 'KeyC' && !e.repeat) toggleCamera();
     if (e.code === 'Escape' && !e.repeat && inRace()) { setMenu(!app.menuOpen); return; }
     if (app.menuOpen) return;
@@ -3603,6 +3612,9 @@ function updateHud(now) {
     }
   }
   setText('#hud-best', app.bestLap ? fmtTime(app.bestLap) : '--');
+  const gd = app.mode === 'quali' ? app.ghostDelta : null;
+  setText('#hud-delta', gd == null ? '' : (gd >= 0 ? '+' : '\u2212') + Math.abs(gd).toFixed(2));
+  if (gd != null) { const el = textCache.get('#hud-delta').el; el.classList.toggle('ahead', gd < 0); el.classList.toggle('behind', gd >= 0); }
   if (app.phase === 'racing' || app.phase === 'results') {
     const t = app.mode === 'quali' ? (app.phase === 'results' ? 0 : Math.max(0, app.endAt - Date.now())) : app.finished && !app.spectate ? app.finishTime : Math.max(0, now - raceStartPerf());
     setText('#hud-time', fmtTime(t));
@@ -3711,7 +3723,7 @@ function setSound(on) {
   audio.on = on;
   try { localStorage.setItem('dc-sound', on ? 'on' : 'off'); } catch {}
   if (audio.nodes) audio.nodes.master.gain.setTargetAtTime(on ? 0.6 : 0, audio.ctx.currentTime, 0.05);
-  $('#btn-sound').textContent = on ? 'Sound on' : 'Sound off';
+  renderSettings();
 }
 function beep(freq, dur, vol = 0.25) {
   if (!audio.ctx || !audio.on) return;
@@ -3773,8 +3785,15 @@ function frame(now) {
     stepLocal(app.local, dt, canDrive);
     stepRemotes(now, dt);
     if (app.mode === 'quali' && app.phase === 'racing') {
-      const c = app.local, r = app.rec, t = now - c.lapStart;
-      if (!r.length || t - r[r.length - 1].t >= 50) r.push({ t, x: c.pos.x, y: c.pos.y, z: c.pos.z, h: c.h });
+      // The ghost lap is timed from the start line, not from the grid: the
+      // first lap only starts recording once the car has crossed the line.
+      // (Recording from the grid made the ghost trail behind you, out of sight.)
+      const c = app.local;
+      if (app.recFrom == null && c.idx < app.track.N / 2) { app.recFrom = now; app.rec = []; }
+      if (app.recFrom != null) {
+        const r = app.rec, t = now - app.recFrom;
+        if (!r.length || t - r[r.length - 1].t >= 50) r.push({ t, x: c.pos.x, y: c.pos.y, z: c.pos.z, h: c.h, i: c.idx });
+      }
     }
     updateGhost(now);
     updateHud(now);

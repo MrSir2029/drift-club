@@ -119,8 +119,8 @@ track in `tracks.js`.
 
 Graphics start on **high**. On **auto** the game watches its own frame rate and lowers
 the detail until it runs smoothly. The Settings button (home screen, lobby,
-or Graphics & map in the Esc menu) switches between auto, high, medium and
-low, and turns the expanded map on or off.
+or the Esc menu) sets graphics (auto, high, medium or low), sound, and
+the expanded map.
 
 Still scenery and each car's body are merged into a few big meshes when a
 track loads (`mergeStatic` in `game.js`), because the number of separate

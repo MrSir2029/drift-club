@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.13', date: '17 Nov 2026', title: 'Ghost and sound',
+    items: [
+      'The qualifying ghost now starts from the line with you, instead of trailing behind from the grid where you could never see it. It\'s tinted blue.',
+      'A live gap to your ghost shows under your best lap: green with a minus when you\'re ahead, red when you\'re behind.',
+      'The sound switch moved into Settings. M still toggles it.',
+    ],
+  },
+  {
     v: '1.12', date: '17 Nov 2026', title: 'Night race',
     items: [
       'Switchback is now a night race: floodlights over the track, headlight beams on every car, glowing tail lights, stars and a moon.',
