@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.6', date: '17 Nov 2026', title: 'Cockpit and lights',
+    items: [
+      'Cockpit view: the whole steering wheel shows now, in front of a proper dashboard instead of half buried in it, and the view looks a touch lower so the roof takes up less of the screen.',
+      'Headlights, tail lights and the Camry grille sit flush on the bodywork instead of floating in front of it.',
+    ],
+  },
+  {
     v: '1.5', date: '16 Nov 2026', title: 'Much smoother, plus laps and settings',
     items: [
       'Big speed-up: the map and cars are now drawn in far fewer pieces, so the game runs much smoother on school laptops.',
