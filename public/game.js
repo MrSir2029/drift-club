@@ -3322,8 +3322,8 @@ function setMenu(open) {
   $('#pause').classList.toggle('hidden', !open);
   app.tcSync?.(); // a finger still on a touch pedal takes hold again when the menu closes
 }
-// Touch controls show when the screen is touched (or on a touch-first device)
-// and hide again when a driving key is pressed.
+// Touch controls show on phones and tablets (see wireTouch), and hide again
+// while a keyboard is being used to drive.
 function setTouch(on) {
   if (app.touch === on) return;
   app.touch = on;
@@ -3548,8 +3548,12 @@ function wireUI() {
 // without lifting.
 const DRIVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
 function wireTouch() {
-  setTouch(matchMedia('(pointer: coarse)').matches);
-  window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') setTouch(true); }, true);
+  // Phones and tablets only: devices whose main input is a finger, with no
+  // mouse to hover with. Computers never get the buttons, touchscreen or not.
+  const touchDevice = matchMedia('(hover: none) and (pointer: coarse)');
+  setTouch(touchDevice.matches);
+  touchDevice.addEventListener?.('change', () => setTouch(touchDevice.matches)); // e.g. a mouse plugged into a tablet
+  window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && touchDevice.matches) setTouch(true); }, true);
   const pad = $('#touch'), buttons = [...pad.querySelectorAll('[data-tc]')];
   const fingers = new Map(); // pointer id -> the button under that finger
   app.tcSync = () => {
