@@ -106,11 +106,9 @@ sells them at cost, around $10 a year) and add it to the Worker under
 | M | sound on / off |
 | Esc | menu: resume, camera, graphics, leave |
 
-On a phone or tablet (never on a computer), buttons appear on screen: the arrows on the left
-steer; Gas, Brake and Handbrake are on the right; Reset and Camera sit above
-the arrows, and Menu is top right. A thumb can slide from one button to the
-next without lifting. They hide while a keyboard is used to drive and come
-back at the next touch. Turn a phone sideways for the best view.
+Drift Club is made for a computer with a keyboard. There are no touch
+controls, so phones and tablets get a "Not for phones" warning on the home
+screen.
 
 Drive through the orange gates in order. The glowing one is your next gate.
 Cutting across the grass doesn't count. There is no automatic reset: drive
