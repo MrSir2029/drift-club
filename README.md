@@ -104,12 +104,12 @@ village, a stone circle, a campsite, a windmill and a radio mast. Each
 hides a gold star; the counter under the standings shows how many you've
 found on that map. These are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
-building is always there.
+building is always there. A TV helicopter follows the race leader.
 
 Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
 spires and mesas, a stone arch over the road, and two jumps. A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
-track in `tracks.js`. A TV helicopter follows the race leader.
+track in `tracks.js`.
 
 ## Graphics
 
