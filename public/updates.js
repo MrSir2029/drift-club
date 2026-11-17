@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.11', date: '17 Nov 2026', title: 'Brake lights',
+    items: [
+      'Brake lights stay on when you brake to a stop: the car holds still for a moment before it starts to reverse, instead of slipping straight into reverse with the lights off.',
+    ],
+  },
+  {
     v: '1.10', date: '17 Nov 2026', title: 'Gentler brakes, further 9LAT2',
     items: [
       'The open seater always starts in the cockpit. C still switches camera for that race.',

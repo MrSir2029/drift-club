@@ -2616,6 +2616,11 @@ function stepLocal(car, dt, canDrive) {
   let vLong = car.vx * fx + car.vz * fz;
   let vLat = car.vx * lx + car.vz * lz;
   const speedAbs = Math.abs(vLong);
+  // Holding brake stops the car and holds it for a moment, brake lights on;
+  // keep holding and it reverses. (It used to slip straight into reverse, so
+  // the brake lights went out the moment the car slowed to a stop.)
+  car.stopTime = brake && vLong <= 0.6 ? (car.stopTime || 0) + dt : 0;
+  const reversing = car.stopTime > 0.6;
 
   // ---- steering: less lock at speed, quick to centre ----
   // steering lock shrinks with speed so full lock asks for a bit more than the
@@ -2664,7 +2669,7 @@ function stepLocal(car, dt, canDrive) {
       if (vLong > 0.6) {
         FbrakeF = -CAR.brakeForce * CAR.brakeFront * car.brakeAmt;
         FbrakeR = -CAR.brakeForce * (1 - CAR.brakeFront) * car.brakeAmt;
-      } else {
+      } else if (reversing) {
         Freverse = -4000 * clamp((CAR.reverseSpeed + vLong) / 3, 0, 1); // reverse gear
       }
     }
@@ -2724,6 +2729,7 @@ function stepLocal(car, dt, canDrive) {
     }
     sliding = Math.max(sliding, Math.abs(alphaR), Math.abs(alphaF) * 0.7);
   }
+  if (brake && !reversing && Math.abs(vLong) < 0.6) vLong = 0; // held at a stop
   car.yawRate = yawRate;
   car.spinning = spinning; car.locked = locked; car.slip = sliding;
   car.h += yawRate * dt;
@@ -2850,7 +2856,7 @@ function stepLocal(car, dt, canDrive) {
     if (w.front) w.pivot.rotation.y = car.steerAngle;
   }
   if (car.mesh.steer) car.mesh.steer.rotation.z = -car.steerAngle * 5; // steering wheel: about 5 turns of the wheel per turn of the tyres
-  car.braking = brake && vLong > 0.6;
+  car.braking = !!brake && !reversing;
   car.mesh.brakeMat.emissive.setHex(car.braking ? 0xff2020 : 0x000000);
 
   // dust / smoke when sliding or spinning
