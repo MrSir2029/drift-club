@@ -439,7 +439,7 @@ function disposeTree(o) {
     m.geometry?.dispose?.();
     if (m.isInstancedMesh) m.dispose();
     const mt = m.material;
-    if (mt && !mt.userData?.keep) { mt.map?.dispose?.(); mt.dispose?.(); } // shared materials (merged, beams) are marked keep
+    if (mt && !mt.userData?.keep) { if (mt.map && !mt.map.userData?.keep) mt.map.dispose(); mt.dispose?.(); } // shared materials (merged, beams) are marked keep
   });
 }
 
@@ -2125,6 +2125,25 @@ function faceLamp(K, mat, x, hw, y0, z0, y1, z1, dir, out = 0.015, inn = 0.04) {
 }
 
 let beamMat = null; // shared by every car's headlight beam
+// Where each car's lamps are (a little in front of the lamp face), for the
+// soft glow that makes a lamp read as a light rather than a flat rectangle.
+const LAMP_GLOWS = {
+  rally: { front: [[-0.6, 0.76, 2.17], [0.6, 0.76, 2.17], [-0.34, 0.875, 2.2], [-0.115, 0.875, 2.2], [0.115, 0.875, 2.2], [0.34, 0.875, 2.2]], rear: [[-0.58, 0.86, -2.14], [0.58, 0.86, -2.14]] },
+  camry: { front: [[-0.6, 0.86, 2.4], [0.6, 0.86, 2.4]], rear: [[-0.6, 0.85, -2.44], [0.6, 0.85, -2.44]] },
+  open: { front: [], rear: [[0, 0.5, -2.58]] },
+};
+let glowTex = null;
+const glowMats = {};
+function glowMat(kind) { // shared front-lamp glows, by day and by night
+  glowTex ??= Object.assign(glowTexture(64, 64, 32, 32, 32), { userData: { keep: true } });
+  return glowMats[kind] ??= Object.assign(new THREE.PointsMaterial({ map: glowTex, color: 0xfff3cf, size: kind === 'night' ? 2.4 : 1.0, transparent: true, opacity: kind === 'night' ? 0.95 : 0.5, blending: THREE.AdditiveBlending, depthWrite: false }), { userData: { keep: true } });
+}
+function glowPoints(pts, mat) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3));
+  const p = new THREE.Points(geo, mat); p.renderOrder = 2;
+  return p;
+}
 function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) {
   const g = new THREE.Group();
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
@@ -2163,6 +2182,16 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
     const beam = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 20).rotateX(-Math.PI / 2), beamMat);
     beam.position.set(0, 0.1, 11.5); beam.renderOrder = 1; g.add(beam);
   }
+  // soft glows round the lamps: the front ones always (brighter at night), the
+  // back ones when braking (and dimly at night)
+  const LG = LAMP_GLOWS[cls];
+  let frontGlow = null, rearGlow = null;
+  if (LG) {
+    if (LG.front.length) { frontGlow = glowPoints(LG.front, glowMat(night ? 'night' : 'day')); inner.add(frontGlow); }
+    glowMat('day');
+    rearGlow = glowPoints(LG.rear, new THREE.PointsMaterial({ map: glowTex, color: 0xff3020, size: 1.0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    rearGlow.visible = false; inner.add(rearGlow);
+  }
 
   const wheels = [];
   for (const [x, z, w, r] of wheelSpec.wheels) {
@@ -2188,7 +2217,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
     label.position.y = cls === 'rally' ? 2.8 : cls === 'camry' ? 2.7 : 2.5;
     g.add(label);
   }
-  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer, lean };
+  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer, lean, frontGlow, rearGlow };
 }
 
 // Open-wheel single seater: stepped floor, slim monocoque running into a
@@ -2572,7 +2601,7 @@ const CAR_CLASSES = { open: {
   maxDrive: 8000,    // N, torque limit at low speed
   topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
   reverseSpeed: 9,   // m/s
-  brakeForce: 8500,  // N, full pedal: about 1 g at most, so it can be driven on a key
+  brakeForce: 34000, // N, full pedal (ABS below keeps it within grip)
   dive: 0.003,       // how far the body pitches per m/s^2 of braking or acceleration
   maxDive: 0.025,    // rad: most it pitches (any more and the front wing would touch the road)
   rollGain: 0.004,   // how far it rolls per m/s^2 of cornering
@@ -2721,7 +2750,7 @@ function stepLocal(car, dt, canDrive) {
   // keep holding and it reverses. (It used to slip straight into reverse, so
   // the brake lights went out the moment the car slowed to a stop.)
   car.stopTime = brake && vLong <= 0.6 ? (car.stopTime || 0) + dt : 0;
-  const reversing = car.stopTime > 0.6;
+  const reversing = car.stopTime > 0.4;
 
   // ---- steering: less lock at speed, quick to centre ----
   // steering lock shrinks with speed so full lock asks for a bit more than the
@@ -2732,8 +2761,7 @@ function stepLocal(car, dt, canDrive) {
   const rate = steerIn === 0 ? 12 : 7;
   car.steerAngle = lerp(car.steerAngle, steerTarget, 1 - Math.exp(-dt * rate));
   const delta = car.steerAngle;
-  // brake pressure builds over a moment, so a tap is a dab rather than a stamp
-  car.brakeAmt = lerp(car.brakeAmt || 0, brake, 1 - Math.exp(-dt * (brake ? 3 : 14)));
+  car.brakeAmt = lerp(car.brakeAmt || 0, brake, 1 - Math.exp(-dt * 16)); // brakes bite almost at once
 
   // ---- substep the tyre model for stability ----
   const SUB = 3;
@@ -2774,12 +2802,15 @@ function stepLocal(car, dt, canDrive) {
         Freverse = -4000 * clamp((CAR.reverseSpeed + vLong) / 3, 0, 1); // reverse gear
       }
     }
-    if (handbrake) FbrakeR += -6000 * sgn;
 
     // combined grip per axle: one budget (mu * load) shared between pushing
     // forward and holding the corner. Ask for more than that and both shrink,
     // which is how flooring it mid-corner turns into a slide.
     const capF = surf.mu * Fzf, capR = surf.mu * Fzr;
+    // Handbrake: locks the rears and pulls the car up hard, the fronts helping,
+    // while the tail only steps out a little. (It used to mostly just spin the
+    // car round.)
+    if (handbrake && Math.abs(vLong) > 0.5) { FbrakeF -= CAR.brakeForce * 0.35 * sgn; FbrakeR -= capR * 0.5 * sgn; }
     // all-wheel drive like a rally car: 40% of the push comes from the front
     // axle. Traction control keeps each axle under 85% of its grip, since a
     // key can't feather the throttle the way a foot can.
@@ -2796,7 +2827,7 @@ function stepLocal(car, dt, canDrive) {
     let FxF = FbrakeF + FdF, FxR = FdR + FbrakeR + Freverse;
     let FyF = tyreForce(surf, Fzf, alphaF);
     let FyR = tyreForce(surf, Fzr, alphaR);
-    if (handbrake) { FyR *= 0.25; locked = true; } // locked rears can't hold the corner
+    if (handbrake) { FyR *= 0.6; locked = true; } // locked rears hold the corner less well
     const totF = Math.hypot(FxF, FyF), totR = Math.hypot(FxR, FyR);
     if (totF > capF) { const s = capF / totF; FxF *= s; FyF *= s * 0.92; }
     if (totR > capR) { const s = capR / totR; FxR *= s; FyR *= s * 0.92; }
@@ -2830,7 +2861,7 @@ function stepLocal(car, dt, canDrive) {
     }
     sliding = Math.max(sliding, Math.abs(alphaR), Math.abs(alphaF) * 0.7);
   }
-  if (brake && !reversing && Math.abs(vLong) < 0.6) vLong = 0; // held at a stop
+  if (((brake && !reversing) || handbrake) && Math.abs(vLong) < 0.6) vLong = 0; // held at a stop
   car.yawRate = yawRate;
   car.spinning = spinning; car.locked = locked; car.slip = sliding;
   car.h += yawRate * dt;
@@ -2959,6 +2990,7 @@ function stepLocal(car, dt, canDrive) {
   if (car.mesh.steer) car.mesh.steer.rotation.z = -car.steerAngle * 5; // steering wheel: about 5 turns of the wheel per turn of the tyres
   car.braking = !!brake && !reversing;
   car.mesh.brakeMat.emissive.setHex(car.braking ? 0xff2020 : app.track.look?.night ? 0x5a0b0b : 0x000000); // tail lights glow a little at night
+  tailGlow(car.mesh, car.braking);
 
   // dust / smoke when sliding or spinning
   if (!car.airborne && speedAbs > 4 && !car.inWater) {
@@ -2991,6 +3023,12 @@ function pushRemoteState(c, s, recv) {
   else if (d < c.minCur) c.minCur = d;
   c.off = Math.min(c.minPrev, c.minCur);
   c.jit = Math.max(c.jit, d - c.off);
+}
+
+function tailGlow(mesh, braking) {
+  if (!mesh.rearGlow) return;
+  const o = braking ? 0.9 : app.track.look?.night ? 0.3 : 0;
+  mesh.rearGlow.material.opacity = o; mesh.rearGlow.visible = o > 0;
 }
 
 function stepRemotes(now, dt) {
@@ -3039,6 +3077,7 @@ function stepRemotes(now, dt) {
     c.wheelSpin += (vx * Math.sin(h) + vz * Math.cos(h)) * dt / 0.42;
     for (const w of c.mesh.wheels) w.mesh.rotation.x = c.wheelSpin;
     c.mesh.brakeMat.emissive.setHex(buf[buf.length - 1].b ? 0xff2020 : app.track.look?.night ? 0x5a0b0b : 0x000000);
+    tailGlow(c.mesh, buf[buf.length - 1].b);
   }
 }
 
@@ -3076,6 +3115,7 @@ function updateCamera(dt) {
   app.inCockpit = false;
   const car = app.local;
   if (car.mesh.interior) car.mesh.interior.visible = app.camMode === 'cockpit';
+  if (car.mesh.frontGlow) car.mesh.frontGlow.visible = app.camMode !== 'cockpit'; // not your own, from the driver's seat
   sun.position.set(car.pos.x + 80, car.pos.y + 140, car.pos.z + 60);
   sun.target.position.copy(car.pos);
   if (app.camMode === 'cockpit') {
