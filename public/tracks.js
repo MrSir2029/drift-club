@@ -42,7 +42,8 @@ export const TRACKS = [
   },
   {
     name: 'Switchback',
-    blurb: 'Tight and technical. Brake late, be patient.',
+    blurb: 'Tight and technical, under the floodlights at night.',
+    theme: 'night',
     width: 14,
     points: [
       [0, 0, 0], [60, 0, 0], [95, 1, 25], [95, 3, 65], [60, 4, 80], [60, 5, 120],

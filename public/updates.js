@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.12', date: '17 Nov 2026', title: 'Night race',
+    items: [
+      'Switchback is now a night race: floodlights over the track, headlight beams on every car, glowing tail lights, stars and a moon.',
+      'Railings along the Frost Pass bridge, so you can\'t drive off the edge.',
+    ],
+  },
+  {
     v: '1.11', date: '17 Nov 2026', title: 'Brake lights',
     items: [
       'Brake lights stay on when you brake to a stop: the car holds still for a moment before it starts to reverse, instead of slipping straight into reverse with the lights off.',

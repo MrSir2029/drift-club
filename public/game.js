@@ -13,6 +13,7 @@ const SEND_HZ = 30;
 // gives white ground, snowy pines, white mountains, snowmen and falling snow.
 const THEMES = {
   meadow: { sky: 0x8ad4f5, skyLight: 0xcfeeff, bounce: 0x5f9c48, lo: 0x6db85e, hi: 0x9ad46a, rock: 0x8f917c, verge: 0x5fa653, gravelVerge: 0x9c8a62, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x6fb963, noise: 1 },
+  night: { sky: 0x0b1430, skyLight: 0x5b6b9c, bounce: 0x151b2c, lo: 0x4f8a4a, hi: 0x6aa35a, rock: 0x6b6f7c, verge: 0x4f8a4a, gravelVerge: 0x6b5d45, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x1c2638, noise: 1, night: true, hemiI: 0.95, sunI: 0.7, sunColor: 0xa9c0ff },
   snow: { sky: 0xc8d6e4, skyLight: 0xeef4ff, bounce: 0xb9c6d3, lo: 0xdce3ea, hi: 0xeef2f6, rock: 0x7d8794, verge: 0xe2e8ee, gravelVerge: 0xe2e8ee, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0xe8eef4, noise: 1.6 },
   desert: { sky: 0xf0d3a2, skyLight: 0xffe9c9, bounce: 0xc8955a, lo: 0xd8a466, hi: 0xeac58b, rock: 0xa9563a, verge: 0xc99a62, gravelVerge: 0xc99a62, road: 0x96694a, curbs: [0x7a4a32, 0xe0c9a0], hills: 0xc0683f, noise: 2.2 },
 };
@@ -437,7 +438,7 @@ function disposeTree(o) {
     m.geometry?.dispose?.();
     if (m.isInstancedMesh) m.dispose();
     const mt = m.material;
-    if (mt && !mt.userData?.keep) { mt.map?.dispose?.(); mt.dispose?.(); }
+    if (mt && !mt.userData?.keep) { mt.map?.dispose?.(); mt.dispose?.(); } // shared materials (merged, beams) are marked keep
   });
 }
 
@@ -473,6 +474,7 @@ function buildWorld(trackId) {
   const look = track.look = THEMES[track.theme] || THEMES.meadow;
   scene.background.set(look.sky); scene.fog.color.set(look.sky);
   hemi.color.set(look.skyLight); hemi.groundColor.set(look.bounce);
+  hemi.intensity = look.hemiI ?? 1.4; sun.intensity = look.sunI ?? 2.6; sun.color.set(look.sunColor ?? 0xfff4e0); // the night is lit by a dim blue moon
   // the edge of the map: a circle that clears the whole track with room to roam
   {
     const c = track.bounds.getCenter(new THREE.Vector3());
@@ -528,11 +530,20 @@ function buildWorld(trackId) {
   });
   track.vergeDrop = edges.map(e => Math.max(e.dropL, e.dropR));
   const down = (v) => { const c = v.clone(); c.y -= DECK; return c; };
+  const railMat = new THREE.MeshLambertMaterial({ color: 0xc9ced6, flatShading: true }), railPost = new THREE.BoxGeometry(0.16, 1.1, 0.16);
+  const railing = (p, q, i) => {
+    track.walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 });
+    for (const h of [0.55, 1.0]) worldGroup.add(strut(V(p.x, p.y + h, p.z), V(q.x, q.y + h, q.z), 0.12, 0.12, railMat));
+    if (i % 3 === 0) { const post = new THREE.Mesh(railPost, railMat); post.position.set(p.x, p.y + 0.55, p.z); worldGroup.add(post); }
+  };
   for (let i = 0; i < N; i++) {
     const s = samples[i], a = edges[i], b = edges[(i + 1) % N];
     const dropL = Math.max(a.dropL, b.dropL), dropR = Math.max(a.dropR, b.dropR);
     if (dropL <= VERGE_MAX_DROP) pushQuad(vergePos, vergeCol, a.Lo, a.L, b.L, b.Lo, vergeColor);
     if (dropR <= VERGE_MAX_DROP) pushQuad(vergePos, vergeCol, a.R, a.Ro, b.Ro, b.R, vergeColor);
+    // where there's a drop instead (the bridge), a solid railing along the edge
+    if (dropL > VERGE_MAX_DROP) railing(a.L, b.L, i);
+    if (dropR > VERGE_MAX_DROP) railing(a.R, b.R, i);
     if (dropL > 1 || dropR > 1) {
       const aL0 = down(a.L), aR0 = down(a.R), bL0 = down(b.L), bR0 = down(b.R);
       pushQuad(deckPos, deckCol, a.L, b.L, bL0, aL0, sideColor);    // left wall, faces outward
@@ -613,6 +624,7 @@ function buildWorld(trackId) {
   buildLandmarks(track);
   buildBoundary(track);
   buildScenery(track);
+  if (look.night) buildNight(track);
   buildHelicopter(track);
   mergeStatic(worldGroup, new Set(track.gateMats)); // gates stay apart: the next one glows
   // menu camera starts over the start line
@@ -1643,6 +1655,76 @@ function buildHelicopter(track) {
   });
 }
 
+// A soft round glow, white with a fading edge, used for pools of light.
+// squeeze < 1 stretches it along the length (for headlight beams).
+function glowTexture(w, h, cx, cy, r, squeeze = 1) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.scale(squeeze, 1);
+  const g = ctx.createRadialGradient(cx / squeeze, cy, 0, cx / squeeze, cy, r);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w / squeeze, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const lightMat = (map, color, opacity) => new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+
+// Night: floodlights along the track, each throwing a pool of light on the
+// road (built to follow the road's shape), and stars and a moon overhead.
+// Car headlights are added with each car.
+function buildNight(track) {
+  const { samples, N, hw } = track;
+  const steel = new THREE.MeshLambertMaterial({ color: 0x8d93a0, flatShading: true });
+  const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 0.35, 0.8), new THREE.MeshBasicMaterial({ color: 0xfff2c4 }), 80);
+  heads.userData.dyn = true; heads.frustumCulled = false;
+  const M = new THREE.Matrix4(), pos = [], uv = [], R = 13, W = hw + 1.6;
+  let n = 0;
+  for (let i = 0, k = 0; i < N && n < 80; i += 30, k++) {
+    if (track.vergeDrop[i] > VERGE_MAX_DROP) continue;
+    const s = samples[i], side = k % 2 ? 1 : -1, off = hw + 4.5;
+    const x = s.p.x + s.left.x * side * off, z = s.p.z + s.left.z * side * off;
+    if (!isFree(track, x, z, 0.6, hw + 3)) continue;
+    const y = terrainHeight(x, z);
+    claim(x, z, 1); track.solids.push({ x, z, r: 0.35, y });
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.3, 11, 0.3), steel); mast.position.set(x, y + 4.5, z); mast.castShadow = true; worldGroup.add(mast);
+    const tip = V(s.p.x + s.left.x * side * (off - 3.2), y + 9.6, s.p.z + s.left.z * side * (off - 3.2));
+    worldGroup.add(strut(V(x, y + 9.6, z), tip, 0.2, 0.2, steel));
+    M.makeRotationY(Math.atan2(s.th.x, s.th.z)); M.setPosition(tip.x, tip.y - 0.25, tip.z); heads.setMatrixAt(n++, M);
+    // the pool: the stretch of road under the lamp, mapped onto a round glow
+    const step = R / 6.5;
+    for (let j = -9; j < 9; j++) {
+      const a = samples[(i + j + N) % N], b = samples[(i + j + 1 + N) % N];
+      for (let l = 0; l < 4; l++) {
+        const hi = W - l * (W / 2), lo = hi - W / 2;
+        const P = (q, lat) => [q.p.x + q.left.x * lat, q.p.y + 0.07, q.p.z + q.left.z * lat];
+        const U = (jj, lat) => [0.5 + lat / (2 * R), 0.5 + (jj * 1.5) / (2 * R)];
+        const quad = [[a, hi, j], [a, lo, j], [b, lo, j + 1], [b, hi, j + 1]];
+        for (const t of [0, 1, 2, 0, 2, 3]) { const [q, lat, jj] = quad[t]; pos.push(...P(q, lat)); uv.push(...U(jj, lat)); }
+      }
+    }
+    void step;
+  }
+  heads.count = n; worldGroup.add(heads);
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  pg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  const pools = new THREE.Mesh(pg, lightMat(glowTexture(128, 128, 64, 64, 64), 0xffd9a0, 0.6));
+  pools.userData.dyn = true; pools.renderOrder = 1; worldGroup.add(pools);
+  // stars and a moon, carried along with the camera so they stay in the sky
+  const sky = new THREE.Group(); sky.userData.dyn = true; worldGroup.add(sky);
+  const rnd = mulberry32(99), P = [];
+  for (let k = 0; k < 900; k++) {
+    const a = rnd() * 6.2832, e = Math.asin(0.05 + rnd() * 0.95);
+    P.push(Math.cos(a) * Math.cos(e) * 700, Math.sin(e) * 700, Math.sin(a) * Math.cos(e) * 700);
+  }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false }));
+  stars.frustumCulled = false; sky.add(stars);
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(26, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf4f1de, fog: false }));
+  moon.position.set(260, 380, -520); sky.add(moon);
+  anim.push(() => sky.position.copy(camera.position));
+}
+
 // Countryside and sky: trees, bushes, rocks, a farm, sheep, hay bales, wind
 // turbines, mountains, drifting clouds, hot-air balloons, birds.
 function buildScenery(track) {
@@ -1922,7 +2004,7 @@ function buildScenery(track) {
   }
 
   // clouds, drifting on the wind
-  const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x8a8f96, flatShading: true }); // lit from within so the grass doesn't tint them green
+  const cloudMat = track.look.night ? new THREE.MeshLambertMaterial({ color: 0x2a3350, emissive: 0x0d1220, flatShading: true }) : new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x8a8f96, flatShading: true }); // lit from within so the grass doesn't tint them green
   const cloudGeo = new THREE.DodecahedronGeometry(1, 0);
   const clouds = [], reach = spread * 0.75;
   for (let i = 0; i < 16; i++) {
@@ -2032,6 +2114,7 @@ function faceLamp(K, mat, x, hw, y0, z0, y1, z1, dir, out = 0.015, inn = 0.04) {
     [x - hw, tf[0], tf[1]], [x + hw, tf[0], tf[1]], [x + hw, tr[0], tr[1]], [x - hw, tr[0], tr[1]]]), mat, 0, 0, 0, false);
 }
 
+let beamMat = null; // shared by every car's headlight beam
 function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) {
   const g = new THREE.Group();
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
@@ -2052,6 +2135,8 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   K.box = (w, h, d, mat, x, y, z, shadow = true) => K.add(new THREE.BoxGeometry(w, h, d), mat, x, y, z, shadow);
   K.rod = (a, b, th, mat) => { const m = strut(V(...a), V(...b), th, th, mat); g.add(m); return m; };
 
+  const night = !!app.track?.look?.night;
+  if (night) K.lamp.emissive.setHex(0xfff0c0); // headlamps on
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
   mergeStatic(g, new Set([K.brake])); // ~70 parts into one; the brake lights stay apart because they light up
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
@@ -2062,6 +2147,12 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   lean.position.y = leanY; inner.position.y = -leanY; lean.add(inner);
   for (const c of [...g.children]) inner.add(c);
   g.add(lean);
+  if (night) { // a beam of light on the road ahead
+    beamMat ??= lightMat(glowTexture(128, 256, 64, 12, 250, 0.5), 0xfff1c4, 0.55);
+    beamMat.userData.keep = true; beamMat.map.userData = { keep: true };
+    const beam = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 20).rotateX(-Math.PI / 2), beamMat);
+    beam.position.set(0, 0.1, 11.5); beam.renderOrder = 1; g.add(beam);
+  }
 
   const wheels = [];
   for (const [x, z, w, r] of wheelSpec.wheels) {
@@ -2857,7 +2948,7 @@ function stepLocal(car, dt, canDrive) {
   }
   if (car.mesh.steer) car.mesh.steer.rotation.z = -car.steerAngle * 5; // steering wheel: about 5 turns of the wheel per turn of the tyres
   car.braking = !!brake && !reversing;
-  car.mesh.brakeMat.emissive.setHex(car.braking ? 0xff2020 : 0x000000);
+  car.mesh.brakeMat.emissive.setHex(car.braking ? 0xff2020 : app.track.look?.night ? 0x5a0b0b : 0x000000); // tail lights glow a little at night
 
   // dust / smoke when sliding or spinning
   if (!car.airborne && speedAbs > 4 && !car.inWater) {
@@ -2937,7 +3028,7 @@ function stepRemotes(now, dt) {
     c.svx = vx; c.svz = vz;
     c.wheelSpin += (vx * Math.sin(h) + vz * Math.cos(h)) * dt / 0.42;
     for (const w of c.mesh.wheels) w.mesh.rotation.x = c.wheelSpin;
-    c.mesh.brakeMat.emissive.setHex(buf[buf.length - 1].b ? 0xff2020 : 0x000000);
+    c.mesh.brakeMat.emissive.setHex(buf[buf.length - 1].b ? 0xff2020 : app.track.look?.night ? 0x5a0b0b : 0x000000);
   }
 }
 
@@ -3291,6 +3382,7 @@ function buildTrackCards() {
     cv.width = 240; cv.height = 120;
     if (def.theme === 'desert') cv.style.background = '#e2b77c';
     if (def.theme === 'snow') cv.style.background = '#e6edf3';
+    if (def.theme === 'night') cv.style.background = '#1b2442';
     drawTrackPreview(cv, buildTrack(def));
     card.appendChild(cv);
     card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div><div class="tblurb">${def.blurb}</div>`);
