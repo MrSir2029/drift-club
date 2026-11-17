@@ -1,0 +1,27 @@
+# Cloudflare setup for Drift Club (see "Run it on the internet" in README.md).
+# Cloudflare's Workers Builds deploys this on every push to main.
+name = "drift-club"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+# keep variables set in the Cloudflare dashboard (like CF_BEACON_TOKEN) when deploying
+keep_vars = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# room links like /ABCD get the game
+not_found_handling = "single-page-application"
+# these go to worker.js; everything else is served straight from public/
+run_worker_first = ["/", "/index.html", "/ws", "/stats", "/stats.json", "/healthz"]
+
+# one GameServer runs every room
+[[durable_objects.bindings]]
+name = "GAME"
+class_name = "GameServer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameServer"]
+
+[observability]
+enabled = true

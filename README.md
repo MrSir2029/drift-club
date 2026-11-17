@@ -44,17 +44,32 @@ again. Free personal accounts get 60 hours a month at this size.
 
 ## Run it on the internet (so friends can join from anywhere)
 
-The server is one Node process with no database, so any host that runs Node
-works. Render's free tier is the simplest:
+The game runs on Cloudflare's free plan (no card needed). It never goes to
+sleep, every room runs on one server in Oceania (quick for Australia and New
+Zealand), and it deploys by itself whenever `main` changes. `worker.js` and
+`wrangler.toml` set it up.
 
-1. Push this folder to a GitHub repo.
-2. On https://render.com create a **Web Service** from that repo.
-   Build command: `npm install`. Start command: `npm start`.
-3. Render gives you a URL like `https://drift-club.onrender.com`. Share it.
+1. Sign up at https://dash.cloudflare.com (free) and open **Workers & Pages**.
+2. **Create** a Worker and choose to import a repository from Git. Connect
+   GitHub, pick `drift-club`, and keep the name `drift-club` (it has to match
+   `name` in `wrangler.toml`). Leave the build command empty; the deploy
+   command is `npx wrangler deploy`. Then **Deploy**.
+3. Cloudflare gives you an address like
+   `https://drift-club.<your-subdomain>.workers.dev`. Share it.
 
-Railway, Fly.io and Glitch work the same way. The server reads the `PORT`
-environment variable, which all of them set for you. Free tiers go to sleep
-when idle, so the first visit after a while takes ~30 seconds to wake up.
+From then on every merge to `main` is live a minute or two later. The
+Worker's page in the dashboard shows each build under **Deployments**.
+
+The free plan has daily limits (they reset at midnight UTC, which is mid
+morning in Australia). Messages from players during a race are what count,
+so cars send their position 30 times a second but two at a time. That's
+plenty for groups of friends; if a big session ever hits the limit, the game
+stops connecting until the reset, and Cloudflare's $5/month plan lifts it.
+
+Still on an old host? Any host that runs Node also works (`npm start`; the
+server reads `PORT`). To send players from an old address to the new one,
+set `MOVED_TO` on the old host to the new address and every visit is
+redirected there.
 
 ## Playing on a school or work network
 
@@ -70,7 +85,13 @@ that usually make that an easy "yes":
   Cloudflare Web Analytics, the page also loads Cloudflare's small counting
   script; if a filter blocks it, the game still works)
 - no accounts, no cookies, nothing stored on the server
-- the code is small enough to read in one sitting (`server.js` and `public/`)
+- the code is small enough to read in one sitting (`server/`, `worker.js`
+  and `public/`)
+
+Some networks block `workers.dev` addresses as a group. If yours does, ask
+for the address to be allowed, or give the game its own domain (Cloudflare
+sells them at cost, around $10 a year) and add it to the Worker under
+**Settings → Domains & Routes**.
 
 ## Controls
 
@@ -148,13 +169,13 @@ everyone drives the same family saloon.
 ## Seeing who's playing
 
 Open `/stats` on your site (for example
-`https://drift-club.onrender.com/stats`) for a live count: how many people
-have the game open, how many are racing, in a lobby or on the home screen,
-and how many rooms are open, plus the most online at once and the races
-started since the server last started. It refreshes itself every 10 seconds.
-The numbers are only kept in memory, so they start again from zero whenever
-the server restarts (a deploy, or the free plan going to sleep).
-`/stats.json` has the same numbers for scripts.
+`https://drift-club.<your-subdomain>.workers.dev/stats`) for a live count:
+how many people have the game open, how many are racing, in a lobby or on the
+home screen, and how many rooms are open, plus the most online at once, the
+times the game was opened and the races started. It refreshes itself every
+30 seconds. On Cloudflare the totals are saved; on a plain Node server they
+start again from zero when it restarts. `/stats.json` has the same numbers
+for scripts.
 
 For visitors over days and weeks, use Cloudflare Web Analytics. It's free and
 sets no cookies, so it needs no cookie banner:
@@ -162,11 +183,12 @@ sets no cookies, so it needs no cookie banner:
 1. Sign in at https://dash.cloudflare.com (a free account is fine) and open
    **Web Analytics**. If it isn't in the sidebar, search for it.
 2. **Add a site** and enter your game's address, e.g.
-   `drift-club.onrender.com`. Your domain doesn't need to be on Cloudflare.
+   `drift-club.<your-subdomain>.workers.dev`.
 3. Cloudflare shows a snippet with `"token": "..."` in it. Copy the token, the
    long code between the quotes.
-4. On Render, open the service, go to **Environment**, add a variable called
-   `CF_BEACON_TOKEN` with the token as its value, save, and deploy.
+4. Open the `drift-club` Worker, go to **Settings → Variables and Secrets**,
+   add a text variable called `CF_BEACON_TOKEN` with the token as its value,
+   and deploy. (On a Node host, set the same environment variable instead.)
 5. Play a race. Visits show up in Cloudflare within a few minutes.
 
 The server only adds Cloudflare's script to the page when `CF_BEACON_TOKEN`
@@ -181,16 +203,21 @@ get a red dot on the button until they've read it.
 
 ## How it works
 
-- `server.js`: static files, the `/stats` page, and WebSocket rooms. Each client sends its car
-  position, velocity and a timestamp 30 times a second; the server batches
-  whatever changed and relays it to the room at 30 Hz. Finish order is
-  decided by the order finish messages arrive.
+- `server/core.js`: the game server: rooms, races, results and the `/stats`
+  numbers. Each client records its car's position, velocity and a timestamp
+  30 times a second and sends them two at a time; the server relays whatever
+  arrived to the room at 30 Hz. Results are ordered by finish time.
+- `worker.js` + `wrangler.toml`: runs it on Cloudflare. The Worker serves
+  `public/` and passes game connections to one Durable Object (`GameServer`),
+  which keeps the `/stats` totals in its storage.
+- `server.js`: runs the same game server on Node (your own computer,
+  Codespaces, or any Node host), over WebSockets with the `ws` package.
 - Other players' cars are drawn a fraction of a second in the past, on a
   curve between two real positions, so they glide however unevenly the
   network delivers the packets. The delay adapts to the connection.
 - `public/game.js`: Three.js scene, car physics, camera, HUD and networking.
 - `public/tracks.js`: tracks are a list of control points. Add a new one by
-  adding an entry to `TRACKS` and bumping `TRACK_COUNT` in `server.js`.
+  adding an entry to `TRACKS` and bumping `TRACK_COUNT` in `server/core.js`.
 - `public/vendor/`: Three.js r187, copied from npm so nothing loads from a CDN.
 
 Physics runs on each player's own computer (there are no car-to-car
