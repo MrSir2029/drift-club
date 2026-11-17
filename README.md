@@ -102,13 +102,18 @@ stone wall rings the edge of the map. Away from the circuit there are
 places to find: a lake you can wade through, a castle, a fairground, a
 village, a stone circle, a campsite, a windmill and a radio mast. Each
 hides a gold star; the counter under the standings shows how many you've
-found on that map. These are the **expanded map**, which is off unless a
-player turns it on under Settings, because it can slow older computers
-down. The 9LAT2 building is always there. A TV helicopter follows the race leader.
+found on that map. These are the **expanded map**, which is on by default;
+players on slower computers can turn it off under Settings. The 9LAT2
+building is always there.
+
+Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
+spires and mesas, a stone arch over the road, and two jumps. A track's look
+comes from `THEMES` in `game.js`, and jumps and the arch are set on the
+track in `tracks.js`. A TV helicopter follows the race leader.
 
 ## Graphics
 
-On **auto** (the default) the game watches its own frame rate and lowers
+Graphics start on **high**. On **auto** the game watches its own frame rate and lowers
 the detail until it runs smoothly. The Settings button (home screen, lobby,
 or Graphics & map in the Esc menu) switches between auto, high, medium and
 low, and turns the expanded map on or off.

@@ -14,10 +14,13 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Ridge Rally',
-    blurb: 'Gravel stage over the hills. Crests, dips, slides.',
+    name: 'Red Canyon',
+    blurb: 'Desert gravel stage: two jumps, cacti and a rock arch.',
     width: 15,
     surface: 'gravel',
+    theme: 'desert',
+    jumps: [{ at: 0.093, h: 1.6 }, { at: 0.18, h: 1.5 }], // the only stretches with a straight run-up and landing
+    arch: 0.215,                                                                 // a stone arch over the road
     points: [
       [0, 0, 0], [80, 0, -10], [150, 8, -40], [205, 18, 0], [215, 22, 60], [170, 16, 90],
       [140, 8, 55], [95, 6, 70], [90, 12, 125], [130, 18, 165], [100, 20, 205], [40, 14, 190],
@@ -58,6 +61,16 @@ export function buildTrack(def) {
   const N = Math.max(200, Math.round(length / 1.5));
   const raw = curve.getSpacedPoints(N); // N+1 points, last == first
   raw.pop();
+  // Jumps: a ramp up to a sharp crest, then a shorter, steeper drop. At speed
+  // the ground falls away faster than gravity can follow and the car flies.
+  const step = length / N;
+  for (const j of def.jumps || []) {
+    const c = Math.round(j.at * N), up = 14, down = 9;
+    for (let k = -Math.ceil(up / step); k <= Math.ceil(down / step); k++) {
+      const d = k * step, lift = d <= 0 ? j.h * (1 + d / up) : j.h * (1 - d / down);
+      if (lift > 0) raw[(c + k + N) % N].y += lift;
+    }
+  }
 
   const samples = [];
   for (let i = 0; i < N; i++) {
@@ -76,7 +89,7 @@ export function buildTrack(def) {
   const box = new THREE.Box3();
   for (const s of samples) box.expandByPoint(s.p);
 
-  return { def, name: def.name, surface: def.surface || 'tarmac', N, samples, hw: def.width / 2, cps, bounds: box, length };
+  return { def, name: def.name, surface: def.surface || 'tarmac', theme: def.theme || 'meadow', N, samples, hw: def.width / 2, cps, bounds: box, length };
 }
 
 // Find the sample nearest to a world position. `hint` narrows the search to a
@@ -101,9 +114,13 @@ export function locate(track, pos, hint, windowSize = 40) {
   const dx = pos.x - s.p.x, dz = pos.z - s.p.z;
   const lateral = dx * s.left.x + dz * s.left.z;
   const along = dx * s.th.x + dz * s.th.z;
-  const n = samples[(best + 1) % N];
-  const seg = Math.max(0.001, Math.hypot(n.p.x - s.p.x, n.p.z - s.p.z));
-  const y = s.p.y + (n.p.y - s.p.y) * (along / seg);
+  // height along the road: between this sample and the next if the point is
+  // ahead of it, or the previous one if it's behind. (Always using the next
+  // segment ran the far side of a crest backwards, so the road seemed to rise
+  // past the top of a ramp and threw cars into the air.)
+  const o = samples[(best + (along >= 0 ? 1 : N - 1)) % N];
+  const seg = Math.max(0.001, Math.hypot(o.p.x - s.p.x, o.p.z - s.p.z));
+  const y = s.p.y + (o.p.y - s.p.y) * (Math.abs(along) / seg);
   return { i: best, lateral, along, y, s, dist: Math.sqrt(bestD) };
 }
 

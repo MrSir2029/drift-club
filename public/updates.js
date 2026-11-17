@@ -3,6 +3,15 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.8', date: '17 Nov 2026', title: 'Red Canyon',
+    items: [
+      'Ridge Rally is now Red Canyon: a desert stage with sand and red rock, cacti, mesas, a stone arch over the road and two jumps.',
+      'Graphics start on high with the expanded map and Easter eggs on. Everyone\'s settings were reset once to these; change them any time in Settings.',
+      'What\'s new lives in the bottom-left corner of the home screen now.',
+      'Fixed the road height just before the top of a hill, which could throw cars into the air.',
+    ],
+  },
+  {
     v: '1.7', date: '17 Nov 2026', title: 'Cockpit tidy-up',
     items: [
       'The steering wheel sits on a proper column instead of floating, and the dials are set into the dash where you can see them through the wheel.',

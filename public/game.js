@@ -8,6 +8,12 @@ import { UPDATES } from '/updates.js';
 const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff];
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30;
+// Each track's look. The meadow is the default; the desert turns the grass to
+// sand and red rock, the trees to cacti and the green hills to mesas.
+const THEMES = {
+  meadow: { sky: 0x8ad4f5, skyLight: 0xcfeeff, bounce: 0x5f9c48, lo: 0x6db85e, hi: 0x9ad46a, rock: 0x8f917c, verge: 0x5fa653, gravelVerge: 0x9c8a62, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x6fb963, noise: 1 },
+  desert: { sky: 0xf0d3a2, skyLight: 0xffe9c9, bounce: 0xc8955a, lo: 0xd8a466, hi: 0xeac58b, rock: 0xa9563a, verge: 0xc99a62, gravelVerge: 0xc99a62, road: 0x96694a, curbs: [0x7a4a32, 0xe0c9a0], hills: 0xc0683f, noise: 2.2 },
+};
 // Typed on the keyboard by the host in the lobby, this opens the secrets
 // panel (and typing it again hides it). Letters and numbers only; change it
 // to anything you like.
@@ -52,7 +58,10 @@ const app = {
 };
 
 // expanded map (landmarks, stars, blimp): off unless the player turns it on
-try { app.expanded = localStorage.getItem('dc-map') === 'on'; } catch { app.expanded = false; }
+// Settings defaults changed to high graphics with the expanded map on: forget
+// older saved choices once, so everyone starts from the new defaults.
+try { if (localStorage.getItem('dc-defaults') !== '2') { localStorage.removeItem('dc-gfx'); localStorage.removeItem('dc-map'); localStorage.setItem('dc-defaults', '2'); } } catch {}
+try { app.expanded = localStorage.getItem('dc-map') !== 'off'; } catch { app.expanded = true; }
 
 // landmarks you've driven to, remembered between visits
 app.found = new Set();
@@ -139,7 +148,8 @@ function buildTerrain(track) {
     buckets.get(k).push(s);
   }
   const coarse = samples.filter((_, i) => i % 4 === 0);
-  const noise = (x, z) => Math.sin(x * 0.011 + 0.3) * Math.cos(z * 0.009) * 8 + Math.sin(x * 0.027 + 1.7) * Math.sin(z * 0.023 + 0.4) * 3 + Math.sin(x * 0.06) * Math.cos(z * 0.07) * 0.8;
+  const amp = track.look?.noise ?? 1; // the desert's hills roll bigger
+  const noise = (x, z) => (Math.sin(x * 0.011 + 0.3) * Math.cos(z * 0.009) * 8 + Math.sin(x * 0.027 + 1.7) * Math.sin(z * 0.023 + 0.4) * 3 + Math.sin(x * 0.06) * Math.cos(z * 0.07) * 0.8) * amp;
   const smooth = (t) => t * t * (3 - 2 * t);
 
   for (let j = 0; j < n1; j++) for (let i = 0; i < n1; i++) {
@@ -216,7 +226,8 @@ function buildTerrain(track) {
   geo.translate(center.x, 0, center.z);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
-  const c = new THREE.Color(), lo = new THREE.Color(0x6db85e), hi = new THREE.Color(0x9ad46a), rock = new THREE.Color(0x8f917c);
+  const look = track.look || THEMES.meadow;
+  const c = new THREE.Color(), lo = new THREE.Color(look.lo), hi = new THREE.Color(look.hi), rock = new THREE.Color(look.rock);
   track.lake ??= null;
   for (let j = 0; j < n1; j++) for (let i = 0; i < n1; i++) {
     const k = j * n1 + i, y = H[k];
@@ -262,8 +273,8 @@ const GFX_LEVELS = [
   { px: 0.8, shadows: false, far: 380 },   // auto's last resort
 ];
 const GFX_FIXED = { high: 0, medium: 2, low: 3 }; // which detail level each fixed setting uses
-const gfx = { mode: 'auto', level: 0, acc: 0, frames: 0, slow: 0, fast: 0, hold: 0, trial: null, floor: 4 };
-try { const m = localStorage.getItem('dc-gfx'); if (m === 'high' || m === 'medium' || m === 'low') gfx.mode = m; } catch {}
+const gfx = { mode: 'high', level: 0, acc: 0, frames: 0, slow: 0, fast: 0, hold: 0, trial: null, floor: 4 };
+try { const m = localStorage.getItem('dc-gfx'); if (m === 'auto' || m === 'high' || m === 'medium' || m === 'low') gfx.mode = m; } catch {}
 function applyGfx(level) {
   gfx.level = level;
   const L = GFX_LEVELS[level];
@@ -455,6 +466,9 @@ function buildWorld(trackId) {
   track.expanded = app.expanded;
   app.nextCpMesh = null; // new gate materials: force the next-gate glow to be re-applied
   const { samples, N, hw, cps } = track;
+  const look = track.look = THEMES[track.theme] || THEMES.meadow;
+  scene.background.set(look.sky); scene.fog.color.set(look.sky);
+  hemi.color.set(look.skyLight); hemi.groundColor.set(look.bounce);
   // the edge of the map: a circle that clears the whole track with room to roam
   {
     const c = track.bounds.getCenter(new THREE.Vector3());
@@ -473,13 +487,13 @@ function buildWorld(trackId) {
 
   // road surface with subtle per-segment shade variation (low-poly feel)
   const gravel = track.surface === 'gravel';
-  const roadBase = gravel ? 0xb49c70 : 0x5b6472;
+  const roadBase = gravel ? look.road : 0x5b6472;
   const road = buildRibbon(track, hw, -hw, (i) => {
     const k = 0.92 + 0.08 * ((i * 7919) % 13) / 13;
     return new THREE.Color(roadBase).multiplyScalar(k);
   }, 0.02);
   // curbs: red / white on tarmac, dark / pale stones on gravel
-  const curbA = gravel ? 0x7d6d52 : 0xe6453a, curbB = gravel ? 0xe9dec4 : 0xf6f2e8;
+  const curbA = gravel ? look.curbs[0] : 0xe6453a, curbB = gravel ? look.curbs[1] : 0xf6f2e8;
   const curbL = buildRibbon(track, hw + 1.6, hw, (i) => (Math.floor(i / 3) % 2 ? curbA : curbB), 0.03);
   const curbR = buildRibbon(track, -hw, -hw - 1.6, (i) => (Math.floor(i / 3) % 2 ? curbA : curbB), 0.03);
   const roadMesh = flatMesh([...road.pos, ...curbL.pos, ...curbR.pos], [...road.col, ...curbL.col, ...curbR.col], vcMat);
@@ -498,7 +512,7 @@ function buildWorld(trackId) {
   const DECK = 2.4, EDGE = hw + 1.6;
   const deckPos = [], deckCol = [], vergePos = [], vergeCol = [];
   const sideColor = new THREE.Color(0x7c8696), underColor = new THREE.Color(0x5a6372);
-  const vergeColor = new THREE.Color(gravel ? 0x9c8a62 : 0x5fa653);
+  const vergeColor = new THREE.Color(gravel ? look.gravelVerge : look.verge);
   const pierGeo = new THREE.BoxGeometry(hw * 1.3, 1, 2.2);
   const pierMat = new THREE.MeshLambertMaterial({ color: 0x6b7484, flatShading: true });
   const edges = samples.map((s) => {
@@ -865,6 +879,24 @@ function buildProps(track) {
   const at = (s, lat) => { const p = s.p.clone().addScaledVector(s.left, lat); p.y = terrainHeight(p.x, p.z); return p; };
   const flat = (i) => track.vergeDrop[wrap(i)] <= VERGE_MAX_DROP;
   const walls = track.walls;
+  if (track.def.arch != null) {
+    // a natural stone arch the road runs under
+    const s = samples[Math.round(track.def.arch * N) % N], H = 11, off = hw + 5;
+    const red = lam(0xb5603c), dark = lam(0x9c4f32);
+    const tops = [1, -1].map((side) => {
+      const x = s.p.x + s.left.x * side * off, z = s.p.z + s.left.z * side * off, y = terrainHeight(x, z);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 3.2, H + 3, 7), red);
+      pillar.position.set(x, y + (H + 3) / 2 - 3, z); pillar.castShadow = true; worldGroup.add(pillar);
+      track.solids.push({ x, z, r: 3.0, y }); claim(x, z, 4.5);
+      return V(x, y + H - 0.6, z);
+    });
+    let prev = tops[0];
+    for (let k = 1; k <= 8; k++) {
+      const t = k / 8, p = tops[0].clone().lerp(tops[1], t); p.y += Math.sin(Math.PI * t) * 3.5;
+      const seg = strut(prev, p, 3.2, 2.6, k % 2 ? red : dark); seg.castShadow = true; worldGroup.add(seg);
+      prev = p;
+    }
+  }
   const solid = (p, r) => track.solids.push({ x: p.x, z: p.z, r, y: p.y });
   const wall = (a, b) => walls.push({ ax: a.x, az: a.z, bx: b.x, bz: b.z, y: (a.y + b.y) / 2 });
   const people = makePeople(1100, rnd);
@@ -1608,6 +1640,7 @@ function buildHelicopter(track) {
 // turbines, mountains, drifting clouds, hot-air balloons, birds.
 function buildScenery(track) {
   const rnd = mulberry32(1234 + app.trackId * 99);
+  const desert = track.theme === 'desert';
   const { hw, bounds } = track;
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const center = bounds.getCenter(new THREE.Vector3());
@@ -1668,7 +1701,7 @@ function buildScenery(track) {
   const faces = new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 0.36, 0.4), lam(0x2b2f3a), 60);
   wool.castShadow = true;
   const sheep = [], M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
-  for (let f = 0; f < 5; f++) {
+  for (let f = 0; f < (desert ? 0 : 5); f++) { // no sheep in the desert
     const c = pick(9, hw + 16);
     if (!c) continue;
     claim(c.x, c.z, 4);
@@ -1696,7 +1729,7 @@ function buildScenery(track) {
   const bales = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.9, 0.9, 1.4, 9).rotateZ(Math.PI / 2), lam(0xd9b752), 40);
   bales.castShadow = true;
   let nb = 0;
-  for (let f = 0; f < 5; f++) {
+  for (let f = 0; f < (desert ? 0 : 5); f++) { // or hay
     const c = pick(8, hw + 14);
     if (!c) continue;
     for (let k = 0; k < 8; k++) {
@@ -1709,6 +1742,54 @@ function buildScenery(track) {
   }
   bales.count = nb; worldGroup.add(bales);
 
+  if (desert) {
+    // saguaro cacti: a trunk and two arms, built once and drawn as instances
+    const part = new THREE.Group(), green = lam(0x5b8a3a);
+    const piece = (geo, x, y, z) => { const q = new THREE.Mesh(geo, green); q.position.set(x, y, z); part.add(q); };
+    piece(new THREE.CylinderGeometry(0.42, 0.48, 6, 7), 0, 3, 0);
+    piece(new THREE.SphereGeometry(0.42, 7, 3, 0, Math.PI * 2, 0, Math.PI / 2), 0, 6, 0);
+    piece(new THREE.CylinderGeometry(0.28, 0.28, 1.0, 6).rotateZ(Math.PI / 2), 0.75, 2.8, 0);
+    piece(new THREE.CylinderGeometry(0.28, 0.28, 2.0, 6), 1.2, 3.7, 0);
+    piece(new THREE.CylinderGeometry(0.26, 0.26, 0.9, 6).rotateZ(Math.PI / 2), -0.7, 3.6, 0);
+    piece(new THREE.CylinderGeometry(0.26, 0.26, 1.6, 6), -1.1, 4.3, 0);
+    mergeStatic(part);
+    const cacti = new THREE.InstancedMesh(part.children[0].geometry, mergedMat(THREE.FrontSide, 0), 260);
+    cacti.castShadow = true;
+    const m = new THREE.Matrix4();
+    let nc = 0, tries = 0;
+    while (nc < 260 && tries++ < 5000) {
+      const [x, z] = randIn(5);
+      if (!isFree(track, x, z, 2, hw + 9)) continue;
+      const sc = 0.7 + rnd() * 0.7, gy = terrainHeight(x, z);
+      solids.push({ x, z, r: 0.5 * sc, y: gy });
+      m.makeRotationY(rnd() * 6.28); m.scale(V(sc, sc, sc)); m.setPosition(x, gy - 0.2, z);
+      cacti.setMatrixAt(nc++, m);
+    }
+    cacti.count = nc; worldGroup.add(cacti);
+    // hoodoos: tall rock spires with a darker cap
+    const rockCols = [0xb5603c, 0xc97a4c, 0xa95a38];
+    for (let k = 0; k < 34; k++) {
+      const p = pick(4, hw + 14);
+      if (!p) continue;
+      claim(p.x, p.z, 4);
+      const h = 5 + rnd() * 9, r = 1.2 + rnd() * 1.4;
+      const spire = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.55, r, h, 6), lam(rockCols[k % 3]));
+      spire.position.set(p.x, p.y + h / 2 - 0.5, p.z); spire.rotation.y = rnd() * 3; spire.castShadow = true; worldGroup.add(spire);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.7, 0.8 + rnd() * 0.6, 6), lam(0x8f4a30));
+      cap.position.set(p.x, p.y + h - 0.2, p.z); cap.castShadow = true; worldGroup.add(cap);
+      solids.push({ x: p.x, z: p.z, r: r * 0.9, y: p.y });
+    }
+    // boulders piled round the edge of the map instead of a forest
+    const outer = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(3, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 300);
+    for (let k = 0; k < 300; k++) {
+      const a = (k / 300) * 6.2832 + rnd() * 0.02, d = lim.r + 4 + rnd() * rnd() * 60, sc = 1 + rnd() * 1.6;
+      const x = lim.x + Math.cos(a) * d, z = lim.z + Math.sin(a) * d;
+      E.set(rnd() * 3, rnd() * 3, rnd() * 3); Q.setFromEuler(E);
+      M.compose(V(x, terrainHeight(x, z) + sc, z), Q, V(sc * (1 + rnd()), sc * (0.8 + rnd() * 1.4), sc * (1 + rnd())));
+      outer.setMatrixAt(k, M); outer.setColorAt(k, new THREE.Color(rockCols[k % 3]).multiplyScalar(0.9));
+    }
+    worldGroup.add(outer);
+  } else {
   // trees: conifers and round broadleaf ones
   const TREES = 380, ROUND = 170;
   const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 3, 5);
@@ -1751,6 +1832,7 @@ function buildScenery(track) {
     outer.setMatrixAt(k, m); outer.setColorAt(k, new THREE.Color(greens[Math.floor(rnd() * 3)]).multiplyScalar(0.85));
   }
   worldGroup.add(outer);
+  }
 
   // bushes and rocks
   const bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 260);
@@ -1770,12 +1852,17 @@ function buildScenery(track) {
     }
     mesh.count = put; worldGroup.add(mesh);
   };
-  scatter(bushes, 260, [0x4fae54, 0x3f9a4a, 0x6cc46a, 0x86c95a], 0.8, 1.9, 0.35);
-  scatter(rocks, 120, [0x8f917c, 0xa3a59a, 0x7c8696], 0.6, 2.4, 0.2, true);
+  if (desert) {
+    scatter(bushes, 260, [0xa38a52, 0x8c7a45, 0x7d8a4a, 0x9a9a5a], 0.5, 1.2, 0.35); // dry scrub
+    scatter(rocks, 120, [0xb5603c, 0xc97a4c, 0xa95a38, 0xd09060], 0.7, 3.2, 0.25, true);
+  } else {
+    scatter(bushes, 260, [0x4fae54, 0x3f9a4a, 0x6cc46a, 0x86c95a], 0.8, 1.9, 0.35);
+    scatter(rocks, 120, [0x8f917c, 0xa3a59a, 0x7c8696], 0.6, 2.4, 0.2, true);
+  }
 
   // distant mountains
-  const hillMat = lam(0x6fb963);
-  const hillGeo = new THREE.ConeGeometry(1, 1, 7);
+  const hillMat = lam(track.look.hills);
+  const hillGeo = desert ? new THREE.CylinderGeometry(0.7, 1, 1, 7) : new THREE.ConeGeometry(1, 1, 7); // flat-topped mesas in the desert
   for (let i = 0; i < 26; i++) {
     const ang = (i / 26) * Math.PI * 2 + rnd() * 0.2;
     const r = spread * 0.75 + 120 + rnd() * 160;
@@ -2646,11 +2733,11 @@ function stepLocal(car, dt, canDrive) {
     // faster than gravity could pull the car after it: a ledge, the edge of
     // the bridge, a sharp crest.
     const fallTo = car.pos.y + car.vy * dt - 0.5 * PHYS.gravity * dt * dt;
-    if (targetY < fallTo - (onRoadNow ? 0.3 : 0.45)) {
+    if (targetY < fallTo - (onRoadNow ? 0.06 : 0.45)) { // the road is smooth except at jumps, so a small margin there
       car.airborne = true; car.pos.y = fallTo; car.vy -= PHYS.gravity * dt;
     } else {
       const ny = targetY - car.pos.y > 0.6 ? lerp(car.pos.y, targetY, 1 - Math.exp(-dt * 25)) : targetY; // a big step up still eases
-      car.vy = dt > 1e-4 ? clamp((ny - car.pos.y) / dt, -30, 30) : 0;
+      car.vy = dt > 1e-4 ? clamp((ny - car.pos.y) / dt, -30, 9) : 0; // a ramp can't throw a car up faster than this
       car.pos.y = ny;
     }
   }
@@ -3152,6 +3239,7 @@ function buildTrackCards() {
     card.className = 'trackcard';
     const cv = document.createElement('canvas');
     cv.width = 240; cv.height = 120;
+    if (def.theme === 'desert') cv.style.background = '#e2b77c';
     drawTrackPreview(cv, buildTrack(def));
     card.appendChild(cv);
     card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div><div class="tblurb">${def.blurb}</div>`);
