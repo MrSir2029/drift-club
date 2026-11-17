@@ -6,7 +6,8 @@ export const UPDATES = [
     v: '1.14', date: '17 Nov 2026', title: 'Handbrake and headlights',
     items: [
       'Open seater brakes are back to full strength: from 180 km/h you stop in under 80 m again.',
-      'The handbrake now stops you hard (100 km/h to nothing in about 30 m) and only steps the tail out a little, instead of spinning you half way round.',
+      'The open seater\'s handbrake now stops you hard (100 km/h to nothing in about 30 m) and only steps the tail out a little, instead of spinning you half way round.',
+      'The rally car and Camry brake and handbrake just as they always did, tail swinging round for drifts.',
       'Headlights and brake lights glow softly round the edges instead of looking like flat rectangles, brighter at night.',
     ],
   },

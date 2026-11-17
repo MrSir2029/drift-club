@@ -2585,7 +2585,8 @@ const fwd = new THREE.Vector3();
 // brake shift weight between axles, so flooring it in a corner unloads the
 // front (understeer) and lifting off or braking loads it (the nose tucks in).
 // The rear axle drives the car, so too much throttle spins the rears and the
-// tail comes round. The handbrake kills rear grip for rally-style flicks.
+// tail comes round. The handbrake kills rear grip for rally-style flicks,
+// except on the open seater (hardHandbrake), where it pulls the car up hard.
 const CAR_CLASSES = { open: {
   label: 'Open seater',
   eye: [0, 1.22, 0.62],                     // cockpit camera, just ahead of the halo strut
@@ -2602,6 +2603,7 @@ const CAR_CLASSES = { open: {
   topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
   reverseSpeed: 9,   // m/s
   brakeForce: 34000, // N, full pedal (ABS below keeps it within grip)
+  hardHandbrake: true, // handbrake stops the car hard and only steps the tail out a little
   dive: 0.003,       // how far the body pitches per m/s^2 of braking or acceleration
   maxDive: 0.025,    // rad: most it pitches (any more and the front wing would touch the road)
   rollGain: 0.004,   // how far it rolls per m/s^2 of cornering
@@ -2750,7 +2752,7 @@ function stepLocal(car, dt, canDrive) {
   // keep holding and it reverses. (It used to slip straight into reverse, so
   // the brake lights went out the moment the car slowed to a stop.)
   car.stopTime = brake && vLong <= 0.6 ? (car.stopTime || 0) + dt : 0;
-  const reversing = car.stopTime > 0.4;
+  const reversing = car.stopTime > 0.6;
 
   // ---- steering: less lock at speed, quick to centre ----
   // steering lock shrinks with speed so full lock asks for a bit more than the
@@ -2761,7 +2763,6 @@ function stepLocal(car, dt, canDrive) {
   const rate = steerIn === 0 ? 12 : 7;
   car.steerAngle = lerp(car.steerAngle, steerTarget, 1 - Math.exp(-dt * rate));
   const delta = car.steerAngle;
-  car.brakeAmt = lerp(car.brakeAmt || 0, brake, 1 - Math.exp(-dt * 16)); // brakes bite almost at once
 
   // ---- substep the tyre model for stability ----
   const SUB = 3;
@@ -2796,21 +2797,21 @@ function stepLocal(car, dt, canDrive) {
     let FbrakeF = 0, FbrakeR = 0, Freverse = 0;
     if (brake) {
       if (vLong > 0.6) {
-        FbrakeF = -CAR.brakeForce * CAR.brakeFront * car.brakeAmt;
-        FbrakeR = -CAR.brakeForce * (1 - CAR.brakeFront) * car.brakeAmt;
+        FbrakeF = -CAR.brakeForce * CAR.brakeFront;
+        FbrakeR = -CAR.brakeForce * (1 - CAR.brakeFront);
       } else if (reversing) {
         Freverse = -4000 * clamp((CAR.reverseSpeed + vLong) / 3, 0, 1); // reverse gear
       }
     }
+    if (handbrake && !CAR.hardHandbrake) FbrakeR += -6000 * sgn;
 
     // combined grip per axle: one budget (mu * load) shared between pushing
     // forward and holding the corner. Ask for more than that and both shrink,
     // which is how flooring it mid-corner turns into a slide.
     const capF = surf.mu * Fzf, capR = surf.mu * Fzr;
-    // Handbrake: locks the rears and pulls the car up hard, the fronts helping,
-    // while the tail only steps out a little. (It used to mostly just spin the
-    // car round.)
-    if (handbrake && Math.abs(vLong) > 0.5) { FbrakeF -= CAR.brakeForce * 0.35 * sgn; FbrakeR -= capR * 0.5 * sgn; }
+    // The open seater's handbrake locks the rears and pulls the car up hard,
+    // the fronts helping, while the tail only steps out a little.
+    if (handbrake && CAR.hardHandbrake && Math.abs(vLong) > 0.5) { FbrakeF -= CAR.brakeForce * 0.35 * sgn; FbrakeR -= capR * 0.5 * sgn; }
     // all-wheel drive like a rally car: 40% of the push comes from the front
     // axle. Traction control keeps each axle under 85% of its grip, since a
     // key can't feather the throttle the way a foot can.
@@ -2827,7 +2828,7 @@ function stepLocal(car, dt, canDrive) {
     let FxF = FbrakeF + FdF, FxR = FdR + FbrakeR + Freverse;
     let FyF = tyreForce(surf, Fzf, alphaF);
     let FyR = tyreForce(surf, Fzr, alphaR);
-    if (handbrake) { FyR *= 0.6; locked = true; } // locked rears hold the corner less well
+    if (handbrake) { FyR *= CAR.hardHandbrake ? 0.6 : 0.25; locked = true; } // locked rears can't hold the corner
     const totF = Math.hypot(FxF, FyF), totR = Math.hypot(FxR, FyR);
     if (totF > capF) { const s = capF / totF; FxF *= s; FyF *= s * 0.92; }
     if (totR > capR) { const s = capR / totR; FxR *= s; FyR *= s * 0.92; }
@@ -2861,7 +2862,7 @@ function stepLocal(car, dt, canDrive) {
     }
     sliding = Math.max(sliding, Math.abs(alphaR), Math.abs(alphaF) * 0.7);
   }
-  if (((brake && !reversing) || handbrake) && Math.abs(vLong) < 0.6) vLong = 0; // held at a stop
+  if (((brake && !reversing) || (handbrake && CAR.hardHandbrake)) && Math.abs(vLong) < 0.6) vLong = 0; // held at a stop
   car.yawRate = yawRate;
   car.spinning = spinning; car.locked = locked; car.slip = sliding;
   car.h += yawRate * dt;
