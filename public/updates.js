@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.18', date: '17 Nov 2026', title: 'New home',
+    items: [
+      'Drift Club now runs on Cloudflare: no more waiting a minute for the game to wake up when you\'re the first one on.',
+      'Races connect through a server in Australia/NZ, so other cars stay closer to where they really are.',
+    ],
+  },
+  {
     v: '1.17', date: '17 Nov 2026', title: 'Touch buttons on phones only',
     items: [
       'The touch buttons only appear on phones and tablets, never on a computer, even one with a touchscreen.',

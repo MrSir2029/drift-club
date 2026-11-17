@@ -7,7 +7,7 @@ import { UPDATES } from '/updates.js';
 // ---------------------------------------------------------------------------
 const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff];
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
-const SEND_HZ = 30;
+const SEND_HZ = 30; // positions a second, sent two at a time (15 messages a second)
 // Each track's look. The meadow is the default; the desert turns the grass to
 // sand and red rock, the trees to cacti and the green hills to mesas; snow
 // gives white ground, snowy pines, white mountains, snowmen and falling snow.
@@ -3115,7 +3115,7 @@ function updateCamera(dt) {
 // ---------------------------------------------------------------------------
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${proto}://${location.host}`);
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
   app.ws = ws;
   ws.onopen = () => { $('#btn-create').disabled = false; $('#btn-join').disabled = false; };
   ws.onclose = () => {
@@ -3134,6 +3134,9 @@ function connect() {
 // and game traffic on the open socket doesn't count. A tiny request every few
 // minutes while you're in a room keeps it awake until the session is over.
 setInterval(() => { if (app.room) fetch('/healthz', { cache: 'no-store' }).catch(() => {}); }, 240000);
+// A heartbeat, so the server can tell a quiet player in the lobby from one
+// whose connection has died.
+setInterval(() => send({ t: 'hb' }), 25000);
 
 function send(msg) {
   if (app.ws && app.ws.readyState === WebSocket.OPEN) app.ws.send(JSON.stringify(msg));
@@ -3846,7 +3849,10 @@ function frame(now) {
     if (now - app.lastSend >= 1000 / SEND_HZ - 4 && app.phase !== 'results') {
       app.lastSend = now;
       const c = app.local, r2 = (v) => Math.round(v * 100) / 100, r3 = (v) => Math.round(v * 1000) / 1000;
-      send({ t: 'state', s: [Math.round(now), r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r3(c.h), r2(c.vx), r2(c.vz), r2(c.yawRate), r3(c.gPitch), r3(c.gRoll), c.lap, c.nextCp, Math.round(c.idx / app.track.N * 1e4) / 1e4, c.braking ? 1 : 0, r3(c.lPitch), r3(c.lRoll)] });
+      const s = [Math.round(now), r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r3(c.h), r2(c.vx), r2(c.vz), r2(c.yawRate), r3(c.gPitch), r3(c.gRoll), c.lap, c.nextCp, Math.round(c.idx / app.track.N * 1e4) / 1e4, c.braking ? 1 : 0, r3(c.lPitch), r3(c.lRoll)];
+      // two positions to a message: as smooth for everyone else, half the messages
+      if (app.heldState && now - app.heldState[0] < 100) { send({ t: 'state', q: app.heldState, s }); app.heldState = null; }
+      else app.heldState = s;
     }
   }
   if (!app.local || app.phase === 'home' || app.phase === 'lobby') quietAudio();
