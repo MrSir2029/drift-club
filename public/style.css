@@ -265,3 +265,7 @@ input:focus { border-color: var(--blue); }
 .lobby-row { display: flex; gap: 10px; }
 .lobby-row .btn { flex: 1; }
 .corner-btn { position: fixed; left: 12px; bottom: 12px; font-size: 11px; padding: 6px 10px; }
+.hud-delta { font-size: 14px; font-weight: 900; line-height: 1; }
+.hud-delta:empty { display: none; }
+.hud-delta.ahead { color: #2e9e44; }
+.hud-delta.behind { color: #d33b2f; }
