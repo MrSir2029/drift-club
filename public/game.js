@@ -3320,6 +3320,14 @@ function setMenu(open) {
   app.menuOpen = open;
   if (open) app.keys = {};
   $('#pause').classList.toggle('hidden', !open);
+  app.tcSync?.(); // a finger still on a touch pedal takes hold again when the menu closes
+}
+// Touch controls show when the screen is touched (or on a touch-first device)
+// and hide again when a driving key is pressed.
+function setTouch(on) {
+  if (app.touch === on) return;
+  app.touch = on;
+  document.body.classList.toggle('touch', on);
 }
 function toggleCamera() {
   app.camMode = app.camMode === 'cockpit' ? 'chase' : 'cockpit';
@@ -3524,12 +3532,53 @@ function wireUI() {
     if (e.code === 'KeyC' && !e.repeat) toggleCamera();
     if (e.code === 'Escape' && !e.repeat && inRace()) { setMenu(!app.menuOpen); return; }
     if (app.menuOpen) return;
+    if (DRIVE_KEYS.includes(e.code)) setTouch(false);
     app.keys[e.code] = true;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
     if (e.code === 'KeyR' && app.local && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local);
   });
   window.addEventListener('keyup', (e) => { app.keys[e.code] = false; });
   window.addEventListener('blur', () => { app.keys = {}; });
+  wireTouch();
+}
+
+// On-screen buttons press the same keys the keyboard does. Each finger is
+// tracked on its own, so you can steer and hold the gas at once, and a finger
+// can slide between the buttons of one pad (left and right, or the pedals)
+// without lifting.
+const DRIVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
+function wireTouch() {
+  setTouch(matchMedia('(pointer: coarse)').matches);
+  window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') setTouch(true); }, true);
+  const pad = $('#touch'), buttons = [...pad.querySelectorAll('[data-tc]')];
+  const fingers = new Map(); // pointer id -> the button under that finger
+  app.tcSync = () => {
+    const held = new Set(fingers.values());
+    for (const b of buttons) {
+      const on = held.has(b) && !app.menuOpen;
+      b.classList.toggle('on', on);
+      if (on || b.dataset.on) app.keys[b.dataset.tc] = on; // only ever lets go of a key it pressed
+      if (on) b.dataset.on = '1'; else delete b.dataset.on;
+    }
+  };
+  pad.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('[data-tc]');
+    if (!b) return;
+    e.preventDefault();
+    try { b.setPointerCapture(e.pointerId); } catch {}
+    fingers.set(e.pointerId, b); app.tcSync();
+  });
+  pad.addEventListener('pointermove', (e) => {
+    const b = fingers.get(e.pointerId);
+    if (!b) return;
+    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-tc]');
+    if (over && over !== b && over.dataset.pad === b.dataset.pad) { fingers.set(e.pointerId, over); app.tcSync(); }
+  });
+  const lift = (e) => { initAudio(); if (fingers.delete(e.pointerId)) app.tcSync(); };
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(ev, lift);
+  pad.addEventListener('contextmenu', (e) => e.preventDefault());
+  $('#tc-reset').addEventListener('click', (e) => { e.currentTarget.blur(); if (app.local && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local); });
+  $('#tc-cam').addEventListener('click', (e) => { e.currentTarget.blur(); toggleCamera(); });
 }
 
 // ---------------------------------------------------------------------------
