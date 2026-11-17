@@ -5,6 +5,10 @@ main = "worker.js"
 compatibility_date = "2026-07-01"
 # keep variables set in the Cloudflare dashboard (like CF_BEACON_TOKEN) when deploying
 keep_vars = true
+# the game lives at drift-club.<your-subdomain>.workers.dev
+workers_dev = true
+# no separate preview addresses for test versions
+preview_urls = false
 
 [assets]
 directory = "./public"
