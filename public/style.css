@@ -264,5 +264,4 @@ input:focus { border-color: var(--blue); }
 #laps-val { font-size: 22px; font-weight: 900; min-width: 30px; text-align: center; }
 .lobby-row { display: flex; gap: 10px; }
 .lobby-row .btn { flex: 1; }
-.corner-btn { position: fixed; left: 12px; bottom: 12px; font-size: 11px; padding: 6px 10px; opacity: .75; }
-.corner-btn:hover { opacity: 1; }
+.corner-btn { position: fixed; left: 12px; bottom: 12px; font-size: 11px; padding: 6px 10px; }

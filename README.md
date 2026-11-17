@@ -78,7 +78,7 @@ that usually make that an easy "yes":
 | A / D or Left / Right | steer |
 | Space | handbrake |
 | R | reset to the last gate |
-| C | chase / cockpit camera (each car remembers its own; the open seater starts in the cockpit) |
+| C | chase / cockpit camera (every race starts in the cockpit in the open seater, outside in the others) |
 | M | sound on / off |
 | Esc | menu: resume, camera, graphics, leave |
 

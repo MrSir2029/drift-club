@@ -3,6 +3,15 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.10', date: '17 Nov 2026', title: 'Gentler brakes, further 9LAT2',
+    items: [
+      'The open seater always starts in the cockpit. C still switches camera for that race.',
+      'Open seater brakes are much gentler: about 1 g at most, building up over a moment.',
+      'On Frost Pass, 9LAT2 is far out now (over 500 m from the start); its yellow sign shows through the snow haze so you can still spot it.',
+      'The What\'s new button is solid.',
+    ],
+  },
+  {
     v: '1.9', date: '17 Nov 2026', title: 'Frost Pass',
     items: [
       'Overpass is now Frost Pass: snow everywhere, snowy pine trees, snowmen, white mountains and falling snow.',

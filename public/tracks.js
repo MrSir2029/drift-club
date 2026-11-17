@@ -31,6 +31,8 @@ export const TRACKS = [
     name: 'Frost Pass',
     blurb: 'Snowy figure-eight with a bridge over the straight.',
     theme: 'snow',
+    goalFar: true, // 9LAT2 sits out near the edge of the map...
+    roam: 260,     // ...which runs much further out than the others
     width: 15,
     points: [
       [-25, 0, -20], [0, 0, 0], [75, 0, 60], [130, 0, 70], [175, 0, 35], [150, 0, -10],
