@@ -9,9 +9,11 @@ const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30;
 // Each track's look. The meadow is the default; the desert turns the grass to
-// sand and red rock, the trees to cacti and the green hills to mesas.
+// sand and red rock, the trees to cacti and the green hills to mesas; snow
+// gives white ground, snowy pines, white mountains, snowmen and falling snow.
 const THEMES = {
   meadow: { sky: 0x8ad4f5, skyLight: 0xcfeeff, bounce: 0x5f9c48, lo: 0x6db85e, hi: 0x9ad46a, rock: 0x8f917c, verge: 0x5fa653, gravelVerge: 0x9c8a62, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x6fb963, noise: 1 },
+  snow: { sky: 0xc8d6e4, skyLight: 0xeef4ff, bounce: 0xb9c6d3, lo: 0xdce3ea, hi: 0xeef2f6, rock: 0x7d8794, verge: 0xe2e8ee, gravelVerge: 0xe2e8ee, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0xe8eef4, noise: 1.6 },
   desert: { sky: 0xf0d3a2, skyLight: 0xffe9c9, bounce: 0xc8955a, lo: 0xd8a466, hi: 0xeac58b, rock: 0xa9563a, verge: 0xc99a62, gravelVerge: 0xc99a62, road: 0x96694a, curbs: [0x7a4a32, 0xe0c9a0], hills: 0xc0683f, noise: 2.2 },
 };
 // Typed on the keyboard by the host in the lobby, this opens the secrets
@@ -236,7 +238,8 @@ function buildTerrain(track) {
     const steep = Math.max(
       Math.abs(y - H[j * n1 + Math.min(i + 1, T.seg)]), Math.abs(y - H[j * n1 + Math.max(i - 1, 0)]),
       Math.abs(y - H[Math.min(j + 1, T.seg) * n1 + i]), Math.abs(y - H[Math.max(j - 1, 0) * n1 + i])) / T.cell;
-    c.copy(lo).lerp(hi, clamp((y + 2) / 16, 0, 1)).multiplyScalar(0.94 + ((k * 7919) % 13) / 110);
+    // broad, gentle variation; a random shade per point turned into speckle in the distance
+    c.copy(lo).lerp(hi, clamp((y + 2) / 16, 0, 1)).multiplyScalar(0.96 + 0.05 * Math.sin(pos.getX(k) * 0.021 + 1.3) * Math.cos(pos.getZ(k) * 0.017));
     c.lerp(rock, clamp((steep - 0.55) / 0.6, 0, 1));
     if (track.lake && y < track.lake.level + 0.25 && (pos.getX(k) - track.lake.x) ** 2 + (pos.getZ(k) - track.lake.z) ** 2 < 1100) c.set(0xd9c48a); // sandy lake bed
     colors[k * 3] = c.r; colors[k * 3 + 1] = c.g; colors[k * 3 + 2] = c.b;
@@ -281,7 +284,7 @@ function applyGfx(level) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, L.px));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   sun.castShadow = L.shadows;
-  scene.fog.far = L.far; scene.fog.near = L.far * 0.42;
+  scene.fog.far = L.far; scene.fog.near = L.far * 0.3; // haze from about 190 m: far detail fades instead of shimmering
 }
 function setGfxMode(mode) {
   gfx.mode = mode;
@@ -808,9 +811,12 @@ function makePeople(max, rnd) {
       let tick = 0;
       const update = (t) => {
         if (gfx.level >= 2 && tick++ % 3) return; // low detail: the crowd moves at a third of the rate
-        const car = app.local;
+        const car = app.local, cam = camera.position;
         for (let i = 0; i < list.length; i++) {
           const p = list[i];
+          if ((cam.x - p.x) ** 2 + (cam.z - p.z) ** 2 > 48400) { // past 220 m a spectator is a pixel or two and only sparkles
+            M.makeScale(0, 0, 0); bodies.setMatrixAt(i, M); heads.setMatrixAt(i, M); continue;
+          }
           let amp = p.keen ? 0.2 : 0.03;
           if (car) { const dx = car.pos.x - p.x, dz = car.pos.z - p.z; if (dx * dx + dz * dz < 4900) amp = 0.32; }
           const hop = Math.abs(Math.sin(t * p.sp + p.ph)) * amp;
@@ -1294,7 +1300,7 @@ function buildLandmarks(track) {
   // ---- lake: jetty, rowing boat, two sailing boats, ducks ----
   if (S.lake && track.lake) {
     const L = track.lake, rot = rnd() * 6.28, g = start({ x: L.x, y: L.level, z: L.z }, rot);
-    const water = new THREE.Mesh(new THREE.CircleGeometry(L.r + 1, 30).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x3aa0d8, transparent: true, opacity: 0.8 }));
+    const water = new THREE.Mesh(new THREE.CircleGeometry(L.r + 1, 30).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial(track.theme === 'snow' ? { color: 0xcfe8f5, transparent: true, opacity: 0.95 } : { color: 0x3aa0d8, transparent: true, opacity: 0.8 }));
     water.receiveShadow = true; g.add(water);
     box(g, 2.4, 0.25, 14, 0x9a6a3c, 0, 0.55, L.r - 9);                       // jetty runs in from the shore
     for (const z of [L.r - 15, L.r - 10, L.r - 5]) for (const x of [-1, 1]) box(g, 0.3, 2.4, 0.3, 0x7a4a2a, x, -0.3, z);
@@ -1640,7 +1646,7 @@ function buildHelicopter(track) {
 // turbines, mountains, drifting clouds, hot-air balloons, birds.
 function buildScenery(track) {
   const rnd = mulberry32(1234 + app.trackId * 99);
-  const desert = track.theme === 'desert';
+  const desert = track.theme === 'desert', snow = track.theme === 'snow';
   const { hw, bounds } = track;
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const center = bounds.getCenter(new THREE.Vector3());
@@ -1701,7 +1707,7 @@ function buildScenery(track) {
   const faces = new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 0.36, 0.4), lam(0x2b2f3a), 60);
   wool.castShadow = true;
   const sheep = [], M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
-  for (let f = 0; f < (desert ? 0 : 5); f++) { // no sheep in the desert
+  for (let f = 0; f < (desert || snow ? 0 : 5); f++) { // no sheep in the desert or the snow
     const c = pick(9, hw + 16);
     if (!c) continue;
     claim(c.x, c.z, 4);
@@ -1729,7 +1735,7 @@ function buildScenery(track) {
   const bales = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.9, 0.9, 1.4, 9).rotateZ(Math.PI / 2), lam(0xd9b752), 40);
   bales.castShadow = true;
   let nb = 0;
-  for (let f = 0; f < (desert ? 0 : 5); f++) { // or hay
+  for (let f = 0; f < (desert || snow ? 0 : 5); f++) { // or hay
     const c = pick(8, hw + 14);
     if (!c) continue;
     for (let k = 0; k < 8; k++) {
@@ -1791,15 +1797,17 @@ function buildScenery(track) {
     worldGroup.add(outer);
   } else {
   // trees: conifers and round broadleaf ones
-  const TREES = 380, ROUND = 170;
+  const TREES = snow ? 520 : 380, ROUND = snow ? 0 : 170; // only pines in the snow
   const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 3, 5);
   const trunkMat = lam(0x7a4a2a);
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREES + ROUND);
   const canopies = new THREE.InstancedMesh(new THREE.ConeGeometry(3.2, 8, 6), new THREE.MeshLambertMaterial({ flatShading: true }), TREES);
   const crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.4, 0), new THREE.MeshLambertMaterial({ flatShading: true }), ROUND);
   trunks.castShadow = canopies.castShadow = crowns.castShadow = true;
+  const caps = snow ? new THREE.InstancedMesh(new THREE.ConeGeometry(1.9, 3.4, 6), lam(0xf4f7fa), TREES) : null;
+  if (caps) caps.castShadow = true;
   const m = new THREE.Matrix4();
-  const greens = [0x3f9a4a, 0x55b35a, 0x2f8a52, 0x6cc46a, 0x3b8f3f], warm = [0x6cc46a, 0x86c95a, 0xa7c957, 0x4fae54, 0xd9a441];
+  const greens = snow ? [0x2f6b4a, 0x3a7a55, 0x2c5e43, 0x356f4c, 0x2a5a41] : [0x3f9a4a, 0x55b35a, 0x2f8a52, 0x6cc46a, 0x3b8f3f], warm = [0x6cc46a, 0x86c95a, 0xa7c957, 0x4fae54, 0xd9a441];
   let placed = 0, nc = 0, nr = 0, tries = 0;
   while (placed < TREES + ROUND && tries++ < 6000) {
     const [x, z] = randIn(5);
@@ -1812,6 +1820,7 @@ function buildScenery(track) {
     if (nc < TREES && (nr >= ROUND || rnd() < 0.7)) {
       m.makeRotationY(rnd() * Math.PI); m.scale(V(sc, sc, sc)); m.setPosition(x, gy + 7 * sc, z);
       canopies.setMatrixAt(nc, m);
+      if (caps) { m.setPosition(x, gy + 9.3 * sc, z); caps.setMatrixAt(nc, m); } // snow on the top of each pine
       canopies.setColorAt(nc++, new THREE.Color(greens[Math.floor(rnd() * greens.length)]));
     } else {
       m.makeRotationY(rnd() * Math.PI); m.scale(V(sc, sc * 0.9, sc)); m.setPosition(x, gy + 5.2 * sc, z);
@@ -1821,6 +1830,7 @@ function buildScenery(track) {
     placed++;
   }
   trunks.count = placed; canopies.count = nc; crowns.count = nr;
+  if (caps) { caps.count = nc; worldGroup.add(caps); }
   worldGroup.add(trunks, canopies, crowns);
 
   // thick forest beyond the wall, so the edge of the map reads as an edge
@@ -1829,7 +1839,7 @@ function buildScenery(track) {
     const a = (k / 360) * 6.2832 + rnd() * 0.02, d = lim.r + 5 + rnd() * rnd() * 70, sc = 1.2 + rnd() * 1.3;
     const x = lim.x + Math.cos(a) * d, z = lim.z + Math.sin(a) * d;
     m.makeRotationY(rnd() * 3); m.scale(V(sc, sc, sc)); m.setPosition(x, terrainHeight(x, z) + 4.2 * sc, z);
-    outer.setMatrixAt(k, m); outer.setColorAt(k, new THREE.Color(greens[Math.floor(rnd() * 3)]).multiplyScalar(0.85));
+    outer.setMatrixAt(k, m); outer.setColorAt(k, snow ? new THREE.Color(0xcfdcd6).multiplyScalar(0.8 + rnd() * 0.15) : new THREE.Color(greens[Math.floor(rnd() * 3)]).multiplyScalar(0.85)); // frosted in the snow
   }
   worldGroup.add(outer);
   }
@@ -1855,6 +1865,9 @@ function buildScenery(track) {
   if (desert) {
     scatter(bushes, 260, [0xa38a52, 0x8c7a45, 0x7d8a4a, 0x9a9a5a], 0.5, 1.2, 0.35); // dry scrub
     scatter(rocks, 120, [0xb5603c, 0xc97a4c, 0xa95a38, 0xd09060], 0.7, 3.2, 0.25, true);
+  } else if (snow) {
+    scatter(bushes, 260, [0xdfe7ee, 0xc9d6cf, 0xb7c7bd], 0.7, 1.6, 0.35); // shrubs under snow
+    scatter(rocks, 120, [0x7d8794, 0x8f99a5, 0x6b7480], 0.6, 2.6, 0.2, true);
   } else {
     scatter(bushes, 260, [0x4fae54, 0x3f9a4a, 0x6cc46a, 0x86c95a], 0.8, 1.9, 0.35);
     scatter(rocks, 120, [0x8f917c, 0xa3a59a, 0x7c8696], 0.6, 2.4, 0.2, true);
@@ -1866,12 +1879,44 @@ function buildScenery(track) {
   for (let i = 0; i < 26; i++) {
     const ang = (i / 26) * Math.PI * 2 + rnd() * 0.2;
     const r = spread * 0.75 + 120 + rnd() * 160;
-    const h = 40 + rnd() * 70, w = 90 + rnd() * 120;
+    const h = (40 + rnd() * 70) * (snow ? 1.5 : 1), w = 90 + rnd() * 120; // taller, alpine, in the snow
     const hill = new THREE.Mesh(hillGeo, hillMat);
     hill.scale.set(w, h, w);
     hill.position.set(center.x + Math.cos(ang) * r, h / 2 - 2, center.z + Math.sin(ang) * r);
     hill.rotation.y = rnd() * Math.PI;
     worldGroup.add(hill);
+  }
+
+  if (snow) {
+    // snowmen dotted about, and snow falling round wherever the camera is
+    const white = lam(0xf4f7fa), coal = lam(0x1d2230), carrot = lam(0xff8a3d);
+    for (let k = 0; k < 24; k++) {
+      const p = pick(2, hw + 10);
+      if (!p) continue;
+      claim(p.x, p.z, 2); track.solids.push({ x: p.x, z: p.z, r: 0.9, y: p.y });
+      const g = new THREE.Group(); g.position.copy(p); g.rotation.y = rnd() * 6.28; worldGroup.add(g);
+      for (const [r, y] of [[0.9, 0.7], [0.65, 1.75], [0.45, 2.5]]) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), white); b.position.y = y; b.castShadow = true; g.add(b); }
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 5).rotateX(Math.PI / 2), carrot); nose.position.set(0, 2.5, 0.6); g.add(nose);
+      for (const sx of [-0.15, 0.15]) { const e = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), coal); e.position.set(sx, 2.65, 0.4); g.add(e); }
+      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.45, 8), coal); hat.position.y = 3.05; g.add(hat);
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.05, 8), coal); brim.position.y = 2.85; g.add(brim);
+    }
+    const FL = 700;
+    const flakes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.07, 0.07, 0.07), new THREE.MeshBasicMaterial({ color: 0xffffff }), FL);
+    flakes.frustumCulled = false; flakes.userData.dyn = true; worldGroup.add(flakes);
+    const fl = Array.from({ length: FL }, () => ({ x: rnd() * 60, y: rnd() * 30, z: rnd() * 60, s: 1.2 + rnd() * 1.2, w: rnd() * 6 }));
+    const FM = new THREE.Matrix4();
+    anim.push((t) => {
+      const c = camera.position;
+      for (let i = 0; i < FL; i++) {
+        const f = fl[i];
+        const x = c.x + ((((f.x + Math.sin(t * 0.7 + f.w) * 0.8 - c.x) % 60) + 60) % 60) - 30;
+        const z = c.z + ((((f.z - c.z) % 60) + 60) % 60) - 30;
+        const y = c.y - 8 + ((((f.y - t * f.s) % 30) + 30) % 30);
+        FM.makeTranslation(x, y, z); flakes.setMatrixAt(i, FM);
+      }
+      flakes.instanceMatrix.needsUpdate = true;
+    });
   }
 
   // clouds, drifting on the wind
@@ -2606,10 +2651,11 @@ function stepLocal(car, dt, canDrive) {
     // longitudinal forces
     let Fdrive = 0;
     if (throttle) {
-      if (vLong > -0.5) {
-        const powerLimited = CAR.power / Math.max(speedAbs, 4);
-        Fdrive = Math.min(CAR.maxDrive, powerLimited) * clamp((CAR.topSpeed - vLong) / 6, 0, 1);
-      }
+      // the engine pushes forward whichever way the car is rolling, so going
+      // from reverse back to forward is quick (it used to do nothing until the
+      // car had coasted to a stop on its own)
+      const powerLimited = CAR.power / Math.max(speedAbs, 4);
+      Fdrive = Math.min(CAR.maxDrive, powerLimited) * clamp((CAR.topSpeed - vLong) / 6, 0, 1);
     }
     let FbrakeF = 0, FbrakeR = 0, Freverse = 0;
     if (brake) {
@@ -2811,7 +2857,7 @@ function stepLocal(car, dt, canDrive) {
     // tarmac tyres peak around 0.16 rad of slip, so only smoke well past that
     const slideAmt = clamp((car.slip - (loose ? 0.14 : 0.24)) / 0.3, 0, 1);
     const amount = Math.max(slideAmt, spinning ? 0.8 : 0, locked ? 0.6 : 0, loose ? clamp(speedAbs / 40, 0, 0.5) : 0);
-    if (amount > 0.05) emitDust(car, amount, loose ? 'dust' : 'smoke');
+    if (amount > 0.05) emitDust(car, amount, loose ? (app.track.theme === 'snow' && car.surfaceName === 'grass' ? 'spray' : 'dust') : 'smoke'); // snow sprays white
   }
 }
 
@@ -3240,6 +3286,7 @@ function buildTrackCards() {
     const cv = document.createElement('canvas');
     cv.width = 240; cv.height = 120;
     if (def.theme === 'desert') cv.style.background = '#e2b77c';
+    if (def.theme === 'snow') cv.style.background = '#e6edf3';
     drawTrackPreview(cv, buildTrack(def));
     card.appendChild(cv);
     card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div><div class="tblurb">${def.blurb}</div>`);

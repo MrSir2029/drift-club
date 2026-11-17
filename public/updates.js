@@ -3,6 +3,15 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.9', date: '17 Nov 2026', title: 'Frost Pass',
+    items: [
+      'Overpass is now Frost Pass: snow everywhere, snowy pine trees, snowmen, white mountains and falling snow.',
+      'New blue tab icon.',
+      'Less shimmer in the distance: smoother ground colours, a bit more haze far away, and far-off crowds no longer sparkle.',
+      'Holding accelerate while rolling backwards now drives you forward straight away (it used to keep coasting backwards).',
+    ],
+  },
+  {
     v: '1.8', date: '17 Nov 2026', title: 'Red Canyon',
     items: [
       'Ridge Rally is now Red Canyon: a desert stage with sand and red rock, cacti, mesas, a stone arch over the road and two jumps.',
