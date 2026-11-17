@@ -270,45 +270,14 @@ input:focus { border-color: var(--blue); }
 .hud-delta.ahead { color: #2e9e44; }
 .hud-delta.behind { color: #d33b2f; }
 
-/* ---------- touch controls (phones and tablets) ----------
-   body.touch is set on phones and tablets only (never on a computer), and
-   cleared while a keyboard is being used to drive. */
-.touch-only { display: none; }
-body.touch .touch-only { display: inline; }
-body.touch .kb-only { display: none; }
-#screen-race, #view { touch-action: none; }
-.btn { touch-action: manipulation; }
-:root { --tc: clamp(56px, 17vmin, 92px); --tc-gap: 10px; --tc-edge: 14px; }
-.tc-layer { display: none; position: absolute; inset: 0; pointer-events: none; }
-body.touch .tc-layer { display: block; }
-.tc {
-  position: absolute; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
-  width: var(--tc); height: var(--tc); padding: 0; display: flex; align-items: center; justify-content: center;
-  border: 3px solid var(--ink); border-radius: 50%; background: rgba(255,250,240,.6); color: var(--ink);
-  font: inherit; font-weight: 900; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
-  box-shadow: 0 4px 0 rgba(29,34,48,.85); cursor: pointer;
-}
-.tc svg { width: 46%; height: 46%; fill: var(--ink); pointer-events: none; }
-.tc.on { background: var(--orange); transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
-.tc-left { left: var(--tc-edge); bottom: var(--tc-edge); }
-.tc-right { left: calc(var(--tc-edge) + var(--tc) + var(--tc-gap)); bottom: var(--tc-edge); }
-.tc-gas { right: var(--tc-edge); bottom: var(--tc-edge); width: calc(var(--tc) * 1.1); height: calc(var(--tc) * 1.5); border-radius: 18px; background: rgba(126,217,87,.75); }
-.tc-brake { right: calc(var(--tc-edge) + var(--tc) * 1.1 + var(--tc-gap)); bottom: var(--tc-edge); border-radius: 18px; background: rgba(255,120,110,.7); }
-.tc-hand { right: calc(var(--tc-edge) + var(--tc) * 1.1 + var(--tc-gap)); bottom: calc(var(--tc-edge) + var(--tc) + var(--tc-gap)); height: calc(var(--tc) * 0.55); border-radius: 999px; font-size: 9px; letter-spacing: .02em; }
-.tc-gas.on, .tc-brake.on, .tc-hand.on { background: var(--orange); }
-.tc-row { position: absolute; left: var(--tc-edge); bottom: calc(var(--tc-edge) + var(--tc) + var(--tc-gap) + 6px); display: flex; gap: 8px; }
-.tc-small { position: static; width: auto; height: 34px; padding: 0 12px; border-radius: 10px; font-size: 11px; background: var(--paper); }
-.tc-small:active { background: var(--orange); }
-/* make room: speed to the bottom middle, the qualifying button up out of the way */
-body.touch .hud-speed { right: auto; left: 50%; transform: translateX(-50%); bottom: 10px; }
-body.touch .respawn-tip { bottom: 62px; max-width: calc(100% - 2 * (var(--tc-edge) + 2 * var(--tc) + 2 * var(--tc-gap))); white-space: normal; text-align: center; }
-body.touch .endq { bottom: auto; top: 96px; left: 8px; }
-body.touch .pausepanel .hint { display: none; }
-.rotate-tip { display: none; position: absolute; left: 50%; top: 42%; transform: translateX(-50%); background: var(--ink); color: #fff; border-radius: 999px; padding: 8px 16px; font-weight: 800; font-size: 14px; white-space: nowrap; pointer-events: none; animation: fadeaway 6s forwards; }
-@media (orientation: portrait) { body.touch .rotate-tip { display: block; } }
-@keyframes fadeaway { 0%, 75% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+/* ---------- phones and tablets ----------
+   The game needs a keyboard, so touch-first devices get a warning on the home
+   screen. */
+.phone-warn { display: none; margin: 0 0 16px; background: #ffe1dc; border: 3px solid var(--ink); border-radius: 12px; padding: 10px 12px; font-weight: 700; font-size: 14px; line-height: 1.35; }
+.phone-warn b { display: block; font-size: 17px; font-weight: 900; color: #c2321f; text-transform: uppercase; letter-spacing: .04em; }
+@media (hover: none) and (pointer: coarse) { .phone-warn { display: block; } }
 
-/* short screens (a phone on its side): the compact HUD */
+/* short screens: the compact HUD, and menus that scroll */
 @media (max-height: 520px) {
   .hud-left { gap: 6px; left: 8px; top: 8px; }
   .hud-block { min-width: 0; padding: 6px 9px; }
@@ -319,7 +288,6 @@ body.touch .pausepanel .hint { display: none; }
   .standings { display: none; }
   .countdown { font-size: 100px; }
   .dash-nav { top: 70px; }
-  body.touch .endq { top: 70px; }
   .lights { top: 70px; gap: 10px; padding: 10px 12px; }
   .lights span { width: 30px; height: 30px; }
   /* menus scroll instead of running off the top and bottom */
@@ -342,15 +310,11 @@ body.touch .pausepanel .hint { display: none; }
   .carrow { margin-top: 8px; }
 }
 
-/* a phone held upright: stack the HUD so nothing overlaps, and lift the
-   speed and tips above the touch buttons */
+/* very narrow, tall screens: stack the HUD so nothing overlaps */
 @media (orientation: portrait) and (max-width: 520px) {
   .hud-left { flex-wrap: wrap; max-width: calc(100vw - 136px); }
   .lights { top: 210px; gap: 10px; padding: 10px 12px; }
   .lights span { width: 30px; height: 30px; }
   .dash-nav { top: 210px; }
   .toast-race { top: 30%; }
-  body.touch .hud-speed { bottom: calc(var(--tc-edge) + var(--tc) * 1.5 + 12px); }
-  body.touch .respawn-tip { bottom: calc(var(--tc-edge) + var(--tc) * 1.5 + 60px); max-width: calc(100% - 24px); }
-  body.touch .endq { top: 140px; }
 }

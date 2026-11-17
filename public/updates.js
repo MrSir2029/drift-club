@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.19', date: '17 Nov 2026', title: 'Not for phones',
+    items: [
+      'The touch controls are gone: Drift Club is made for a computer with a keyboard. Phones and tablets now show a warning on the home screen.',
+    ],
+  },
+  {
     v: '1.18', date: '17 Nov 2026', title: 'New home',
     items: [
       'Drift Club now runs on Cloudflare: no more waiting a minute for the game to wake up when you\'re the first one on.',
