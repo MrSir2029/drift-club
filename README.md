@@ -107,7 +107,9 @@ players on slower computers can turn it off under Settings. The 9LAT2
 building is always there. A TV helicopter follows the race leader.
 
 Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
-spires and mesas, a stone arch over the road, and two jumps. A track's look
+spires and mesas, a stone arch over the road, and two jumps. Frost Pass (the
+third) is the snowy one: white ground, snowy pines, snowmen, white mountains
+and falling snow, with the bridge over the straight. A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.
 

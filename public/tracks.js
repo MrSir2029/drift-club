@@ -28,8 +28,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Overpass',
-    blurb: 'A twisting figure-eight with a bridge over the straight.',
+    name: 'Frost Pass',
+    blurb: 'Snowy figure-eight with a bridge over the straight.',
+    theme: 'snow',
     width: 15,
     points: [
       [-25, 0, -20], [0, 0, 0], [75, 0, 60], [130, 0, 70], [175, 0, 35], [150, 0, -10],
