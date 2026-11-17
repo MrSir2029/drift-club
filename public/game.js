@@ -79,6 +79,7 @@ const camera = new THREE.PerspectiveCamera(70, 1, 0.5, 1200);
 
 const hemi = new THREE.HemisphereLight(0xcfeeff, 0x5f9c48, 1.4);
 scene.add(hemi);
+hemi.layers.enable(1); // the cockpit pass draws layer 1 only, and needs light too
 const sun = new THREE.DirectionalLight(0xfff4e0, 2.6);
 sun.position.set(80, 140, 60);
 sun.castShadow = true;
@@ -88,6 +89,7 @@ sun.shadow.camera.left = -110; sun.shadow.camera.right = 110;
 sun.shadow.camera.top = 110; sun.shadow.camera.bottom = -110;
 sun.shadow.bias = -0.0008;
 scene.add(sun);
+sun.layers.enable(1);
 scene.add(sun.target);
 
 // ---------------------------------------------------------------------------
@@ -1881,6 +1883,21 @@ function hexa(c) {
 // symmetric slab: half-widths at the bottom and top, and where the front and rear faces sit at each height
 const slab = (wB, wT, y0, y1, zfB, zfT, zrT, zrB) => hexa([[-wB, y0, zfB], [wB, y0, zfB], [wB, y0, zrB], [-wB, y0, zrB], [-wT, y1, zfT], [wT, y1, zfT], [wT, y1, zrT], [-wT, y1, zrT]]);
 
+// A lamp lying on a sloped panel of the body. In side view the panel runs from
+// (y0, z0) up to (y1, z1); the lamp stands `out` proud of it and is sunk `inn`
+// into it, so it looks attached however steeply the panel is raked. dir is +1
+// on the front of the car, -1 on the back.
+function faceLamp(K, mat, x, hw, y0, z0, y1, z1, dir, out = 0.015, inn = 0.04) {
+  const dy = y1 - y0, dz = z1 - z0, l = Math.hypot(dy, dz);
+  let ny = -dz / l, nz = dy / l;
+  if (Math.sign(nz) !== dir) { ny = -ny; nz = -nz; }
+  const P = (y, z, k) => [y + ny * k, z + nz * k];
+  const b0 = P(y0, z0, out), b1 = P(y0, z0, -inn), t0 = P(y1, z1, out), t1 = P(y1, z1, -inn);
+  const [bf, br, tf, tr] = dir > 0 ? [b0, b1, t0, t1] : [b1, b0, t1, t0]; // hexa wants the larger-z side first
+  return K.add(hexa([[x - hw, bf[0], bf[1]], [x + hw, bf[0], bf[1]], [x + hw, br[0], br[1]], [x - hw, br[0], br[1]],
+    [x - hw, tf[0], tf[1]], [x + hw, tf[0], tf[1]], [x + hw, tr[0], tr[1]], [x - hw, tr[0], tr[1]]]), mat, 0, 0, 0, false);
+}
+
 function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) {
   const g = new THREE.Group();
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
@@ -2038,14 +2055,14 @@ function buildRallyBody(K) {
   rod([0.3, 1.5, -0.9], [0.3, 1.95, -1.15], 0.025, dark);                       // aerial
   // nose: bumper, grille, splitter, headlights, lamp pod
   box(1.86, 0.3, 0.2, dark, 0, 0.44, 2.08);
-  box(1.1, 0.14, 0.06, carbon, 0, 0.64, 2.12, false);
+  box(1.1, 0.14, 0.12, carbon, 0, 0.64, 2.08, false);
   box(1.92, 0.05, 0.42, carbon, 0, 0.28, 2.1);
-  for (const sx of [-1, 1]) box(0.36, 0.13, 0.08, K.lamp, sx * 0.6, 0.72, 2.07, false);
+  for (const sx of [-1, 1]) faceLamp(K, K.lamp, sx * 0.6, 0.18, 0.645, 2.0889, 0.775, 2.0311, 1); // on the raked nose
   box(0.96, 0.17, 0.14, dark, 0, 0.87, 1.99);
   for (const x of [-0.34, -0.115, 0.115, 0.34]) add(new THREE.CylinderGeometry(0.075, 0.075, 0.06, 8).rotateX(Math.PI / 2), K.lamp, x, 0.875, 2.07, false);
   // tail: bumper, lights, exhaust
   box(1.84, 0.24, 0.18, dark, 0, 0.42, -2.0);
-  for (const sx of [-1, 1]) box(0.34, 0.13, 0.06, K.brake, sx * 0.58, 0.84, -2.07, false);
+  for (const sx of [-1, 1]) faceLamp(K, K.brake, sx * 0.58, 0.17, 0.78, -2.0333, 0.9, -2.0133, -1);
   add(new THREE.CylinderGeometry(0.07, 0.07, 0.3, 6).rotateX(Math.PI / 2), carbon, 0.45, 0.32, -2.1, false);
   // big rear wing
   box(1.72, 0.05, 0.44, carbon, 0, 1.56, -1.98);
@@ -2083,17 +2100,17 @@ function buildCamryBody(K) {
     rod([sx * 0.86, 0.95, 0.95], [sx * 0.7, 1.45, 0.3], 0.08, body);
     rod([sx * 0.87, 0.95, -0.2], [sx * 0.71, 1.45, -0.3], 0.09, body);
     rod([sx * 0.86, 0.95, -1.72], [sx * 0.7, 1.45, -1.0], 0.09, body);
-    box(0.36, 0.14, 0.08, K.lamp, sx * 0.62, 0.74, 2.32, false);                           // headlights
-    box(0.4, 0.14, 0.06, K.brake, sx * 0.6, 0.8, -2.34, false);                            // tail lights
+    faceLamp(K, K.lamp, sx * 0.6, 0.17, 0.71, 2.371, 0.85, 2.245, 1);                      // headlights, on the raked nose
+    faceLamp(K, K.brake, sx * 0.6, 0.2, 0.74, -2.3615, 0.86, -2.306, -1);                  // tail lights
     box(0.16, 0.1, 0.1, body, sx * 0.99, 1.0, 0.75, false);                                // mirrors
     for (const z of [0.2, -0.75]) box(0.03, 0.04, 0.2, K.rim, sx * 0.925, 0.84, z, false); // door handles
     box(0.02, 0.05, 3.3, dark, sx * 0.925, 0.48, -0.05, false);                            // rubbing strip
   }
-  box(0.9, 0.2, 0.06, K.rim, 0, 0.66, 2.38, false);                                        // chrome grille
-  box(0.86, 0.04, 0.07, dark, 0, 0.66, 2.385, false);
-  box(1.5, 0.12, 0.05, dark, 0, 0.4, 2.39, false);                                         // lower intake
+  faceLamp(K, K.rim, 0, 0.42, 0.5, 2.3527, 0.66, 2.3745, 1, 0.02, 0.04);                 // chrome grille, below the nose
+  box(0.86, 0.04, 0.07, dark, 0, 0.58, 2.389, false);
+  box(1.5, 0.12, 0.08, dark, 0, 0.4, 2.36, false);                                         // lower intake
   box(0.5, 0.13, 0.03, K.accent, 0, 0.52, -2.37, false);                                   // number plate
-  box(0.16, 0.05, 0.02, K.rim, 0, 0.84, -2.36, false);                                     // badge
+  box(0.16, 0.05, 0.03, K.rim, 0, 0.84, -2.325, false);                                    // badge
   add(new THREE.CylinderGeometry(0.05, 0.05, 0.25, 6).rotateX(Math.PI / 2), dark, -0.5, 0.3, -2.36, false);
   rod([-0.45, 1.47, -0.9], [-0.45, 1.75, -1.1], 0.02, dark);                               // aerial
   const wheels = [[-0.84, 1.45, 0.24, 0.34], [0.84, 1.45, 0.24, 0.34], [-0.84, -1.45, 0.24, 0.34], [0.84, -1.45, 0.24, 0.34]];
@@ -2113,11 +2130,20 @@ function buildInterior(car, cls) {
   const box = (w, h, d, c, x, y, z, parent = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), L(c)); m.position.set(x, y, z); parent.add(m); return m; };
   const tube = (a, b, c, th = 0.045) => g.add(strut(V(...a), V(...b), th, th, L(c)));
   const DX = -0.36; // the driver sits on the right
-  // dashboard across the car, from the windscreen back to the driver's knees
-  const dashTop = rally ? 1.01 : 0.99, dashFront = rally ? 0.8 : 0.88, dashBack = rally ? -0.3 : -0.2;
-  box(rally ? 1.6 : 1.66, 0.03, dashFront - dashBack, rally ? 0x2b2f3a : 0x3a3f4a, 0, dashTop - 0.015, (dashFront + dashBack) / 2);
-  // instrument binnacle with two dials
-  const by = dashTop + 0.045, bz = 0.42;
+  const trim = rally ? 0x2b2f3a : 0x3a3f4a;
+  const top = rally ? 1.01 : 0.99;     // top of the dashboard
+  const front = rally ? 0.8 : 0.88;    // where it meets the windscreen
+  const back = rally ? 0.3 : 0.32;     // its face, just in front of the steering wheel
+  const sill = rally ? 0.995 : 0.965;  // tops of the doors, along the bottom of the side windows
+  const rear = rally ? -1.6 : -1.3;    // back of the cabin
+  const mid = (front + rear) / 2, len = front - rear;
+  // dashboard, floor, door panels and the console between the seats
+  box(1.64, top - 0.55, front - back, trim, 0, (top + 0.55) / 2, (front + back) / 2);
+  box(1.6, 0.03, len, 0x24272f, 0, 0.32, mid);
+  for (const sx of [-1, 1]) box(0.14, sill - 0.32, len, trim, sx * 0.81, (sill + 0.32) / 2, mid);
+  box(0.24, 0.3, 0.9, trim, 0, 0.47, back - 0.45);
+  // instrument binnacle with two dials, on the back edge of the dash
+  const by = top + 0.045, bz = back + 0.1;
   box(0.46, 0.09, 0.2, 0x1d2230, DX, by, bz);
   for (const dx of [-0.11, 0.11]) {
     const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 12), L(0xe9e4d8));
@@ -2144,11 +2170,11 @@ function buildInterior(car, cls) {
     tube([-0.62, 1.38, 0.12], [0.62, 1.38, 0.12], c);
     tube([-0.63, 1.38, -0.75], [0.63, 1.38, -0.75], c);
   } else {
-    box(0.2, 0.11, 0.02, 0x2a4a7a, 0, dashTop + 0.05, 0.5).rotation.x = -0.5; // touch screen
+    box(0.2, 0.11, 0.02, 0x2a4a7a, 0, top + 0.05, back + 0.18).rotation.x = -0.5; // touch screen
   }
   // steering wheel, tilted toward the driver; the inner group turns with the front wheels
-  const wz = rally ? 0.02 : 0.06, wy = 0.93, r = rally ? 0.18 : 0.17;
-  tube([DX, wy, wz + 0.02], [DX, dashTop - 0.01, 0.36], 0x1d2230, 0.05); // column
+  const wz = rally ? 0.02 : 0.06, wy = 0.96, r = rally ? 0.18 : 0.17;
+  tube([DX, wy, wz + 0.02], [DX, wy + 0.04, back + 0.02], 0x1d2230, 0.05); // column, into the dash
   const tilt = new THREE.Group(); tilt.position.set(DX, wy, wz); tilt.rotation.x = -0.35; g.add(tilt);
   const steer = new THREE.Group(); steer.userData.dyn = true; tilt.add(steer);
   steer.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.024, 6, 20), L(0x1d2230)));
@@ -2158,6 +2184,10 @@ function buildInterior(car, cls) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 10), L(rally ? 0xe6453a : 0xb9c0cc));
   hub.rotation.x = Math.PI / 2; steer.add(hub);
   mergeStatic(g); mergeStatic(steer);
+  // All of this is drawn last, over everything else (see renderFrame): the
+  // car's body is a solid block up to the windows, so drawn along with the
+  // rest of the scene, the dash and the bottom of the wheel were buried in it.
+  g.traverse((o) => o.layers.set(1));
   return { group: g, steer };
 }
 
@@ -2333,7 +2363,7 @@ const CAR_CLASSES = { open: {
   // but its tyres bite on gravel and grass where the single seater skates.
   label: 'Rally',
   eye: [-0.36, 1.22, -0.55],                // driver's seat (right-hand drive), behind the wheel
-  ckFov: 60, ckFovAdd: 8, ckPitch: 0.5, ckRoll: 0.35,
+  ckFov: 60, ckFovAdd: 8, ckPitch: 0.5, ckRoll: 0.35, ckTilt: -0.07, // looks a few degrees down: less roof, more wheel
   gears: [9, 15, 22, 30, 38, 46, 54],
   engine: [52, 430],
   grip: { tarmac: 0.9, gravel: 1.22, grass: 1.25 },
@@ -2359,7 +2389,7 @@ const CAR_CLASSES = { open: {
   // heavy, modest power, ordinary tyres. Everyone has the same one.
   label: 'Toyota Camry',
   eye: [-0.36, 1.21, -0.45],
-  ckFov: 60, ckFovAdd: 8, ckPitch: 0.5, ckRoll: 0.35,
+  ckFov: 60, ckFovAdd: 8, ckPitch: 0.5, ckRoll: 0.35, ckTilt: -0.07, // looks a few degrees down: less roof, more wheel
   gears: [8, 14, 20, 27, 34, 41, 47],
   engine: [45, 330],
   grip: { tarmac: 0.84, gravel: 0.88, grass: 0.9 },
@@ -2790,6 +2820,7 @@ let camInit = false;
 function updateCamera(dt) {
   if (app.phase === 'home' || app.phase === 'lobby' || !app.local) {
     // slow orbit around the track for the menus
+    app.inCockpit = false;
     menuOrbit += dt * 0.08;
     const b = app.track.bounds;
     const c = b.getCenter(new THREE.Vector3());
@@ -2802,6 +2833,7 @@ function updateCamera(dt) {
     camInit = true;
     return;
   }
+  app.inCockpit = false;
   const car = app.local;
   if (car.mesh.interior) car.mesh.interior.visible = app.camMode === 'cockpit';
   sun.position.set(car.pos.x + 80, car.pos.y + 140, car.pos.z + 60);
@@ -2813,6 +2845,8 @@ function updateCamera(dt) {
     _cq.setFromEuler(_ce);
     camera.position.copy(cockpitEye).applyQuaternion(_cq).add(car.pos);
     camera.quaternion.copy(_cq).multiply(faceForward);
+    if (CAR.ckTilt) camera.rotateX(CAR.ckTilt);
+    app.inCockpit = true;
     const k = clamp(Math.abs(car.speed) / PHYS.maxSpeed, 0, 1);
     camera.fov = lerp(camera.fov, CAR.ckFov + k * CAR.ckFovAdd, 1 - Math.exp(-dt * 4));
     camera.near = 0.12;
@@ -3524,7 +3558,23 @@ function frame(now) {
   updateDust(dt);
   updateCamera(dt);
   app.camHook?.(camera); // debugging: lets the console place the camera
+  renderFrame();
+}
+
+// The scene, then (in cockpit view) the car's cabin on top of it with its own
+// depth, so the solid body can't hide the dash or the steering wheel.
+function renderFrame() {
   renderer.render(scene, camera);
+  if (!app.inCockpit || !app.local?.mesh.interior) return;
+  const bg = scene.background;
+  scene.background = null;
+  renderer.autoClear = false; renderer.shadowMap.autoUpdate = false;
+  renderer.clearDepth();
+  camera.layers.set(1);
+  renderer.render(scene, camera);
+  camera.layers.set(0);
+  renderer.autoClear = true; renderer.shadowMap.autoUpdate = true;
+  scene.background = bg;
 }
 
 // ---------------------------------------------------------------------------
