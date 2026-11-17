@@ -193,15 +193,16 @@ function buildTerrain(track) {
       if (w > 0) H[j * n1 + i] = lerp(H[j * n1 + i], y, w);
     }
   };
-  for (const [name, r, mode] of [['lake', 30, ''], ['lat9', 18, 'far'], ['castle', 23, 'high'], ['fair', 27, 'near'], ['village', 31, ''], ['stones', 12, ''], ['camp', 13, ''], ['windmill', 9, ''], ['mast', 7, 'high']]) {
+  for (const [name, r, mode] of [['lake', 30, ''], ['lat9', 18, track.def.goalFar ? 'remote' : 'far'], ['castle', 23, 'high'], ['fair', 27, 'near'], ['village', 31, ''], ['stones', 12, ''], ['camp', 13, ''], ['windmill', 9, ''], ['mast', 7, 'high']]) {
     let best = null;
-    for (let k = 0; k < 140; k++) {
-      const a = srnd() * 6.2832, d = Math.sqrt(srnd()) * (lim.r - r - 24);
+    for (let k = 0; k < (mode === 'remote' ? 300 : 140); k++) {
+      // 'remote' looks only in the outer ring of the map
+      const a = srnd() * 6.2832, d = (mode === 'remote' ? 0.72 + 0.28 * srnd() : Math.sqrt(srnd())) * (lim.r - r - 24);
       const x = lim.x + Math.cos(a) * d, z = lim.z + Math.sin(a) * d;
       const gap = roadGap(track, x, z);
       if (gap < hw + r + 26 || taken.some(o => Math.hypot(o.x - x, o.z - z) < o.r + r + 26)) continue;
       const y = terrainHeight(x, z);
-      const score = mode === 'high' ? y : mode === 'near' ? -gap : mode === 'far' ? Math.hypot(x - samples[0].p.x, z - samples[0].p.z) : 0;
+      const score = mode === 'high' ? y : mode === 'near' ? -gap : mode === 'far' ? Math.hypot(x - samples[0].p.x, z - samples[0].p.z) : mode === 'remote' ? Math.hypot(x - samples[0].p.x, z - samples[0].p.z) + 2 * y : 0; // remote: as far from the start as it gets, on high ground so you can see it
       if (!best || score > best.score) best = { x, z, y, r, score };
       if (!mode) break;
     }
@@ -477,7 +478,7 @@ function buildWorld(trackId) {
     const c = track.bounds.getCenter(new THREE.Vector3());
     let far = 0;
     for (const s of samples) far = Math.max(far, Math.hypot(s.p.x - c.x, s.p.z - c.z));
-    track.limit = { x: c.x, z: c.z, r: Math.min(far + 80, TERRAIN.size / 2 - 60) };
+    track.limit = { x: c.x, z: c.z, r: Math.min(far + (track.def.roam || 80), TERRAIN.size / 2 - 60) }; // roam: how far the map runs past the track
   }
   track.walls = [];  // solid line segments
   track.solids = []; // solid circles: trees, posts, rocks, towers
@@ -1348,7 +1349,7 @@ function buildLandmarks(track) {
     ctx.fillStyle = '#1d2230'; ctx.fillRect(0, 0, 512, 128); ctx.fillStyle = '#ffd23f'; ctx.fillRect(8, 8, 496, 112);
     ctx.fillStyle = '#1d2230'; ctx.font = '900 100px "Segoe UI", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('9LAT2', 256, 68);
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const signMat = new THREE.MeshBasicMaterial({ map: tex });
+    const signMat = new THREE.MeshBasicMaterial({ map: tex, fog: false }); // shows through the haze, so you can spot it from far off
     for (const [w, h, y, z, ry] of [[10, 2.5, 9.4, 0.12, 0], [10, 2.5, 9.4, -0.12, Math.PI], [5.2, 1.3, 4.35, 5.6, 0]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), signMat); m.position.set(0, y, z); m.rotation.y = ry; g.add(m); }
     for (const x of [-4.4, 4.4]) box(g, 0.25, 2.2, 0.25, 0x3b4250, x, 8.3, 0);
     for (const x of [-7, 7]) { box(g, 2.6, 0.2, 0.7, 0x7a4a2a, x, 0.55, 8); box(g, 2.2, 0.5, 0.2, 0x5a6372, x, 0.25, 8); }
@@ -1797,7 +1798,8 @@ function buildScenery(track) {
     worldGroup.add(outer);
   } else {
   // trees: conifers and round broadleaf ones
-  const TREES = snow ? 520 : 380, ROUND = snow ? 0 : 170; // only pines in the snow
+  const areaK = clamp((lim.r / 360) ** 2, 1, 2.5); // a bigger map gets more trees, so it isn't bare
+  const TREES = Math.round((snow ? 520 : 380) * areaK), ROUND = snow ? 0 : Math.round(170 * areaK); // only pines in the snow
   const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 3, 5);
   const trunkMat = lam(0x7a4a2a);
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREES + ROUND);
@@ -1809,7 +1811,7 @@ function buildScenery(track) {
   const m = new THREE.Matrix4();
   const greens = snow ? [0x2f6b4a, 0x3a7a55, 0x2c5e43, 0x356f4c, 0x2a5a41] : [0x3f9a4a, 0x55b35a, 0x2f8a52, 0x6cc46a, 0x3b8f3f], warm = [0x6cc46a, 0x86c95a, 0xa7c957, 0x4fae54, 0xd9a441];
   let placed = 0, nc = 0, nr = 0, tries = 0;
-  while (placed < TREES + ROUND && tries++ < 6000) {
+  while (placed < TREES + ROUND && tries++ < 6000 * areaK) {
     const [x, z] = randIn(5);
     if (!isFree(track, x, z, 2.5, hw + 9)) continue;
     const sc = 0.7 + rnd() * 0.9;
@@ -2469,7 +2471,7 @@ const CAR_CLASSES = { open: {
   maxDrive: 8000,    // N, torque limit at low speed
   topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
   reverseSpeed: 9,   // m/s
-  brakeForce: 18000, // N, full pedal (ABS below keeps it within grip)
+  brakeForce: 8500,  // N, full pedal: about 1 g at most, so it can be driven on a key
   dive: 0.003,       // how far the body pitches per m/s^2 of braking or acceleration
   maxDive: 0.025,    // rad: most it pitches (any more and the front wing would touch the road)
   rollGain: 0.004,   // how far it rolls per m/s^2 of cornering
@@ -2625,7 +2627,7 @@ function stepLocal(car, dt, canDrive) {
   car.steerAngle = lerp(car.steerAngle, steerTarget, 1 - Math.exp(-dt * rate));
   const delta = car.steerAngle;
   // brake pressure builds over a moment, so a tap is a dab rather than a stamp
-  car.brakeAmt = lerp(car.brakeAmt || 0, brake, 1 - Math.exp(-dt * (brake ? 5 : 14)));
+  car.brakeAmt = lerp(car.brakeAmt || 0, brake, 1 - Math.exp(-dt * (brake ? 3 : 14)));
 
   // ---- substep the tyre model for stability ----
   const SUB = 3;
@@ -2939,13 +2941,10 @@ function stepRemotes(now, dt) {
 const camTarget = new THREE.Vector3();
 const cockpitEye = new THREE.Vector3(0, 1.22, 0.62); // just ahead of the halo strut so nothing blocks the view
 const faceForward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); // cameras look down -z, the car drives toward +z
-// Each car remembers its own camera. The open seater starts in the cockpit,
-// the closed cars outside behind the car.
+// Every race starts in the car's own view: the cockpit in the open seater,
+// outside behind the car in the others. C switches for the rest of that race.
 const CAM_DEFAULT = { open: 'cockpit', rally: 'chase', camry: 'chase' };
-function camFor(cls) {
-  try { const v = localStorage.getItem('dc-cam-' + cls); if (v === 'cockpit' || v === 'chase') return v; } catch {}
-  return CAM_DEFAULT[cls] || 'chase';
-}
+const camFor = (cls) => CAM_DEFAULT[cls] || 'chase';
 app.camMode = camFor('open');
 const camPos = new THREE.Vector3();
 const _ce = new THREE.Euler(), _cq = new THREE.Quaternion();
@@ -3225,7 +3224,6 @@ function setMenu(open) {
 }
 function toggleCamera() {
   app.camMode = app.camMode === 'cockpit' ? 'chase' : 'cockpit';
-  try { localStorage.setItem('dc-cam-' + app.carClass, app.camMode); } catch {}
   $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
   if (inRace()) raceToast(app.camMode === 'cockpit' ? 'Cockpit camera' : 'Chase camera', 1200);
 }
