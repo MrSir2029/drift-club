@@ -2076,7 +2076,8 @@ function buildRallyBody(K) {
   for (const sx of [-1, 1]) {
     box(0.02, 0.13, 2.7, accent, sx * 0.925, 0.7, -0.3, false);
     box(0.02, 0.36, 0.44, K.lightCar ? dark : accent, sx * 0.93, 0.8, -0.05, false);
-    box(0.14, 0.1, 0.1, dark, sx * 0.99, 1.04, 0.62, false);
+    rod([sx * 0.83, 1.0, 0.64], [sx * 0.92, 1.05, 0.61], 0.04, dark);                       // mirror arm, out of the door
+    box(0.13, 0.1, 0.12, dark, sx * 0.97, 1.06, 0.6, false);
   }
   for (const [x, z] of wheels) {
     const sx = Math.sign(x);
@@ -2102,7 +2103,8 @@ function buildCamryBody(K) {
     rod([sx * 0.86, 0.95, -1.72], [sx * 0.7, 1.45, -1.0], 0.09, body);
     faceLamp(K, K.lamp, sx * 0.6, 0.17, 0.71, 2.371, 0.85, 2.245, 1);                      // headlights, on the raked nose
     faceLamp(K, K.brake, sx * 0.6, 0.2, 0.74, -2.3615, 0.86, -2.306, -1);                  // tail lights
-    box(0.16, 0.1, 0.1, body, sx * 0.99, 1.0, 0.75, false);                                // mirrors
+    rod([sx * 0.83, 0.98, 0.78], [sx * 0.92, 1.01, 0.75], 0.04, body);                     // mirrors, on arms out of the doors
+    box(0.15, 0.1, 0.12, body, sx * 0.97, 1.02, 0.74, false);
     for (const z of [0.2, -0.75]) box(0.03, 0.04, 0.2, K.rim, sx * 0.925, 0.84, z, false); // door handles
     box(0.02, 0.05, 3.3, dark, sx * 0.925, 0.48, -0.05, false);                            // rubbing strip
   }
@@ -2117,9 +2119,9 @@ function buildCamryBody(K) {
   return { wheels, rim: K.rim, hub: K.rim, band: null };
 }
 
-// What you see from the driver's seat of the closed cars: dashboard, dials,
-// steering wheel, rear-view mirror and roof lining, plus a roll cage in the
-// rally car and a screen in the Camry. Only built for your own car, and only
+// What you see from the driver's seat of the closed cars: dashboard with
+// dials, steering wheel on its column, rear-view mirror, roof lining, door
+// panels, and a screen in the Camry. Only built for your own car, and only
 // shown in cockpit view; from outside it would all be behind the tinted
 // glass anyway.
 function buildInterior(car, cls) {
@@ -2142,13 +2144,14 @@ function buildInterior(car, cls) {
   box(1.6, 0.03, len, 0x24272f, 0, 0.32, mid);
   for (const sx of [-1, 1]) box(0.14, sill - 0.32, len, trim, sx * 0.81, (sill + 0.32) / 2, mid);
   box(0.24, 0.3, 0.9, trim, 0, 0.47, back - 0.45);
-  // instrument binnacle with two dials, on the back edge of the dash
-  const by = top + 0.045, bz = back + 0.1;
-  box(0.46, 0.09, 0.2, 0x1d2230, DX, by, bz);
+  // instruments set into the face of the dash, where you see them through
+  // the top of the steering wheel
+  const iy = rally ? 0.93 : 0.925;
+  box(0.44, 0.16, 0.02, 0x1d2230, DX, iy, back - 0.01);
   for (const dx of [-0.11, 0.11]) {
-    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 12), L(0xe9e4d8));
-    dial.rotation.x = Math.PI / 2; dial.position.set(DX + dx, by, bz - 0.105); g.add(dial);
-    box(0.012, 0.05, 0.01, 0xe6453a, DX + dx, by + 0.01, bz - 0.118).rotation.z = 0.7; // needle
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.02, 12), L(0xe9e4d8));
+    dial.rotation.x = Math.PI / 2; dial.position.set(DX + dx, iy, back - 0.025); g.add(dial);
+    box(0.012, 0.045, 0.01, 0xe6453a, DX + dx, iy + 0.01, back - 0.038).rotation.z = 0.7; // needle
   }
   // rear-view mirror hanging from the top of the windscreen
   const my = rally ? 1.36 : 1.35, mz = rally ? 0.2 : 0.3;
@@ -2158,23 +2161,12 @@ function buildInterior(car, cls) {
   // turned the ceiling green
   const lining = new THREE.Mesh(new THREE.BoxGeometry(rally ? 1.34 : 1.36, 0.04, rally ? 1.52 : 1.3), new THREE.MeshBasicMaterial({ color: rally ? 0x30343e : 0x9e978a }));
   lining.position.set(0, rally ? 1.42 : 1.41, rally ? -0.6 : -0.35); g.add(lining);
-  if (rally) {
-    // roll cage: tubes inside the windscreen pillars, a bar across the top of
-    // the windscreen, and rails over your head back to the hoop behind you
-    const c = 0xd9dde3;
-    for (const sx of [-1, 1]) {
-      tube([sx * 0.76, 1.0, 0.62], [sx * 0.62, 1.38, 0.12], c);
-      tube([sx * 0.62, 1.38, 0.12], [sx * 0.63, 1.38, -0.75], c);
-      tube([sx * 0.76, 1.0, -0.75], [sx * 0.63, 1.38, -0.75], c);
-    }
-    tube([-0.62, 1.38, 0.12], [0.62, 1.38, 0.12], c);
-    tube([-0.63, 1.38, -0.75], [0.63, 1.38, -0.75], c);
-  } else {
+  if (!rally) {
     box(0.2, 0.11, 0.02, 0x2a4a7a, 0, top + 0.05, back + 0.18).rotation.x = -0.5; // touch screen
   }
   // steering wheel, tilted toward the driver; the inner group turns with the front wheels
   const wz = rally ? 0.02 : 0.06, wy = 0.96, r = rally ? 0.18 : 0.17;
-  tube([DX, wy, wz + 0.02], [DX, wy + 0.04, back + 0.02], 0x1d2230, 0.05); // column, into the dash
+  tube([DX, wy - 0.02, wz + 0.04], [DX, wy - 0.15, back + 0.03], 0x2b2f3a, 0.11); // column cover, angling down into the dash
   const tilt = new THREE.Group(); tilt.position.set(DX, wy, wz); tilt.rotation.x = -0.35; g.add(tilt);
   const steer = new THREE.Group(); steer.userData.dyn = true; tilt.add(steer);
   steer.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.024, 6, 20), L(0x1d2230)));
