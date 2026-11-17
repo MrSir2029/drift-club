@@ -8,6 +8,7 @@ export const UPDATES = [
       'The steering wheel sits on a proper column instead of floating, and the dials are set into the dash where you can see them through the wheel.',
       'The rally car lost its roll cage: from inside it looked like a second roof.',
       'Door mirrors are attached to the doors on arms instead of floating beside the car.',
+      'Each car remembers its own camera (C): the open seater starts in the cockpit, the rally car and the Camry start outside.',
     ],
   },
   {

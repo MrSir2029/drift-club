@@ -2425,6 +2425,8 @@ function setCarClass(cls) {
   PHYS.maxSpeed = CAR.topSpeed;
   cockpitEye.set(...CAR.eye);
   audio.gear = 0;
+  app.camMode = camFor(cls);
+  const b = document.querySelector('#btn-cam'); if (b) b.textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
 }
 
 function tyreForce(surf, Fz, alpha) {
@@ -2804,7 +2806,14 @@ function stepRemotes(now, dt) {
 const camTarget = new THREE.Vector3();
 const cockpitEye = new THREE.Vector3(0, 1.22, 0.62); // just ahead of the halo strut so nothing blocks the view
 const faceForward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); // cameras look down -z, the car drives toward +z
-try { app.camMode = localStorage.getItem('dc-cam') === 'cockpit' ? 'cockpit' : 'chase'; } catch { app.camMode = 'chase'; }
+// Each car remembers its own camera. The open seater starts in the cockpit,
+// the closed cars outside behind the car.
+const CAM_DEFAULT = { open: 'cockpit', rally: 'chase', camry: 'chase' };
+function camFor(cls) {
+  try { const v = localStorage.getItem('dc-cam-' + cls); if (v === 'cockpit' || v === 'chase') return v; } catch {}
+  return CAM_DEFAULT[cls] || 'chase';
+}
+app.camMode = camFor('open');
 const camPos = new THREE.Vector3();
 const _ce = new THREE.Euler(), _cq = new THREE.Quaternion();
 let camInit = false;
@@ -3083,7 +3092,7 @@ function setMenu(open) {
 }
 function toggleCamera() {
   app.camMode = app.camMode === 'cockpit' ? 'chase' : 'cockpit';
-  try { localStorage.setItem('dc-cam', app.camMode); } catch {}
+  try { localStorage.setItem('dc-cam-' + app.carClass, app.camMode); } catch {}
   $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
   if (inRace()) raceToast(app.camMode === 'cockpit' ? 'Cockpit camera' : 'Chase camera', 1200);
 }
