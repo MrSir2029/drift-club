@@ -11,6 +11,7 @@ export const UPDATES = [
       'Hosts choose how many laps a race has, from 1 to 10.',
       'Open seater brakes are gentler and build up over a moment instead of slamming on.',
       'Fixed the rear wing side plates glitching through the rear tyres.',
+      'Proper cockpit view in the rally car and the Camry: you sit behind a dashboard with dials and a steering wheel that turns as you steer, and the view stays steadier in corners.',
       'The Settings and Leave room buttons in the lobby are solid now, so you can actually see them.',
     ],
   },

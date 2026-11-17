@@ -1864,7 +1864,7 @@ function hexa(c) {
 // symmetric slab: half-widths at the bottom and top, and where the front and rear faces sit at each height
 const slab = (wB, wT, y0, y1, zfB, zfT, zrT, zrB) => hexa([[-wB, y0, zfB], [wB, y0, zfB], [wB, y0, zrB], [-wB, y0, zrB], [-wT, y1, zfT], [wT, y1, zfT], [wT, y1, zrT], [-wT, y1, zrT]]);
 
-function makeCarMesh(colorIdx, name, isMe, cls = app.carClass) {
+function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) {
   const g = new THREE.Group();
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
   const lightCar = colorIdx === 8 || colorIdx === 2 || colorIdx === 11;
@@ -1886,6 +1886,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass) {
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
   mergeStatic(g, new Set([K.brake])); // ~70 parts into one; the brake lights stay apart because they light up
+  const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
 
   const wheels = [];
   for (const [x, z, w, r] of wheelSpec.wheels) {
@@ -1911,7 +1912,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass) {
     label.position.y = cls === 'rally' ? 2.8 : cls === 'camry' ? 2.7 : 2.5;
     g.add(label);
   }
-  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls };
+  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer };
 }
 
 // Open-wheel single seater: stepped floor, slim monocoque running into a
@@ -2075,6 +2076,67 @@ function buildCamryBody(K) {
   return { wheels, rim: K.rim, hub: K.rim, band: null };
 }
 
+// What you see from the driver's seat of the closed cars: dashboard, dials,
+// steering wheel, rear-view mirror and roof lining, plus a roll cage in the
+// rally car and a screen in the Camry. Only built for your own car, and only
+// shown in cockpit view; from outside it would all be behind the tinted
+// glass anyway.
+function buildInterior(car, cls) {
+  const rally = cls === 'rally';
+  const g = new THREE.Group(); g.userData.dyn = true; g.visible = false; car.add(g);
+  const mats = new Map();
+  const L = (c) => { let m = mats.get(c); if (!m) mats.set(c, m = new THREE.MeshLambertMaterial({ color: c, flatShading: true })); return m; };
+  const box = (w, h, d, c, x, y, z, parent = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), L(c)); m.position.set(x, y, z); parent.add(m); return m; };
+  const tube = (a, b, c, th = 0.045) => g.add(strut(V(...a), V(...b), th, th, L(c)));
+  const DX = -0.36; // the driver sits on the right
+  // dashboard across the car, from the windscreen back to the driver's knees
+  const dashTop = rally ? 1.01 : 0.99, dashFront = rally ? 0.8 : 0.88, dashBack = rally ? -0.3 : -0.2;
+  box(rally ? 1.6 : 1.66, 0.03, dashFront - dashBack, rally ? 0x2b2f3a : 0x3a3f4a, 0, dashTop - 0.015, (dashFront + dashBack) / 2);
+  // instrument binnacle with two dials
+  const by = dashTop + 0.045, bz = 0.42;
+  box(0.46, 0.09, 0.2, 0x1d2230, DX, by, bz);
+  for (const dx of [-0.11, 0.11]) {
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 12), L(0xe9e4d8));
+    dial.rotation.x = Math.PI / 2; dial.position.set(DX + dx, by, bz - 0.105); g.add(dial);
+    box(0.012, 0.05, 0.01, 0xe6453a, DX + dx, by + 0.01, bz - 0.118).rotation.z = 0.7; // needle
+  }
+  // rear-view mirror hanging from the top of the windscreen
+  const my = rally ? 1.36 : 1.35, mz = rally ? 0.2 : 0.3;
+  box(0.24, 0.06, 0.03, 0x1d2230, 0, my, mz);
+  box(0.02, 0.06, 0.02, 0x1d2230, 0, my + 0.05, mz + 0.01);
+  // roof lining: unlit, because the light from below is grass green and
+  // turned the ceiling green
+  const lining = new THREE.Mesh(new THREE.BoxGeometry(rally ? 1.34 : 1.36, 0.04, rally ? 1.52 : 1.3), new THREE.MeshBasicMaterial({ color: rally ? 0x30343e : 0x9e978a }));
+  lining.position.set(0, rally ? 1.42 : 1.41, rally ? -0.6 : -0.35); g.add(lining);
+  if (rally) {
+    // roll cage: tubes inside the windscreen pillars, a bar across the top of
+    // the windscreen, and rails over your head back to the hoop behind you
+    const c = 0xd9dde3;
+    for (const sx of [-1, 1]) {
+      tube([sx * 0.76, 1.0, 0.62], [sx * 0.62, 1.38, 0.12], c);
+      tube([sx * 0.62, 1.38, 0.12], [sx * 0.63, 1.38, -0.75], c);
+      tube([sx * 0.76, 1.0, -0.75], [sx * 0.63, 1.38, -0.75], c);
+    }
+    tube([-0.62, 1.38, 0.12], [0.62, 1.38, 0.12], c);
+    tube([-0.63, 1.38, -0.75], [0.63, 1.38, -0.75], c);
+  } else {
+    box(0.2, 0.11, 0.02, 0x2a4a7a, 0, dashTop + 0.05, 0.5).rotation.x = -0.5; // touch screen
+  }
+  // steering wheel, tilted toward the driver; the inner group turns with the front wheels
+  const wz = rally ? 0.02 : 0.06, wy = 0.93, r = rally ? 0.18 : 0.17;
+  tube([DX, wy, wz + 0.02], [DX, dashTop - 0.01, 0.36], 0x1d2230, 0.05); // column
+  const tilt = new THREE.Group(); tilt.position.set(DX, wy, wz); tilt.rotation.x = -0.35; g.add(tilt);
+  const steer = new THREE.Group(); steer.userData.dyn = true; tilt.add(steer);
+  steer.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.024, 6, 20), L(0x1d2230)));
+  for (const a of [0, Math.PI, -Math.PI / 2]) { // three spokes: left, right, down
+    const sp = box(r, 0.032, 0.02, 0x5a6372, Math.cos(a) * r / 2, Math.sin(a) * r / 2, 0, steer); sp.rotation.z = a;
+  }
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 10), L(rally ? 0xe6453a : 0xb9c0cc));
+  hub.rotation.x = Math.PI / 2; steer.add(hub);
+  mergeStatic(g); mergeStatic(steer);
+  return { group: g, steer };
+}
+
 function makeLabel(text, color) {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 64;
@@ -2111,7 +2173,7 @@ function clearCars() {
 
 function spawnLocal(slot) {
   const { pos, heading, idx } = startSlot(app.track, slot);
-  const mesh = makeCarMesh(app.color, app.name, true);
+  const mesh = makeCarMesh(app.color, app.name, true, app.carClass, true);
   const car = {
     pos, h: heading, speed: 0, vx: 0, vz: 0, yawRate: 0, steerAngle: 0, ax: 0, slip: 0, vy: 0, airborne: false,
     idx, lastIdx: idx, onTrack: true, nextCp: 1, lap: 1, lastCpIdx: 0, fellTimer: 0,
@@ -2217,6 +2279,7 @@ const fwd = new THREE.Vector3();
 const CAR_CLASSES = { open: {
   label: 'Open seater',
   eye: [0, 1.22, 0.62],                     // cockpit camera, just ahead of the halo strut
+  ckFov: 78, ckFovAdd: 12, ckPitch: 1, ckRoll: 1, // cockpit view angle (plus more at speed), and how much of the body's pitch and roll the camera follows
   gears: [11, 18, 26, 34, 42, 50, 62],      // top speed of each gear, m/s
   engine: [75, 620],                        // engine note: idle Hz, rev range Hz
   grip: { tarmac: 1, gravel: 0.9, grass: 0.95 },
@@ -2241,7 +2304,8 @@ const CAR_CLASSES = { open: {
   // Heavier, taller and softer, with almost no downforce: slower on tarmac,
   // but its tyres bite on gravel and grass where the single seater skates.
   label: 'Rally',
-  eye: [0.3, 1.32, 0.42],                   // driver's seat, close to the windscreen
+  eye: [-0.36, 1.22, -0.55],                // driver's seat (right-hand drive), behind the wheel
+  ckFov: 60, ckFovAdd: 8, ckPitch: 0.5, ckRoll: 0.35,
   gears: [9, 15, 22, 30, 38, 46, 54],
   engine: [52, 430],
   grip: { tarmac: 0.9, gravel: 1.22, grass: 1.25 },
@@ -2266,7 +2330,8 @@ const CAR_CLASSES = { open: {
   // A sensible family saloon doing something it was never meant to do: soft,
   // heavy, modest power, ordinary tyres. Everyone has the same one.
   label: 'Toyota Camry',
-  eye: [0.36, 1.22, 0.2],
+  eye: [-0.36, 1.21, -0.45],
+  ckFov: 60, ckFovAdd: 8, ckPitch: 0.5, ckRoll: 0.35,
   gears: [8, 14, 20, 27, 34, 41, 47],
   engine: [45, 330],
   grip: { tarmac: 0.84, gravel: 0.88, grass: 0.9 },
@@ -2573,6 +2638,7 @@ function stepLocal(car, dt, canDrive) {
     w.mesh.rotation.x = car.wheelSpin;
     if (w.front) w.pivot.rotation.y = car.steerAngle;
   }
+  if (car.mesh.steer) car.mesh.steer.rotation.z = -car.steerAngle * 5; // steering wheel: about 5 turns of the wheel per turn of the tyres
   car.braking = brake && vLong > 0.6;
   car.mesh.brakeMat.emissive.setHex(car.braking ? 0xff2020 : 0x000000);
 
@@ -2665,6 +2731,7 @@ const cockpitEye = new THREE.Vector3(0, 1.22, 0.62); // just ahead of the halo s
 const faceForward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); // cameras look down -z, the car drives toward +z
 try { app.camMode = localStorage.getItem('dc-cam') === 'cockpit' ? 'cockpit' : 'chase'; } catch { app.camMode = 'chase'; }
 const camPos = new THREE.Vector3();
+const _ce = new THREE.Euler(), _cq = new THREE.Quaternion();
 let camInit = false;
 
 function updateCamera(dt) {
@@ -2683,16 +2750,18 @@ function updateCamera(dt) {
     return;
   }
   const car = app.local;
+  if (car.mesh.interior) car.mesh.interior.visible = app.camMode === 'cockpit';
   sun.position.set(car.pos.x + 80, car.pos.y + 140, car.pos.z + 60);
   sun.target.position.copy(car.pos);
   if (app.camMode === 'cockpit') {
-    // driver's eye: just above the helmet, locked to the car so it pitches and rolls with it
-    const g = car.mesh.group;
-    g.updateMatrixWorld();
-    camera.position.copy(cockpitEye).applyMatrix4(g.matrixWorld);
-    camera.quaternion.copy(g.quaternion).multiply(faceForward);
+    // the driver's eye, carried by the car. The closed cars only follow part
+    // of the body's pitch and roll, the way your head keeps itself level.
+    _ce.set(car.pitch * CAR.ckPitch, car.h, car.roll * CAR.ckRoll, 'YXZ');
+    _cq.setFromEuler(_ce);
+    camera.position.copy(cockpitEye).applyQuaternion(_cq).add(car.pos);
+    camera.quaternion.copy(_cq).multiply(faceForward);
     const k = clamp(Math.abs(car.speed) / PHYS.maxSpeed, 0, 1);
-    camera.fov = lerp(camera.fov, 78 + k * 12, 1 - Math.exp(-dt * 4));
+    camera.fov = lerp(camera.fov, CAR.ckFov + k * CAR.ckFovAdd, 1 - Math.exp(-dt * 4));
     camera.near = 0.12;
     camera.updateProjectionMatrix();
     camInit = false; // so the chase camera snaps into place when you switch back
