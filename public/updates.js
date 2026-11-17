@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.7', date: '17 Nov 2026', title: 'Cockpit tidy-up',
+    items: [
+      'The steering wheel sits on a proper column instead of floating, and the dials are set into the dash where you can see them through the wheel.',
+      'The rally car lost its roll cage: from inside it looked like a second roof.',
+      'Door mirrors are attached to the doors on arms instead of floating beside the car.',
+    ],
+  },
+  {
     v: '1.6', date: '17 Nov 2026', title: 'Cockpit and lights',
     items: [
       'Cockpit view: the whole steering wheel shows now, in front of a proper dashboard instead of half buried in it, and the view looks a touch lower so the roof takes up less of the screen.',
