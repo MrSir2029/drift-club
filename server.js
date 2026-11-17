@@ -27,12 +27,28 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
+// Cloudflare Web Analytics: put the token from Cloudflare's JS snippet in the
+// CF_BEACON_TOKEN environment variable (on Render: the service's Environment
+// tab) and every page loads Cloudflare's beacon, which counts visits without
+// cookies. With no token set, nothing is added.
+const CF_TOKEN = String(process.env.CF_BEACON_TOKEN || '').replace(/[^A-Za-z0-9]/g, '');
+const BEACON = CF_TOKEN ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${CF_TOKEN}"}'></script>\n` : '';
+const withBeacon = (html) => BEACON ? html.toString().replace('</body>', BEACON + '</body>') : html;
+
 // ---------- static file server ----------
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     return res.end('ok');
+  }
+  if (url.pathname === '/stats.json') {
+    res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races }));
+  }
+  if (url.pathname === '/stats') {
+    res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' });
+    return res.end(statsPage());
   }
   let file = url.pathname === '/' ? '/index.html' : url.pathname;
   file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
@@ -46,8 +62,8 @@ const server = http.createServer((req, res) => {
       // Unknown paths fall back to the app so room links like /ABCD work.
       return fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (e2, html) => {
         if (e2) { res.writeHead(404); return res.end('not found'); }
-        res.writeHead(200, { 'Content-Type': MIME['.html'] });
-        res.end(html);
+        res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache' });
+        res.end(withBeacon(html));
       });
     }
     res.writeHead(200, {
@@ -55,12 +71,53 @@ const server = http.createServer((req, res) => {
       'Cache-Control': 'no-cache',
       'X-Content-Type-Options': 'nosniff',
     });
-    res.end(data);
+    res.end(path.extname(full) === '.html' ? withBeacon(data) : data);
   });
 });
 
 // ---------- rooms ----------
 const rooms = new Map();
+
+// ---------- who's playing: /stats ----------
+// Live counts, plus totals since the server started. Nothing is stored, so
+// the totals reset whenever the server restarts.
+const stats = { since: Date.now(), visits: 0, races: 0, peak: 0, peakAt: Date.now() };
+function liveCounts() {
+  let inRooms = 0, racing = 0;
+  for (const r of rooms.values()) {
+    inRooms += r.players.size;
+    if (r.phase === 'countdown' || r.phase === 'racing') racing += r.players.size;
+  }
+  const online = wss.clients.size;
+  return { online, racing, lobby: inRooms - racing, home: Math.max(0, online - inRooms), rooms: rooms.size };
+}
+function ago(t) {
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  return s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${Math.round(s / 86400)} days`;
+}
+function statsPage() {
+  const c = liveCounts();
+  const box = (n, label) => `<div class="box"><b>${n}</b><span>${label}</span></div>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="10"><title>Who's playing</title>
+<style>
+body { margin: 0; font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; background: #8ad4f5; color: #1d2230; }
+main { max-width: 560px; margin: 24px auto; padding: 20px; background: #fffaf0; border: 3px solid #1d2230; border-radius: 16px; box-shadow: 0 6px 0 #1d2230; }
+h1 { margin: 0 0 14px; font-size: 26px; } h2 { font-size: 15px; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; }
+.big { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; } .big b { font-size: 64px; line-height: 1; color: #ff8a3d; -webkit-text-stroke: 2px #1d2230; }
+.big span { font-size: 20px; font-weight: 800; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.box { border: 3px solid #1d2230; border-radius: 12px; padding: 8px 10px; background: #fff; } .box b { display: block; font-size: 26px; } .box span { font-size: 13px; font-weight: 700; color: #6b7280; }
+ul { margin: 0; padding-left: 20px; line-height: 1.7; font-weight: 600; } .note { font-size: 13px; color: #6b7280; font-weight: 600; margin: 18px 0 0; }
+</style></head><body><main>
+<h1>Drift Club: who's playing</h1>
+<div class="big"><b>${c.online}</b><span>${c.online === 1 ? 'person' : 'people'} online now</span></div>
+<div class="row">${box(c.racing, 'racing')}${box(c.lobby, 'in a lobby')}${box(c.home, 'on the home screen')}${box(c.rooms, c.rooms === 1 ? 'room open' : 'rooms open')}</div>
+<h2>Since the server started, ${ago(stats.since)} ago</h2>
+<ul><li>Most online at once: <b>${stats.peak}</b>${stats.peak ? ` (${ago(stats.peakAt)} ago)` : ''}</li><li>Times the game was opened: <b>${stats.visits}</b></li><li>Races started: <b>${stats.races}</b></li></ul>
+<p class="note">Updates by itself every 10 seconds. The totals start again from zero whenever the server restarts (after a deploy, or when Render's free plan puts it to sleep because nobody's on). For visitors over days and weeks, see Cloudflare Web Analytics.</p>
+</main></body></html>`;
+}
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, they look like 1 and 0
 
 function makeCode() {
@@ -172,6 +229,7 @@ function startRace(room, mode) {
   room.dirty.clear();
   for (const p of room.players.values()) { p.finished = false; p.best = null; }
   room.startAt = Date.now() + 4000;
+  stats.races++;
   broadcast(room, startMessage(room));
   setTimeout(() => { if (room.phase === 'countdown') room.phase = 'racing'; }, 4000);
   if (room.endTimer) clearTimeout(room.endTimer);
@@ -213,6 +271,8 @@ function showResults(room) {
 const wss = new WebSocketServer({ server, maxPayload: 2048 });
 
 wss.on('connection', (ws) => {
+  stats.visits++;
+  if (wss.clients.size > stats.peak) { stats.peak = wss.clients.size; stats.peakAt = Date.now(); }
   const player = { id: nextPlayerId++, ws, name: 'Racer', color: 0, room: null, finished: false, stateCount: 0, alive: true };
 
   ws.on('pong', () => { player.alive = true; });

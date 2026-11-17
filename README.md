@@ -5,9 +5,10 @@ hosts, gets a 4-letter room code, and everyone else joins with the code or the
 invite link. Up to 20 racers per room, 1 to 10 laps, four tracks, two car
 classes (open seater and rally), qualifying sessions, low-poly 3D.
 
-No accounts, no chat, no ads, no trackers, no downloads. Everything the game
+No accounts, no chat, no ads, no cookies, no downloads. Everything the game
 needs is served from this folder, including the 3D library, so it works on a
-LAN with no internet at all.
+LAN with no internet at all. (The one optional extra is Cloudflare Web
+Analytics for counting visitors; see "Seeing who's playing".)
 
 ## Run it on your computer
 
@@ -65,8 +66,10 @@ are, the fix is to ask whoever runs the network to allow the URL. The things
 that usually make that an easy "yes":
 
 - no chat or free text between players (names are letters and numbers only)
-- nothing is loaded from any third-party site
-- no accounts, no personal data collected, nothing stored on the server
+- nothing the game needs is loaded from any third-party site (if you turn on
+  Cloudflare Web Analytics, the page also loads Cloudflare's small counting
+  script; if a filter blocks it, the game still works)
+- no accounts, no cookies, nothing stored on the server
 - the code is small enough to read in one sitting (`server.js` and `public/`)
 
 ## Controls
@@ -82,11 +85,11 @@ that usually make that an easy "yes":
 | M | sound on / off |
 | Esc | menu: resume, camera, graphics, leave |
 
-On a phone or tablet, buttons appear on screen: the arrows on the left
+On a phone or tablet (never on a computer), buttons appear on screen: the arrows on the left
 steer; Gas, Brake and Handbrake are on the right; Reset and Camera sit above
 the arrows, and Menu is top right. A thumb can slide from one button to the
-next without lifting. The buttons show up when you touch the screen and hide
-again when you press a driving key. Turn a phone sideways for the best view.
+next without lifting. They hide while a keyboard is used to drive and come
+back at the next touch. Turn a phone sideways for the best view.
 
 Drive through the orange gates in order. The glowing one is your next gate.
 Cutting across the grass doesn't count. There is no automatic reset: drive
@@ -142,6 +145,34 @@ is `SECRET_CODE` at the top of `public/game.js`. Inside: **Race to 9LAT2**
 arrow and the beam of light) and **Toyota Camry**, a car class where
 everyone drives the same family saloon.
 
+## Seeing who's playing
+
+Open `/stats` on your site (for example
+`https://drift-club.onrender.com/stats`) for a live count: how many people
+have the game open, how many are racing, in a lobby or on the home screen,
+and how many rooms are open, plus the most online at once and the races
+started since the server last started. It refreshes itself every 10 seconds.
+The numbers are only kept in memory, so they start again from zero whenever
+the server restarts (a deploy, or the free plan going to sleep).
+`/stats.json` has the same numbers for scripts.
+
+For visitors over days and weeks, use Cloudflare Web Analytics. It's free and
+sets no cookies, so it needs no cookie banner:
+
+1. Sign in at https://dash.cloudflare.com (a free account is fine) and open
+   **Web Analytics**. If it isn't in the sidebar, search for it.
+2. **Add a site** and enter your game's address, e.g.
+   `drift-club.onrender.com`. Your domain doesn't need to be on Cloudflare.
+3. Cloudflare shows a snippet with `"token": "..."` in it. Copy the token, the
+   long code between the quotes.
+4. On Render, open the service, go to **Environment**, add a variable called
+   `CF_BEACON_TOKEN` with the token as its value, save, and deploy.
+5. Play a race. Visits show up in Cloudflare within a few minutes.
+
+The server only adds Cloudflare's script to the page when `CF_BEACON_TOKEN`
+is set. If a school filter blocks the script, the game still works; those
+visits just aren't counted.
+
 ## Telling players what's new
 
 `public/updates.js` is the list behind the **What's new** button on the
@@ -150,7 +181,7 @@ get a red dot on the button until they've read it.
 
 ## How it works
 
-- `server.js`: static files + WebSocket rooms. Each client sends its car
+- `server.js`: static files, the `/stats` page, and WebSocket rooms. Each client sends its car
   position, velocity and a timestamp 30 times a second; the server batches
   whatever changed and relays it to the room at 30 Hz. Finish order is
   decided by the order finish messages arrive.

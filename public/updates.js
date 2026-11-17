@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.17', date: '17 Nov 2026', title: 'Touch buttons on phones only',
+    items: [
+      'The touch buttons only appear on phones and tablets, never on a computer, even one with a touchscreen.',
+    ],
+  },
+  {
     v: '1.16', date: '17 Nov 2026', title: 'Touch controls',
     items: [
       'Race on a phone or tablet: steer with the arrows on the left; gas, brake and handbrake on the right; Reset and Camera above the arrows. You can slide your thumb from one button to the next without lifting it.',

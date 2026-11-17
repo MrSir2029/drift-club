@@ -271,8 +271,8 @@ input:focus { border-color: var(--blue); }
 .hud-delta.behind { color: #d33b2f; }
 
 /* ---------- touch controls (phones and tablets) ----------
-   body.touch is set when the screen is touched (or the device is touch-first)
-   and cleared again when a driving key is pressed. */
+   body.touch is set on phones and tablets only (never on a computer), and
+   cleared while a keyboard is being used to drive. */
 .touch-only { display: none; }
 body.touch .touch-only { display: inline; }
 body.touch .kb-only { display: none; }
