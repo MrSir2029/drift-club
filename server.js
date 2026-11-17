@@ -293,7 +293,7 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'state': {
-        // [t, x, y, z, heading, vx, vz, yawRate, pitch, roll, lap, nextGate, progress, flags]
+        // [t, x, y, z, heading, vx, vz, yawRate, groundPitch, groundRoll, lap, nextGate, progress, flags, bodyPitch, bodyRoll]
         // t is the sender's own clock: receivers use it to space the positions
         // out evenly however unevenly the network delivers them.
         if (!room || (room.phase !== 'racing' && room.phase !== 'countdown')) return;
@@ -306,6 +306,7 @@ wss.on('connection', (ws) => {
           n(1, -5000, 5000), n(2, -500, 500), n(3, -5000, 5000),
           n(4, -1e4, 1e4), n(5, -200, 200), n(6, -200, 200), n(7, -20, 20), n(8, -2, 2), n(9, -2, 2),
           Math.max(0, Math.min(999, a[10] | 0)), Math.max(0, Math.min(99, a[11] | 0)), n(12, 0, 1), a[13] & 7,
+          n(14, -1, 1), n(15, -1, 1),
         ]);
         room.dirty.add(player.id);
         break;

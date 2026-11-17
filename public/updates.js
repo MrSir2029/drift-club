@@ -11,6 +11,8 @@ export const UPDATES = [
       'Hosts choose how many laps a race has, from 1 to 10.',
       'Open seater brakes are gentler and build up over a moment instead of slamming on.',
       'Fixed the rear wing side plates glitching through the rear tyres.',
+      'Cars no longer sink into the road on hills, and only the body leans (outwards in corners, nose down under braking) while the wheels stay on the road.',
+      'Medium graphics are much sharper: full screen resolution with smooth edges, so the distant ground no longer looks pixelated. Auto no longer blurs the picture when that would not make the game faster.',
       'Proper cockpit view in the rally car and the Camry: you sit behind a dashboard with dials and a steering wheel that turns as you steer, and the view stays steadier in corners.',
       'The Settings and Leave room buttons in the lobby are solid now, so you can actually see them.',
     ],

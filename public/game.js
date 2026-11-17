@@ -62,9 +62,11 @@ try { for (const k of JSON.parse(localStorage.getItem('dc-found') || '[]')) app.
 // three.js scene
 // ---------------------------------------------------------------------------
 const canvas = $('#view');
-// multisampling is expensive on weak laptops: only on for the auto and high settings
+// Edge smoothing (multisampling) is only left off on the low setting: without
+// it, distant edges turn into jagged staircases. It's fixed when the page
+// loads, so changing to or from low takes full effect after a reload.
 const savedGfx = (() => { try { return localStorage.getItem('dc-gfx'); } catch { return null; } })();
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: savedGfx !== 'medium' && savedGfx !== 'low', powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: savedGfx !== 'low', powerPreference: 'high-performance' });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -94,6 +96,7 @@ scene.add(sun.target);
 // ---------------------------------------------------------------------------
 const TERRAIN = { size: 1600, seg: 320, heights: null, origin: { x: 0, z: 0 }, cell: 1, mesh: null };
 const ROAD_CLEARANCE = 0.3; // ground sits this far under the road so the two never fight
+const ROAD_LIFT = 0.02;      // the road surface is drawn this far above its centre line
 const VERGE = 3;            // width of the skirt that joins the curb to the ground (m)
 const VERGE_MAX_DROP = 3;   // past this drop there is no skirt: it's a bridge deck
 
@@ -246,15 +249,18 @@ function roadBelow(track, s) {
 // Graphics quality. On "auto" the game watches its own frame rate and steps
 // the detail down until it runs smoothly, which matters a lot on school
 // laptops: a choppy picture feels exactly like network lag.
+// px caps the pixel ratio: most laptops run Windows at 125% or 150% scaling,
+// so anything under 1.25 draws fewer pixels than the screen has and the
+// browser stretches it, which turns distant detail to mush.
 const GFX_LEVELS = [
-  { px: 2, shadows: true, far: 620 },
-  { px: 1.25, shadows: true, far: 620 },
-  { px: 1, shadows: false, far: 560 },
-  { px: 0.8, shadows: false, far: 460 },
-  { px: 0.62, shadows: false, far: 380 },
+  { px: 2, shadows: true, far: 620 },      // high
+  { px: 1.5, shadows: true, far: 620 },
+  { px: 1.25, shadows: false, far: 560 },  // medium: sharp, but no shadows
+  { px: 1, shadows: false, far: 460 },     // low
+  { px: 0.8, shadows: false, far: 380 },   // auto's last resort
 ];
 const GFX_FIXED = { high: 0, medium: 2, low: 3 }; // which detail level each fixed setting uses
-const gfx = { mode: 'auto', level: 0, acc: 0, frames: 0, slow: 0, fast: 0, hold: 0 };
+const gfx = { mode: 'auto', level: 0, acc: 0, frames: 0, slow: 0, fast: 0, hold: 0, trial: null, floor: 4 };
 try { const m = localStorage.getItem('dc-gfx'); if (m === 'high' || m === 'medium' || m === 'low') gfx.mode = m; } catch {}
 function applyGfx(level) {
   gfx.level = level;
@@ -268,6 +274,7 @@ function setGfxMode(mode) {
   gfx.mode = mode;
   try { localStorage.setItem('dc-gfx', mode); } catch {}
   gfx.slow = gfx.fast = gfx.acc = gfx.frames = 0;
+  gfx.trial = null; gfx.floor = GFX_LEVELS.length - 1;
   applyGfx(mode in GFX_FIXED ? GFX_FIXED[mode] : Math.min(gfx.level, 1));
   renderSettings();
 }
@@ -292,8 +299,18 @@ function watchFrameRate(ms, now) {
   if (gfx.acc < 1500) return;
   const avg = gfx.acc / gfx.frames;
   gfx.acc = gfx.frames = 0;
-  if (avg > 24) { gfx.fast = 0; if (++gfx.slow >= 2 && gfx.level < GFX_LEVELS.length - 1) { applyGfx(gfx.level + 1); gfx.slow = 0; } }
-  else if (avg < 12) { gfx.slow = 0; if (++gfx.fast >= 8 && gfx.level > 0) { applyGfx(gfx.level - 1); gfx.fast = 0; gfx.hold = now + 4000; } }
+  if (gfx.trial) {
+    // Did the last step down actually help? If not, the graphics aren't what's
+    // slow (it's the processor, or a power-saving screen): undo it and stop
+    // lowering, instead of making everything blurry for nothing.
+    if (avg > gfx.trial.avg * 0.85) { gfx.floor = gfx.trial.from; applyGfx(gfx.trial.from); gfx.hold = now + 1500; }
+    gfx.trial = null; gfx.slow = gfx.fast = 0;
+    return;
+  }
+  if (avg > 24) {
+    gfx.fast = 0;
+    if (++gfx.slow >= 2 && gfx.level < gfx.floor) { gfx.trial = { avg, from: gfx.level }; applyGfx(gfx.level + 1); gfx.hold = now + 1500; gfx.slow = 0; }
+  } else if (avg < 12) { gfx.slow = 0; if (++gfx.fast >= 8 && gfx.level > 0) { applyGfx(gfx.level - 1); gfx.fast = 0; gfx.hold = now + 4000; } }
   else gfx.slow = gfx.fast = 0;
 }
 
@@ -1887,6 +1904,13 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
   mergeStatic(g, new Set([K.brake])); // ~70 parts into one; the brake lights stay apart because they light up
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
+  // The body leans on its springs about a point at hub height; the wheels and
+  // the name tag are added after this, so they stay level with the road.
+  const leanY = CAR_CLASSES[cls]?.leanY ?? 0.4;
+  const lean = new THREE.Group(), inner = new THREE.Group();
+  lean.position.y = leanY; inner.position.y = -leanY; lean.add(inner);
+  for (const c of [...g.children]) inner.add(c);
+  g.add(lean);
 
   const wheels = [];
   for (const [x, z, w, r] of wheelSpec.wheels) {
@@ -1912,7 +1936,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
     label.position.y = cls === 'rally' ? 2.8 : cls === 'camry' ? 2.7 : 2.5;
     g.add(label);
   }
-  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer };
+  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer, lean };
 }
 
 // Open-wheel single seater: stepped floor, slim monocoque running into a
@@ -2292,7 +2316,11 @@ const CAR_CLASSES = { open: {
   topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
   reverseSpeed: 9,   // m/s
   brakeForce: 18000, // N, full pedal (ABS below keeps it within grip)
-  dive: 0.003,       // how far the nose dips under braking, for the camera and the look
+  dive: 0.003,       // how far the body pitches per m/s^2 of braking or acceleration
+  maxDive: 0.025,    // rad: most it pitches (any more and the front wing would touch the road)
+  rollGain: 0.004,   // how far it rolls per m/s^2 of cornering
+  maxRoll: 0.03,     // rad
+  leanY: 0.35,       // height the body leans about (the wheels stay level with the road)
   brakeFront: 0.6,
   dragCoef: 0.55,    // N per (m/s)^2, wings are draggy
   downforce: 3.8,    // N per (m/s)^2, wings push the car into the road at speed
@@ -2318,7 +2346,7 @@ const CAR_CLASSES = { open: {
   topSpeed: 52,
   reverseSpeed: 9,
   brakeForce: 30000,
-  dive: 0.007,
+  dive: 0.007, maxDive: 0.06, rollGain: 0.008, maxRoll: 0.08, leanY: 0.45,
   brakeFront: 0.6,
   dragCoef: 0.8,
   downforce: 0.9,
@@ -2344,7 +2372,7 @@ const CAR_CLASSES = { open: {
   topSpeed: 46,
   reverseSpeed: 8,
   brakeForce: 25000,
-  dive: 0.009,
+  dive: 0.009, maxDive: 0.06, rollGain: 0.01, maxRoll: 0.1, leanY: 0.45,
   brakeFront: 0.65,
   dragCoef: 0.6,
   downforce: 0.3,
@@ -2571,22 +2599,36 @@ function stepLocal(car, dt, canDrive) {
   }
 
   // ---- vertical ----
-  // off the road the car rides the terrain; across the verge skirt it eases
-  // from road height down to the grass, matching what's drawn
+  // Where is the surface under the car now that it has moved? (Reading it
+  // from where the car was at the start of the frame left it a frame behind.)
+  // Off the road the car rides the terrain; across the verge skirt it eases
+  // from road height down to the grass, matching what's drawn.
+  const vloc = locate(app.track, car.pos, car.idx, 30);
+  const onRoadNow = !!vloc && Math.abs(vloc.lateral) <= app.track.hw + 1.6 && Math.abs(vloc.along) < 2.5 && Math.abs(vloc.y - car.pos.y) < 3.5;
   let groundY = terrainHeight(car.pos.x, car.pos.z);
-  if (!onTrack && loc && Math.abs(loc.along) < 2.5 && Math.abs(loc.y - car.pos.y) < 3.5 && (app.track.vergeDrop?.[loc.i] ?? 99) <= VERGE_MAX_DROP) {
-    const over = Math.abs(loc.lateral) - (app.track.hw + 1.6);
-    if (over < VERGE) groundY = Math.max(groundY, lerp(loc.y, groundY, clamp(over / VERGE, 0, 1)));
+  if (!onRoadNow && vloc && Math.abs(vloc.along) < 2.5 && Math.abs(vloc.y - car.pos.y) < 3.5 && (app.track.vergeDrop?.[vloc.i] ?? 99) <= VERGE_MAX_DROP) {
+    const over = Math.abs(vloc.lateral) - (app.track.hw + 1.6);
+    if (over < VERGE) groundY = Math.max(groundY, lerp(vloc.y, groundY, clamp(over / VERGE, 0, 1)));
   }
-  const targetY = onTrack ? trackY : groundY;
+  const targetY = onRoadNow ? vloc.y + ROAD_LIFT : groundY;
   if (car.airborne) {
     car.vy -= PHYS.gravity * dt;
     car.pos.y += car.vy * dt;
     if (car.pos.y <= targetY) { car.pos.y = targetY; car.vy = 0; car.airborne = false; }
-  } else if (car.pos.y > targetY + (onTrack ? 0.9 : 1.6)) {
-    car.airborne = true; car.vy = Math.max(0, -slopeAlong * vLong * 0.5);
   } else {
-    car.pos.y = lerp(car.pos.y, targetY, 1 - Math.exp(-dt * 20));
+    // The wheels follow the surface exactly. (The old smoothing lagged behind
+    // it, which sank cars up to 30 cm into the road going uphill and floated
+    // them going down.) The car only leaves the ground where it drops away
+    // faster than gravity could pull the car after it: a ledge, the edge of
+    // the bridge, a sharp crest.
+    const fallTo = car.pos.y + car.vy * dt - 0.5 * PHYS.gravity * dt * dt;
+    if (targetY < fallTo - (onRoadNow ? 0.3 : 0.45)) {
+      car.airborne = true; car.pos.y = fallTo; car.vy -= PHYS.gravity * dt;
+    } else {
+      const ny = targetY - car.pos.y > 0.6 ? lerp(car.pos.y, targetY, 1 - Math.exp(-dt * 25)) : targetY; // a big step up still eases
+      car.vy = dt > 1e-4 ? clamp((ny - car.pos.y) / dt, -30, 30) : 0;
+      car.pos.y = ny;
+    }
   }
 
   // ---- off-track bookkeeping ----
@@ -2624,15 +2666,25 @@ function stepLocal(car, dt, canDrive) {
   }
 
   // ---- visuals: pitch with slope and acceleration, roll with cornering ----
-  const slopePitch = onTrack ? -Math.atan2(loc.s.t.y, 1) * (fx2 * loc.s.th.x + fz2 * loc.s.th.z) : car.airborne ? 0 : -Math.atan(slopeAlong);
-  const latAcc = (car.vx * lx2 + car.vz * lz2 - vLat) / Math.max(dt, 0.001);
-  car.pitch = lerp(car.pitch, slopePitch + clamp(-car.ax * CAR.dive, -0.07, 0.07), 1 - Math.exp(-dt * 8));
-  car.roll = lerp(car.roll, clamp(-(yawRate * vLong) * 0.012, -0.12, 0.12) + (car.airborne ? 0 : Math.atan(sideSlope)), 1 - Math.exp(-dt * 8));
-  void latAcc;
+  // The chassis lies along the ground under it, so the wheels stay on the
+  // surface. The body leans on its springs about hub height: nose down under
+  // braking, squatting under power, and outwards in corners. (Tilting the
+  // whole car about the ground used to push the nose and the wheels on one
+  // side into the road, and it leaned into corners rather than out.)
+  const sl = onRoadNow ? vloc.s : null;
+  const groundPitch = car.airborne ? 0 : sl ? -Math.atan2(sl.t.y, 1) * (fx2 * sl.th.x + fz2 * sl.th.z) : -Math.atan(slopeAlong);
+  const groundRoll = car.airborne || onRoadNow ? 0 : Math.atan(sideSlope);
+  const gk = 1 - Math.exp(-dt * (car.airborne ? 3 : 25)), lk = 1 - Math.exp(-dt * 8);
+  car.gPitch = lerp(car.gPitch || 0, groundPitch, gk);
+  car.gRoll = lerp(car.gRoll || 0, groundRoll, gk);
+  car.lPitch = lerp(car.lPitch || 0, clamp(-car.ax * CAR.dive, -CAR.maxDive, CAR.maxDive), lk);
+  car.lRoll = lerp(car.lRoll || 0, clamp(yawRate * vLong * CAR.rollGain, -CAR.maxRoll, CAR.maxRoll), lk);
+  car.pitch = car.gPitch + car.lPitch; car.roll = car.gRoll + car.lRoll;
   const gm = car.mesh.group;
   gm.position.copy(car.pos);
   gm.rotation.set(0, 0, 0);
-  gm.rotateY(car.h); gm.rotateX(car.pitch); gm.rotateZ(car.roll);
+  gm.rotateY(car.h); gm.rotateX(car.gPitch); gm.rotateZ(car.gRoll);
+  car.mesh.lean.rotation.set(car.lPitch, 0, car.lRoll);
   car.wheelSpin += (spinning ? vLong + 12 : vLong) * dt / 0.42;
   for (const w of car.mesh.wheels) {
     w.mesh.rotation.x = car.wheelSpin;
@@ -2665,7 +2717,7 @@ function pushRemoteState(c, s, recv) {
     if (newest.t - t < 5000) return;          // duplicate or out of order
     buf.length = 0; c.play = undefined; c.minCur = c.minPrev = Infinity; c.winStart = -Infinity;
   }
-  buf.push({ t, x: s[2], y: s[3], z: s[4], h: s[5], vx: s[6], vz: s[7], yaw: s[8], pitch: s[9], roll: s[10], b: s[14] & 1 });
+  buf.push({ t, x: s[2], y: s[3], z: s[4], h: s[5], vx: s[6], vz: s[7], yaw: s[8], pitch: s[9], roll: s[10], b: s[14] & 1, lp: s[15] || 0, lr: s[16] || 0 });
   if (buf.length > 40) buf.shift();
   c.lap = s[11]; c.cp = s[12]; c.pr = s[13];
   const d = recv - t;
@@ -2689,7 +2741,7 @@ function stepRemotes(now, dt) {
     let i = buf.length - 1;
     while (i > 0 && buf[i].t > tp) i--;
     const a = buf[i], b = buf[i + 1];
-    let x = a.x, y = a.y, z = a.z, h = a.h, pitch = a.pitch, roll = a.roll, vx = a.vx, vz = a.vz;
+    let x = a.x, y = a.y, z = a.z, h = a.h, pitch = a.pitch, roll = a.roll, lp = a.lp, lr = a.lr, vx = a.vx, vz = a.vz;
     if (tp > a.t && b) {
       const span = b.t - a.t, u = (tp - a.t) / span;
       if (span < 400) {
@@ -2699,7 +2751,7 @@ function stepRemotes(now, dt) {
         z = h00 * a.z + h10 * k * a.vz + h01 * b.z + h11 * k * b.vz;
       } else { x = lerp(a.x, b.x, u); z = lerp(a.z, b.z, u); }
       y = lerp(a.y, b.y, u); h = lerpAngle(a.h, b.h, u);
-      pitch = lerp(a.pitch, b.pitch, u); roll = lerp(a.roll, b.roll, u);
+      pitch = lerp(a.pitch, b.pitch, u); roll = lerp(a.roll, b.roll, u); lp = lerp(a.lp, b.lp, u); lr = lerp(a.lr, b.lr, u);
       vx = lerp(a.vx, b.vx, u); vz = lerp(a.vz, b.vz, u);
     } else if (tp > a.t) {
       // nothing newer has arrived yet: carry on along the last known heading for a moment
@@ -2715,6 +2767,7 @@ function stepRemotes(now, dt) {
     g.position.set(c.sx, c.sy, c.sz);
     g.rotation.set(0, 0, 0);
     g.rotateY(c.sh); g.rotateX(pitch); g.rotateZ(roll);
+    c.mesh.lean.rotation.set(lp, 0, lr);
     g.visible = true;
     c.svx = vx; c.svz = vz;
     c.wheelSpin += (vx * Math.sin(h) + vz * Math.cos(h)) * dt / 0.42;
@@ -2756,7 +2809,7 @@ function updateCamera(dt) {
   if (app.camMode === 'cockpit') {
     // the driver's eye, carried by the car. The closed cars only follow part
     // of the body's pitch and roll, the way your head keeps itself level.
-    _ce.set(car.pitch * CAR.ckPitch, car.h, car.roll * CAR.ckRoll, 'YXZ');
+    _ce.set(car.gPitch + car.lPitch * CAR.ckPitch, car.h, car.gRoll + car.lRoll * CAR.ckRoll, 'YXZ');
     _cq.setFromEuler(_ce);
     camera.position.copy(cockpitEye).applyQuaternion(_cq).add(car.pos);
     camera.quaternion.copy(_cq).multiply(faceForward);
@@ -3463,7 +3516,7 @@ function frame(now) {
     if (now - app.lastSend >= 1000 / SEND_HZ - 4 && app.phase !== 'results') {
       app.lastSend = now;
       const c = app.local, r2 = (v) => Math.round(v * 100) / 100, r3 = (v) => Math.round(v * 1000) / 1000;
-      send({ t: 'state', s: [Math.round(now), r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r3(c.h), r2(c.vx), r2(c.vz), r2(c.yawRate), r3(c.pitch), r3(c.roll), c.lap, c.nextCp, Math.round(c.idx / app.track.N * 1e4) / 1e4, c.braking ? 1 : 0] });
+      send({ t: 'state', s: [Math.round(now), r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r3(c.h), r2(c.vx), r2(c.vz), r2(c.yawRate), r3(c.gPitch), r3(c.gRoll), c.lap, c.nextCp, Math.round(c.idx / app.track.N * 1e4) / 1e4, c.braking ? 1 : 0, r3(c.lPitch), r3(c.lRoll)] });
     }
   }
   if (!app.local || app.phase === 'home' || app.phase === 'lobby') quietAudio();
