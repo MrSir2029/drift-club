@@ -8,6 +8,7 @@ const TOTAL_LAPS = 3; // default; the host can pick 1 to MAX_LAPS
 const MAX_LAPS = 10;
 const TRACK_COUNT = 4;
 const RESULTS_GRACE_MS = 45000; // after the first finisher, wait this long for the rest
+const COUNTDOWN_MS = 6000; // the loading screen (2 s), then the start lights (4 s)
 const BROADCAST_HZ = 30;
 const SILENT_MS = 150000; // a connection that sends nothing at all (clients send a heartbeat every 25 s) is dropped
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, they look like 1 and 0
@@ -146,12 +147,12 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
     room.results = [];
     resetPositions(room);
     for (const p of room.players.values()) { p.finished = false; p.best = null; }
-    room.startAt = Date.now() + 4000;
+    room.startAt = Date.now() + COUNTDOWN_MS;
     stats.races++; statsChanged(true);
     broadcast(room, startMessage(room));
-    setTimeout(() => { if (room.phase === 'countdown') room.phase = 'racing'; }, 4000);
+    setTimeout(() => { if (room.phase === 'countdown') room.phase = 'racing'; }, COUNTDOWN_MS);
     if (room.endTimer) clearTimeout(room.endTimer);
-    room.endTimer = room.mode === 'quali' ? setTimeout(() => endQualifying(room), 4000 + qualiMs) : null;
+    room.endTimer = room.mode === 'quali' ? setTimeout(() => endQualifying(room), COUNTDOWN_MS + qualiMs) : null;
     tickTimer ??= setInterval(tick, 1000 / BROADCAST_HZ);
   }
   function startMessage(room, extra) {

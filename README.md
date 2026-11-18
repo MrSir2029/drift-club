@@ -203,6 +203,14 @@ https://forms.google.com with a paragraph question, set it to not collect
 email addresses, and use its share link. Replies show up in the form's
 **Responses** tab. The buttons stay hidden while `FEEDBACK_URL` is empty.
 
+## Loading screen
+
+Every race starts with a 2-second loading screen (then the start lights): a
+picture of that track and a random tip. The tips are `TIPS` near the top of
+`public/game.js`; add or change them freely. The pictures are
+`public/loading/<track>-1.webp` and `-2.webp` (1280×720), listed in
+`LOADING_PICS` in the same file.
+
 ## Telling players what's new
 
 `public/updates.js` is the list behind the **What's new** button on the

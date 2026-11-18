@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.1', date: '18 Nov 2026', title: 'Loading screen',
+    items: [
+      'A loading screen as you head into a race: a shot of the pack on that track and a racing tip. The start lights come straight after it.',
+      'The expanded map and its Easter eggs are switched back on for everyone. You can still turn them off in Settings.',
+    ],
+  },
+  {
     v: '2.0', date: '18 Nov 2026', title: 'Drift Club 2.0',
     items: [
       'The open seater handles like a race car at last: it turns in quicker, corners about 40% tighter, and stays planted when you flick it left and right. Braking and the handbrake feel the same.',
