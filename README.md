@@ -229,7 +229,9 @@ get a red dot on the button until they've read it.
   `public/` and passes game connections to one Durable Object (`GameServer`),
   which keeps the `/stats` totals in its storage.
 - `server.js`: runs the same game server on Node (your own computer,
-  Codespaces, or any Node host), over WebSockets with the `ws` package.
+  Codespaces, or any Node host), over WebSockets with the `ws` package. It
+  gzips the game's files and tags them, so a returning browser gets a tiny
+  "not modified" instead of downloading everything again.
 - Other players' cars are drawn a fraction of a second in the past, on a
   curve between two real positions, so they glide however unevenly the
   network delivers the packets. The delay adapts to the connection.
