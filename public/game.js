@@ -21,6 +21,10 @@ const THEMES = {
 // panel (and typing it again hides it). Letters and numbers only; change it
 // to anything you like.
 const SECRET_CODE = '9LAT2';
+// Feedback: the link to a Google Form (or any page) where players can send
+// feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
+// this is empty.
+const FEEDBACK_URL = '';
 
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -2574,7 +2578,10 @@ const CAR_CLASSES = { open: {
   downforce: 3.8,    // N per (m/s)^2, wings push the car into the road at speed
   downFront: 0.45,   // share of downforce on the front axle
   maxSteerLow: 0.45, // rad at standstill
-  maxSteerHigh: 0.09,// rad at top speed
+  maxSteerHigh: 0.1, // rad at top speed
+  latGrip: 1.12,     // sideways grip on top of the surface's (1 for the others): corners a bit harder; braking and traction unchanged
+  steerGain: 1.8,    // how much lock it asks for at speed (1.7 for the others)
+  steerRate: 9,      // how fast the wheels turn when you steer (7 for the others)
   gravity: 9.81,
 }, rally: {
   // Heavier, taller and softer, with almost no downforce: slower on tarmac,
@@ -2717,10 +2724,10 @@ function stepLocal(car, dt, canDrive) {
   // ---- steering: less lock at speed, quick to centre ----
   // steering lock shrinks with speed so full lock asks for a bit more than the
   // tyres' peak slip angle: enough to provoke a slide, not enough to just plough
-  const gripAccel = (surf.mu || 1.3) * (CAR.gravity + CAR.downforce * speedAbs * speedAbs / CAR.mass);
-  const maxSteer = clamp(1.7 * gripAccel * (CAR.a + CAR.b) / Math.max(speedAbs, 1) ** 2, CAR.maxSteerHigh, CAR.maxSteerLow);
+  const gripAccel = (surf.mu || 1.3) * (CAR.latGrip || 1) * (CAR.gravity + CAR.downforce * speedAbs * speedAbs / CAR.mass);
+  const maxSteer = clamp((CAR.steerGain || 1.7) * gripAccel * (CAR.a + CAR.b) / Math.max(speedAbs, 1) ** 2, CAR.maxSteerHigh, CAR.maxSteerLow);
   const steerTarget = steerIn * maxSteer;
-  const rate = steerIn === 0 ? 12 : 7;
+  const rate = steerIn === 0 ? 12 : CAR.steerRate || 7;
   car.steerAngle = lerp(car.steerAngle, steerTarget, 1 - Math.exp(-dt * rate));
   const delta = car.steerAngle;
 
@@ -2786,10 +2793,13 @@ function stepLocal(car, dt, canDrive) {
     if (FbrakeF < -frontLimit) FbrakeF = -frontLimit;
     if (FbrakeR < -rearLimit) FbrakeR = -rearLimit;
     let FxF = FbrakeF + FdF, FxR = FdR + FbrakeR + Freverse;
-    let FyF = tyreForce(surf, Fzf, alphaF);
-    let FyR = tyreForce(surf, Fzr, alphaR);
+    // latGrip widens the grip budget sideways only (an ellipse), so cornering
+    // grip can go up without changing braking or traction
+    const lg = CAR.latGrip || 1;
+    let FyF = tyreForce(surf, Fzf, alphaF) * lg;
+    let FyR = tyreForce(surf, Fzr, alphaR) * lg;
     if (handbrake) { FyR *= CAR.hardHandbrake ? 0.6 : 0.25; locked = true; } // locked rears can't hold the corner
-    const totF = Math.hypot(FxF, FyF), totR = Math.hypot(FxR, FyR);
+    const totF = Math.hypot(FxF, FyF / lg), totR = Math.hypot(FxR, FyR / lg);
     if (totF > capF) { const s = capF / totF; FxF *= s; FyF *= s * 0.92; }
     if (totR > capR) { const s = capR / totR; FxR *= s; FyR *= s * 0.92; }
 
@@ -3507,6 +3517,10 @@ function wireUI() {
   $('#laps-minus').addEventListener('click', (e) => setLaps(e, -1));
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
+  for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
+    $(id).classList.toggle('hidden', !FEEDBACK_URL);
+    $(id).addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
+  }
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
   document.querySelectorAll('#seg-sound button').forEach(b => b.addEventListener('click', () => { initAudio(); setSound(b.dataset.v === 'on'); }));
   for (const id of ['#btn-create', '#btn-join']) $(id).addEventListener('click', initAudio);
