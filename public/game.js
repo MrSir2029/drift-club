@@ -44,6 +44,8 @@ const TIPS = [
   'Gold stars are hidden around the map. Can you find them all?',
   'The TV helicopter always follows the leader.',
   'Esc opens the menu, but the race keeps going without you.',
+  'Do your Homework!',
+  'Psst… hosting a race? Try typing 9LAT2 in the lobby.',
 ];
 const LOADING_PICS = [['meadow-1', 'meadow-2'], ['canyon-1', 'canyon-2'], ['frost-1', 'frost-2'], ['switchback-1', 'switchback-2']];
 const LIGHTS_MS = 4000; // the start lights take the last 4 s of the countdown; the loading screen comes before
