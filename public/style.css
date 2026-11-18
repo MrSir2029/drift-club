@@ -319,7 +319,7 @@ input:focus { border-color: var(--blue); }
   .toast-race { top: 30%; }
 }
 
-/* ---------- tips on the home screen ---------- */
-.home-tip { display: flex; gap: 10px; align-items: flex-start; width: 100%; margin-top: 14px; padding: 10px 12px; text-align: left; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--ink); background: var(--paper-2); border: 3px solid var(--ink); border-radius: 12px; cursor: pointer; }
+/* ---------- tips on the home screen, under the controls line ---------- */
+.home-tip { display: flex; gap: 10px; align-items: flex-start; width: min(460px, 100%); margin-top: 10px; padding: 8px 12px; text-align: left; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--ink); background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; cursor: pointer; }
 .home-tip:hover { background: #fff; }
 .tip-tag { flex: none; margin-top: 1px; background: var(--orange); border: 2px solid var(--ink); border-radius: 8px; padding: 0 7px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }

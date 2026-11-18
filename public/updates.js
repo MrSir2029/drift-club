@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.4', date: '18 Nov 2026', title: 'Quicker reverse, no halo',
+    items: [
+      'Reversing is a little quicker on every car: up to about 38 km/h, and it gets there sooner.',
+      'The open seater no longer has the halo bar over the cockpit.',
+      'Tips sit at the bottom of the home screen, under the controls.',
+    ],
+  },
+  {
     v: '2.3', date: '18 Nov 2026', title: 'Tips on the home screen',
     items: [
       'No more loading screen: races go straight to the start lights again.',
