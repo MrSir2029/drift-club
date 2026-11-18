@@ -207,7 +207,8 @@ email addresses, and use its share link. Replies show up in the form's
 
 ## Tips
 
-The home screen shows a random tip, a new one each time you come back to it;
+The home screen shows a random tip under the controls, a new one each time
+you come back to it;
 clicking it shows another. The tips are `TIPS` near the top of
 `public/game.js`; add or change them freely.
 

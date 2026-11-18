@@ -2218,7 +2218,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
 
 // Open-wheel single seater: stepped floor, slim monocoque running into a
 // drooping nose, three-element front wing, undercut sidepods, airbox and
-// engine cover with a fin, halo, wishbone suspension, rear wing on swan necks.
+// engine cover with a fin, wishbone suspension, rear wing on swan necks.
 function buildOpenBody(K) {
   const { add, box, rod, body, accent, dark, carbon } = K;
   // floor, edge wings and diffuser
@@ -2255,15 +2255,11 @@ function buildOpenBody(K) {
   box(0.08, 0.07, 0.24, dark, 0, 1.4, -0.3, false);
   add(taperBox(0.035, 0.46, 1.25, null, [1, 0.3, -0.16]), body, 0, 1.06, -1.45);
   box(0.2, 0.02, 0.9, accent, 0, 1.0, -1.2, false).rotation.x = -0.2;
-  // cockpit: opening, helmet, visor, halo
+  // cockpit: opening, helmet, visor
   box(0.5, 0.05, 0.8, dark, 0, 0.765, 0.2, false);
   const helmet = add(new THREE.IcosahedronGeometry(0.21, 1), K.helmet, 0, 0.98, 0.1);
   helmet.scale.set(1, 1, 1.1);
   box(0.3, 0.09, 0.14, dark, 0, 1.0, 0.27, false);
-  const halo = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.04, 5, 12, Math.PI), dark);
-  halo.rotation.x = -Math.PI / 2; halo.rotation.z = Math.PI / 2; halo.position.set(0, 1.16, 0.12); K.g.add(halo);
-  rod([0, 0.7, 0.6], [0, 1.16, 0.5], 0.06, dark);
-  for (const sx of [-1, 1]) rod([sx * 0.4, 1.16, 0.12], [sx * 0.33, 0.92, -0.25], 0.06, dark);
   // rear wing: two elements, endplates, beam wing, swan-neck pylons
   // (the endplates sit inboard of the rear tyres, which they used to cut into,
   // and each is two stacked blocks of colour rather than a stripe laid over
@@ -2585,7 +2581,7 @@ const fwd = new THREE.Vector3();
 // except on the open seater (hardHandbrake), where it pulls the car up hard.
 const CAR_CLASSES = { open: {
   label: 'Open seater',
-  eye: [0, 1.22, 0.62],                     // cockpit camera, just ahead of the halo strut
+  eye: [0, 1.22, 0.62],                     // cockpit camera, just above and ahead of the driver's helmet
   ckFov: 78, ckFovAdd: 12, ckPitch: 1, ckRoll: 1, // cockpit view angle (plus more at speed), and how much of the body's pitch and roll the camera follows
   gears: [11, 18, 26, 34, 42, 50, 62],      // top speed of each gear, m/s
   engine: [75, 620],                        // engine note: idle Hz, rev range Hz
@@ -2597,7 +2593,7 @@ const CAR_CLASSES = { open: {
   power: 210000,     // W, engine power at the wheels
   maxDrive: 8000,    // N, torque limit at low speed
   topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
-  reverseSpeed: 9,   // m/s
+  reverseSpeed: 10.5, // m/s (about 38 km/h)
   brakeForce: 34000, // N, full pedal (ABS below keeps it within grip)
   hardHandbrake: true, // handbrake stops the car hard and only steps the tail out a little
   hbRearGrip: 0.72,  // sideways grip the rears keep under the handbrake (0.25 for the others)
@@ -2634,7 +2630,7 @@ const CAR_CLASSES = { open: {
   power: 235000,
   maxDrive: 10500,
   topSpeed: 52,
-  reverseSpeed: 9,
+  reverseSpeed: 10.5,
   brakeForce: 30000,
   dive: 0.007, maxDive: 0.06, rollGain: 0.008, maxRoll: 0.08, leanY: 0.45,
   brakeFront: 0.6,
@@ -2660,7 +2656,7 @@ const CAR_CLASSES = { open: {
   power: 140000,
   maxDrive: 6800,
   topSpeed: 46,
-  reverseSpeed: 8,
+  reverseSpeed: 9.5,
   brakeForce: 25000,
   dive: 0.009, maxDive: 0.06, rollGain: 0.01, maxRoll: 0.1, leanY: 0.45,
   brakeFront: 0.65,
@@ -2802,7 +2798,7 @@ function stepLocal(car, dt, canDrive) {
         FbrakeF = -CAR.brakeForce * CAR.brakeFront;
         FbrakeR = -CAR.brakeForce * (1 - CAR.brakeFront);
       } else if (reversing) {
-        Freverse = -4000 * clamp((CAR.reverseSpeed + vLong) / 3, 0, 1); // reverse gear
+        Freverse = -4600 * clamp((CAR.reverseSpeed + vLong) / 3, 0, 1); // reverse gear
       }
     }
     if (handbrake && !CAR.hardHandbrake) FbrakeR += -6000 * sgn;
@@ -3083,7 +3079,7 @@ function stepRemotes(now, dt) {
 // camera
 // ---------------------------------------------------------------------------
 const camTarget = new THREE.Vector3();
-const cockpitEye = new THREE.Vector3(0, 1.22, 0.62); // just ahead of the halo strut so nothing blocks the view
+const cockpitEye = new THREE.Vector3(0, 1.22, 0.62); // just above and ahead of the driver's helmet
 const faceForward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); // cameras look down -z, the car drives toward +z
 // Every race starts in the car's own view: the cockpit in the open seater,
 // outside behind the car in the others. C switches for the rest of that race.
