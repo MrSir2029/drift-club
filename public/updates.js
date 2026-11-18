@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.2', date: '18 Nov 2026', title: 'Faster loading',
+    items: [
+      'The game loads about 4 times faster, and almost instantly after the first time.',
+      'In a one-lap race, your lap time and race time now match exactly.',
+    ],
+  },
+  {
     v: '2.1', date: '18 Nov 2026', title: 'Loading screen',
     items: [
       'A loading screen as you head into a race: a shot of the pack on that track and a racing tip. The start lights come straight after it.',

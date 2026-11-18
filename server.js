@@ -5,6 +5,8 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createGame, beaconTag } from './server/core.js';
@@ -26,6 +28,41 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
 };
+
+// Files are kept in memory, gzipped once if they're text, and tagged (ETag)
+// so a browser that already has the latest copy gets a tiny "not modified"
+// instead of the whole game again. Each file is re-read if it changes.
+const COMPRESS = new Set(['.html', '.js', '.css', '.json', '.svg']);
+const fileCache = new Map();
+function loadFile(full, cb) {
+  fs.stat(full, (err, st) => {
+    if (err || !st.isFile()) return cb(err || new Error('not a file'));
+    const hit = fileCache.get(full);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return cb(null, hit);
+    fs.readFile(full, (err2, data) => {
+      if (err2) return cb(err2);
+      const ext = path.extname(full);
+      const body = ext === '.html' ? Buffer.from(withBeacon(data)) : data;
+      const tag = crypto.createHash('sha1').update(body).digest('base64url').slice(0, 20);
+      const f = { mtimeMs: st.mtimeMs, size: st.size, body, type: MIME[ext] || 'application/octet-stream', tag,
+        gz: COMPRESS.has(ext) ? zlib.gzipSync(body, { level: 9 }) : null };
+      fileCache.set(full, f);
+      cb(null, f);
+    });
+  });
+}
+function sendFile(req, res, f) {
+  const gzip = !!f.gz && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+  const etag = `"${f.tag}${gzip ? '-gz' : ''}"`;
+  const headers = { 'Content-Type': f.type, 'Cache-Control': 'no-cache', ETag: etag, 'X-Content-Type-Options': 'nosniff' };
+  if (f.gz) headers.Vary = 'Accept-Encoding';
+  if ((req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(etag)) { res.writeHead(304, headers); return res.end(); }
+  const body = gzip ? f.gz : f.body;
+  if (gzip) headers['Content-Encoding'] = 'gzip';
+  headers['Content-Length'] = body.length;
+  res.writeHead(200, headers);
+  res.end(req.method === 'HEAD' ? undefined : body);
+}
 
 const game = createGame({
   qualiMs: +process.env.QUALI_MS || 240000,
@@ -54,21 +91,13 @@ const server = http.createServer((req, res) => {
     res.writeHead(403);
     return res.end();
   }
-  fs.readFile(full, (err, data) => {
-    if (err) {
-      // Unknown paths fall back to the app so room links like /ABCD work.
-      return fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (e2, html) => {
-        if (e2) { res.writeHead(404); return res.end('not found'); }
-        res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-cache' });
-        res.end(withBeacon(html));
-      });
-    }
-    res.writeHead(200, {
-      'Content-Type': MIME[path.extname(full)] || 'application/octet-stream',
-      'Cache-Control': 'no-cache',
-      'X-Content-Type-Options': 'nosniff',
+  loadFile(full, (err, f) => {
+    if (!err) return sendFile(req, res, f);
+    // Unknown paths fall back to the app so room links like /ABCD work.
+    loadFile(path.join(PUBLIC_DIR, 'index.html'), (e2, html) => {
+      if (e2) { res.writeHead(404); return res.end('not found'); }
+      sendFile(req, res, html);
     });
-    res.end(path.extname(full) === '.html' ? withBeacon(data) : data);
   });
 });
 

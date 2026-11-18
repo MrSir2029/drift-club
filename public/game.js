@@ -3681,7 +3681,7 @@ function updateHud(now) {
     }
     if (left <= 0) {
       app.phase = 'racing';
-      car.lapStart = performance.now();
+      car.lapStart = raceStartPerf(); // the exact start, like the race clock (not this frame, a moment later)
       beep(1040, 0.6, 0.25);
       const el = $('#countdown');
       el.textContent = 'GO!'; el.classList.remove('hidden'); el.classList.add('go');
