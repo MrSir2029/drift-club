@@ -72,11 +72,10 @@ export const UPDATES = [
     ],
   },
   {
-    v: '1.10', date: '17 Nov 2026', title: 'Gentler brakes, further 9LAT2',
+    v: '1.10', date: '17 Nov 2026', title: 'Cockpit start and gentler brakes',
     items: [
       'The open seater always starts in the cockpit. C still switches camera for that race.',
       'Open seater brakes are much gentler: about 1 g at most, building up over a moment.',
-      'On Frost Pass, 9LAT2 is far out now (over 500 m from the start); its yellow sign shows through the snow haze so you can still spot it.',
       'The What\'s new button is solid.',
     ],
   },
