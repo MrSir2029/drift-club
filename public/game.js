@@ -2561,13 +2561,14 @@ const CAR_CLASSES = { open: {
   mass: 900,         // kg, open-wheeler with driver
   a: 1.45, b: 1.55,  // distance from centre of mass to front / rear axle (m)
   h: 0.33,           // centre of mass height (m), drives weight transfer
-  inertia: 1400,     // yaw inertia (kg m^2)
+  inertia: 1150,     // yaw inertia (kg m^2): light and low, so it changes direction quickly
   power: 210000,     // W, engine power at the wheels
   maxDrive: 8000,    // N, torque limit at low speed
   topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
   reverseSpeed: 9,   // m/s
   brakeForce: 34000, // N, full pedal (ABS below keeps it within grip)
   hardHandbrake: true, // handbrake stops the car hard and only steps the tail out a little
+  hbRearGrip: 0.72,  // sideways grip the rears keep under the handbrake (0.25 for the others)
   dive: 0.003,       // how far the body pitches per m/s^2 of braking or acceleration
   maxDive: 0.025,    // rad: most it pitches (any more and the front wing would touch the road)
   rollGain: 0.004,   // how far it rolls per m/s^2 of cornering
@@ -2579,9 +2580,11 @@ const CAR_CLASSES = { open: {
   downFront: 0.45,   // share of downforce on the front axle
   maxSteerLow: 0.45, // rad at standstill
   maxSteerHigh: 0.1, // rad at top speed
-  latGrip: 1.12,     // sideways grip on top of the surface's (1 for the others): corners a bit harder; braking and traction unchanged
-  steerGain: 1.8,    // how much lock it asks for at speed (1.7 for the others)
-  steerRate: 9,      // how fast the wheels turn when you steer (7 for the others)
+  latGrip: 1.35,     // sideways grip on top of the surface's (1 for the others): corners much harder; braking and traction unchanged
+  latGripRear: 1.5,  // a little more at the back, so the tail stays planted when you flick it left and right
+  steerGain: 2.0,    // how much lock it asks for at speed (1.7 for the others)
+  steerRate: 12,     // how fast the wheels turn when you steer (7 for the others)
+  yawDamp: 0.8,      // how much it resists rotating (1 for the others)
   gravity: 9.81,
 }, rally: {
   // Heavier, taller and softer, with almost no downforce: slower on tarmac,
@@ -2795,11 +2798,11 @@ function stepLocal(car, dt, canDrive) {
     let FxF = FbrakeF + FdF, FxR = FdR + FbrakeR + Freverse;
     // latGrip widens the grip budget sideways only (an ellipse), so cornering
     // grip can go up without changing braking or traction
-    const lg = CAR.latGrip || 1;
+    const lg = CAR.latGrip || 1, lgR = CAR.latGripRear || lg;
     let FyF = tyreForce(surf, Fzf, alphaF) * lg;
-    let FyR = tyreForce(surf, Fzr, alphaR) * lg;
-    if (handbrake) { FyR *= CAR.hardHandbrake ? 0.6 : 0.25; locked = true; } // locked rears can't hold the corner
-    const totF = Math.hypot(FxF, FyF / lg), totR = Math.hypot(FxR, FyR / lg);
+    let FyR = tyreForce(surf, Fzr, alphaR) * lgR;
+    if (handbrake) { FyR *= CAR.hbRearGrip ?? 0.25; locked = true; } // locked rears can't hold the corner
+    const totF = Math.hypot(FxF, FyF / lg), totR = Math.hypot(FxR, FyR / lgR);
     if (totF > capF) { const s = capF / totF; FxF *= s; FyF *= s * 0.92; }
     if (totR > capR) { const s = capR / totR; FxR *= s; FyR *= s * 0.92; }
 
@@ -2814,7 +2817,7 @@ function stepLocal(car, dt, canDrive) {
     const Fy = FyF * cd + FxF * sd + FyR - (car.airborne ? 0 : m * g * sideSlope * 0.6); // slide downhill on a side slope
     const ax = Fx / m, ay = Fy / m;
     const torque = (FyF * cd + FxF * sd) * CAR.a - FyR * CAR.b;
-    let yawAcc = torque / CAR.inertia - yawRate * 1.0; // aero/caster damping
+    let yawAcc = torque / CAR.inertia - yawRate * (CAR.yawDamp ?? 1); // aero/caster damping
 
     // body frame velocities (centripetal terms keep speed consistent while yawing)
     vLong += (ax + yawRate * vLat) * h;
