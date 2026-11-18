@@ -25,8 +25,8 @@ const SECRET_CODE = '9LAT2';
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
 const FEEDBACK_URL = '';
-// The loading screen at the start of a race: a picture of the track (in
-// public/loading/) and one of these tips. Add as many tips as you like.
+// Tips on the home screen: a random one each time you're there, and
+// clicking it shows another. Add as many as you like.
 const TIPS = [
   "Don't accelerate and brake at the same time.",
   'Turn and use the handbrake (Space) to drift.',
@@ -45,11 +45,10 @@ const TIPS = [
   'The TV helicopter always follows the leader.',
   'Esc opens the menu, but the race keeps going without you.',
   'Do your Homework!',
-  'Check the change log! What\'s new, on the home screen, lists every update (and maybe a clue or two).',
+  'Check the change log! The What\'s new button lists every update (and maybe a clue or two).',
   'Somewhere far from the track stands a building with a strange name on its roof. Find it, and remember that name…',
 ];
-const LOADING_PICS = [['meadow-1', 'meadow-2'], ['canyon-1', 'canyon-2'], ['frost-1', 'frost-2'], ['switchback-1', 'switchback-2']];
-const LIGHTS_MS = 4000; // the start lights take the last 4 s of the countdown; the loading screen comes before
+const LIGHTS_MS = 4000; // the start lights take the 4 s countdown
 
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -500,7 +499,6 @@ function buildRibbon(track, offA, offB, colorFn, yLift = 0) {
 let menuOrbit = 0;
 
 function buildWorld(trackId) {
-  for (const p of LOADING_PICS[trackId] || []) new Image().src = `/loading/${p}.webp`; // ready for the loading screen
   // clear old
   while (worldGroup.children.length) disposeTree(worldGroup.children.pop());
   occupied.length = 0; anim.length = 0;
@@ -3269,8 +3267,6 @@ function beginRace(msg) {
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.sessionOver = false;
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Time left' : 'Time';
-  // the loading screen runs until the start lights (or 2 s, joining a race already going)
-  app.loadUntil = app.startAt - Date.now() > LIGHTS_MS + 500 ? app.startAt - LIGHTS_MS : Date.now() + 2000;
   if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
   setCarClass(msg.car);
   clearCars();
@@ -3287,42 +3283,24 @@ function beginRace(msg) {
   document.activeElement?.blur?.(); // so Space doesn't re-click the start button
   showScreen('race');
   $('#results').classList.add('hidden');
-  showLoading(msg.trackId);
   $('#hud-laps').textContent = app.mode === 'quali' ? '∞' : app.laps;
   const dash = app.mode === 'dash';
   $('#hud-lap-label').textContent = dash ? 'To go' : 'Lap';
   $('#hud-laps').parentElement.style.display = dash ? 'none' : '';
   $('#dash-nav').classList.toggle('hidden', !dash);
-  const afterLoading = (f) => setTimeout(f, Math.max(0, app.loadUntil - Date.now()));
-  if (dash) afterLoading(() => raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000));
+  if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
-  if (app.mode === 'quali') afterLoading(() => raceToast('Qualifying: fastest lap sets the grid', 3500));
-  if (app.spectate) { app.finished = true; afterLoading(() => raceToast('Race in progress — you can drive around, next race counts', 4000)); }
+  if (app.mode === 'quali') raceToast('Qualifying: fastest lap sets the grid', 3500);
+  if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
 }
 
-let loadingTimer = 0, lastTip = -1;
-function showLoading(trackId) {
-  const ms = app.loadUntil - Date.now();
-  if (ms < 200) return hideLoading();
-  const pics = LOADING_PICS[trackId] || LOADING_PICS[0];
-  $('#loading-img').src = `/loading/${pics[Math.floor(Math.random() * pics.length)]}.webp`;
-  $('#loading-track').textContent = TRACKS[trackId]?.name || '';
-  $('#loading-mode').textContent = app.spectate ? 'Race in progress' : app.mode === 'quali' ? 'Qualifying' : app.mode === 'dash' ? 'Race to 9LAT2' : `${app.laps} ${app.laps === 1 ? 'lap' : 'laps'}`;
+// a random tip on the home screen, never the same one twice in a row
+let lastTip = -1;
+function showTip() {
   let i;
   do i = Math.floor(Math.random() * TIPS.length); while (i === lastTip && TIPS.length > 1);
   lastTip = i;
-  $('#loading-tip').textContent = TIPS[i];
-  const fill = $('#loading-fill'); // the bar fills over the loading time
-  fill.style.transition = 'none'; fill.style.width = '0';
-  void fill.offsetWidth;
-  fill.style.transition = `width ${ms}ms linear`; fill.style.width = '100%';
-  $('#loading').classList.remove('hidden');
-  clearTimeout(loadingTimer);
-  loadingTimer = setTimeout(hideLoading, ms);
-}
-function hideLoading() {
-  clearTimeout(loadingTimer);
-  $('#loading').classList.add('hidden');
+  $('#tip-text').textContent = TIPS[i];
 }
 
 function finishRace() {
@@ -3409,7 +3387,7 @@ function toggleCamera() {
 
 function goHome() {
   setMenu(false);
-  hideLoading();
+  showTip();
   $('#results').classList.add('hidden');
   $('#lights').classList.add('hidden');
   $('#countdown').classList.add('hidden');
@@ -3584,6 +3562,8 @@ function wireUI() {
   $('#laps-minus').addEventListener('click', (e) => setLaps(e, -1));
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
+  $('#home-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
+  showTip();
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
     $(id).addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
@@ -3858,7 +3838,7 @@ function frame(now) {
   last = now;
 
   if (app.local && (app.phase === 'countdown' || app.phase === 'racing' || app.phase === 'results')) {
-    const canDrive = !app.menuOpen && Date.now() >= (app.loadUntil || 0) && (app.phase === 'racing' || (app.phase === 'results' && app.finished));
+    const canDrive = !app.menuOpen && (app.phase === 'racing' || (app.phase === 'results' && app.finished));
     stepLocal(app.local, dt, canDrive);
     stepRemotes(now, dt);
     if (app.mode === 'quali' && app.phase === 'racing') {

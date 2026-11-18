@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.3', date: '18 Nov 2026', title: 'Tips on the home screen',
+    items: [
+      'No more loading screen: races go straight to the start lights again.',
+      'Tips now show on the home screen. Click one for another.',
+    ],
+  },
+  {
     v: '2.2', date: '18 Nov 2026', title: 'Faster loading',
     items: [
       'The game loads about 4 times faster, and almost instantly after the first time.',
