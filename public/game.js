@@ -45,6 +45,7 @@ const TIPS = [
   'The TV helicopter always follows the leader.',
   'Esc opens the menu, but the race keeps going without you.',
   'Do your Homework!',
+  'Check the change log! What\'s new, on the home screen, lists every update (and maybe a clue or two).',
   'Somewhere far from the track stands a building with a strange name on its roof. Find it, and remember that name…',
 ];
 const LOADING_PICS = [['meadow-1', 'meadow-2'], ['canyon-1', 'canyon-2'], ['frost-1', 'frost-2'], ['switchback-1', 'switchback-2']];
