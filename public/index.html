@@ -148,6 +148,16 @@
         <div id="results-wait" class="waiting hidden">Waiting for the host&hellip;</div>
       </div>
     </div>
+
+    <!-- loading screen: a picture of the track and a tip, for the first 2 s of a race -->
+    <div id="loading" class="loading hidden">
+      <img id="loading-img" alt="">
+      <div class="loading-card">
+        <div class="loading-head"><b id="loading-track"></b><span id="loading-mode"></span></div>
+        <div class="loading-tip"><span class="tip-tag">Tip</span><span id="loading-tip"></span></div>
+        <div class="loading-bar"><i id="loading-fill"></i></div>
+      </div>
+    </div>
   </section>
 
   <div id="updates" class="overlay hidden">
