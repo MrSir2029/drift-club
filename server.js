@@ -13,8 +13,10 @@ import { createGame, beaconTag } from './server/core.js';
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
-// Cloudflare Web Analytics: the token from Cloudflare's JS snippet.
-const BEACON = beaconTag(process.env.CF_BEACON_TOKEN);
+// Cloudflare Web Analytics (counts visits, no cookies), set up for the game's
+// Render address. CF_BEACON_TOKEN overrides the token; set it to nothing to
+// switch analytics off.
+const BEACON = beaconTag(process.env.CF_BEACON_TOKEN ?? '1492dde6fe6949b9a94cf5a39a022c3e');
 const withBeacon = (html) => BEACON ? html.toString().replace('</body>', BEACON + '\n</body>') : html;
 
 const MIME = {
