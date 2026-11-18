@@ -41,6 +41,7 @@
         <button id="btn-settings" class="btn ghost small whatsnew">Settings</button>
         <button id="btn-feedback" class="btn ghost small whatsnew hidden">Feedback</button>
       </div>
+      <button id="home-tip" class="home-tip" title="Click for another tip"><span class="tip-tag">Tip</span><span id="tip-text"></span></button>
     </div>
     <button id="btn-updates" class="btn small corner-btn">What's new <span id="ver"></span><i id="updates-dot" class="dot-new hidden"></i></button>
     <p class="foot">WASD / arrows drive &middot; Space handbrake &middot; C camera &middot; Esc menu &middot; R reset</p>
@@ -146,16 +147,6 @@
         <div id="results-laps" class="mylaps"></div>
         <button id="btn-lobby" class="btn primary">Back to lobby</button>
         <div id="results-wait" class="waiting hidden">Waiting for the host&hellip;</div>
-      </div>
-    </div>
-
-    <!-- loading screen: a picture of the track and a tip, for the first 2 s of a race -->
-    <div id="loading" class="loading hidden">
-      <img id="loading-img" alt="">
-      <div class="loading-card">
-        <div class="loading-head"><b id="loading-track"></b><span id="loading-mode"></span></div>
-        <div class="loading-tip"><span class="tip-tag">Tip</span><span id="loading-tip"></span></div>
-        <div class="loading-bar"><i id="loading-fill"></i></div>
       </div>
     </div>
   </section>

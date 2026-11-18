@@ -133,8 +133,8 @@ hides a gold star; the counter under the standings shows how many you've
 found on that map. These are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
 building is always there, hidden as far from the roads as the map allows,
-down in low ground, with a sign you only make out up close; one loading
-screen tip hints at it. A TV helicopter follows the race leader.
+down in low ground, with a sign you only make out up close; one of the
+home screen tips hints at it. A TV helicopter follows the race leader.
 
 Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
 spires and mesas, a stone arch over the road, and two jumps. Frost Pass (the
@@ -205,13 +205,11 @@ https://forms.google.com with a paragraph question, set it to not collect
 email addresses, and use its share link. Replies show up in the form's
 **Responses** tab. The buttons stay hidden while `FEEDBACK_URL` is empty.
 
-## Loading screen
+## Tips
 
-Every race starts with a 2-second loading screen (then the start lights): a
-picture of that track and a random tip. The tips are `TIPS` near the top of
-`public/game.js`; add or change them freely. The pictures are
-`public/loading/<track>-1.webp` and `-2.webp` (1280×720), listed in
-`LOADING_PICS` in the same file.
+The home screen shows a random tip, a new one each time you come back to it;
+clicking it shows another. The tips are `TIPS` near the top of
+`public/game.js`; add or change them freely.
 
 ## Telling players what's new
 
