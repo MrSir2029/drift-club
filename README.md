@@ -7,8 +7,8 @@ classes (open seater and rally), qualifying sessions, low-poly 3D.
 
 No accounts, no chat, no ads, no cookies, no downloads. Everything the game
 needs is served from this folder, including the 3D library, so it works on a
-LAN with no internet at all. (The one optional extra is Cloudflare Web
-Analytics for counting visitors; see "Seeing who's playing".)
+LAN with no internet at all. (The one extra is Cloudflare Web Analytics for
+counting visitors, which uses no cookies; see "Seeing who's playing".)
 
 ## Run it on your computer
 
@@ -81,9 +81,9 @@ are, the fix is to ask whoever runs the network to allow the URL. The things
 that usually make that an easy "yes":
 
 - no chat or free text between players (names are letters and numbers only)
-- nothing the game needs is loaded from any third-party site (if you turn on
-  Cloudflare Web Analytics, the page also loads Cloudflare's small counting
-  script; if a filter blocks it, the game still works)
+- nothing the game needs is loaded from any third-party site (the page also
+  loads Cloudflare's small visit-counting script; if a filter blocks it, the
+  game still works)
 - no accounts, no cookies, nothing stored on the server
 - the code is small enough to read in one sitting (`server/`, `worker.js`
   and `public/`)
@@ -177,24 +177,13 @@ times the game was opened and the races started. It refreshes itself every
 start again from zero when it restarts. `/stats.json` has the same numbers
 for scripts.
 
-For visitors over days and weeks, use Cloudflare Web Analytics. It's free and
-sets no cookies, so it needs no cookie banner:
-
-1. Sign in at https://dash.cloudflare.com (a free account is fine) and open
-   **Web Analytics**. If it isn't in the sidebar, search for it.
-2. **Add a site** and enter your game's address, e.g.
-   `drift-club.onrender.com`.
-3. Cloudflare shows a snippet with `"token": "..."` in it. Copy the token, the
-   long code between the quotes.
-4. On Render, open the service, go to **Environment**, add a variable called
-   `CF_BEACON_TOKEN` with the token as its value, save, and deploy. (On
-   Cloudflare it goes under the Worker's **Settings → Variables and
-   Secrets**.)
-5. Play a race. Visits show up in Cloudflare within a few minutes.
-
-The server only adds Cloudflare's script to the page when `CF_BEACON_TOKEN`
-is set. If a school filter blocks the script, the game still works; those
-visits just aren't counted.
+For visitors over days and weeks, the game uses Cloudflare Web Analytics.
+It's free and sets no cookies, so it needs no cookie banner. It's set up for
+the game's Render address: the token is in `server.js`, and visits show up in
+the Cloudflare dashboard under **Web Analytics** within a few minutes. To use
+a different site's token, set `CF_BEACON_TOKEN` on the host (an empty value
+switches analytics off). If a school filter blocks Cloudflare's script, the
+game still works; those visits just aren't counted.
 
 ## Feedback
 
