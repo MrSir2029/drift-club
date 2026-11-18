@@ -45,7 +45,7 @@ const TIPS = [
   'The TV helicopter always follows the leader.',
   'Esc opens the menu, but the race keeps going without you.',
   'Do your Homework!',
-  'Psst… hosting a race? Try typing 9LAT2 in the lobby.',
+  'Somewhere far from the track stands a building with a strange name on its roof. Find it, and remember that name…',
 ];
 const LOADING_PICS = [['meadow-1', 'meadow-2'], ['canyon-1', 'canyon-2'], ['frost-1', 'frost-2'], ['switchback-1', 'switchback-2']];
 const LIGHTS_MS = 4000; // the start lights take the last 4 s of the countdown; the loading screen comes before
@@ -231,13 +231,16 @@ function buildTerrain(track) {
   for (const [name, r, mode] of [['lake', 30, ''], ['lat9', 18, track.def.goalFar ? 'remote' : 'far'], ['castle', 23, 'high'], ['fair', 27, 'near'], ['village', 31, ''], ['stones', 12, ''], ['camp', 13, ''], ['windmill', 9, ''], ['mast', 7, 'high']]) {
     let best = null;
     for (let k = 0; k < (mode === 'remote' ? 300 : 140); k++) {
-      // 'remote' looks only in the outer ring of the map
-      const a = srnd() * 6.2832, d = (mode === 'remote' ? 0.72 + 0.28 * srnd() : Math.sqrt(srnd())) * (lim.r - r - 24);
+      // 9LAT2 ('far' and 'remote') looks only in the outer ring of the map
+      const a = srnd() * 6.2832, d = (mode === 'remote' || mode === 'far' ? 0.72 + 0.28 * srnd() : Math.sqrt(srnd())) * (lim.r - r - 24);
       const x = lim.x + Math.cos(a) * d, z = lim.z + Math.sin(a) * d;
       const gap = roadGap(track, x, z);
       if (gap < hw + r + 26 || taken.some(o => Math.hypot(o.x - x, o.z - z) < o.r + r + 26)) continue;
       const y = terrainHeight(x, z);
-      const score = mode === 'high' ? y : mode === 'near' ? -gap : mode === 'far' ? Math.hypot(x - samples[0].p.x, z - samples[0].p.z) : mode === 'remote' ? Math.hypot(x - samples[0].p.x, z - samples[0].p.z) + 2 * y : 0; // remote: as far from the start as it gets, on high ground so you can see it
+      // 9LAT2 hides: as far from every road as the map allows, down in low
+      // ground, so you won't spot it from the track. (Same candidates and random
+      // numbers as before, so every other landmark stays where it was.)
+      const score = mode === 'high' ? y : mode === 'near' ? -gap : mode === 'far' || mode === 'remote' ? gap - 3 * y : 0;
       if (!best || score > best.score) best = { x, z, y, r, score };
       if (!mode) break;
     }
@@ -1406,12 +1409,11 @@ function buildLandmarks(track) {
     ctx.fillStyle = '#1d2230'; ctx.fillRect(0, 0, 512, 128); ctx.fillStyle = '#ffd23f'; ctx.fillRect(8, 8, 496, 112);
     ctx.fillStyle = '#1d2230'; ctx.font = '900 100px "Segoe UI", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('9LAT2', 256, 68);
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const signMat = new THREE.MeshBasicMaterial({ map: tex, fog: false }); // shows through the haze, so you can spot it from far off
+    const signMat = new THREE.MeshBasicMaterial({ map: tex }); // fades into the haze like everything else: you have to get close
     for (const [w, h, y, z, ry] of [[10, 2.5, 9.4, 0.12, 0], [10, 2.5, 9.4, -0.12, Math.PI], [5.2, 1.3, 4.35, 5.6, 0]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), signMat); m.position.set(0, y, z); m.rotation.y = ry; g.add(m); }
     for (const x of [-4.4, 4.4]) box(g, 0.25, 2.2, 0.25, 0x3b4250, x, 8.3, 0);
     for (const x of [-7, 7]) { box(g, 2.6, 0.2, 0.7, 0x7a4a2a, x, 0.55, 8); box(g, 2.2, 0.5, 0.2, 0x5a6372, x, 0.25, 8); }
     rect(g, 0, 0, 20, 11);
-    { const [wx, wz] = g.userData.w(8.5, 4); flags.add(wx, st.y + 7.5, wz, 0x3d8bff, 4.5); }
     const [gx, gz] = g.userData.w(0, 13);
     track.goal = { x: gx, z: gz, y: st.y, r: 5.5 };
     // finish pad and a beam of light you can steer by, shown only in that mode

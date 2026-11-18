@@ -132,7 +132,9 @@ village, a stone circle, a campsite, a windmill and a radio mast. Each
 hides a gold star; the counter under the standings shows how many you've
 found on that map. These are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
-building is always there. A TV helicopter follows the race leader.
+building is always there, hidden as far from the roads as the map allows,
+down in low ground, with a sign you only make out up close; one loading
+screen tip hints at it. A TV helicopter follows the race leader.
 
 Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
 spires and mesas, a stone arch over the road, and two jumps. Frost Pass (the
