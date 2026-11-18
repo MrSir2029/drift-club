@@ -33,6 +33,7 @@ export class GameServer {
         stats: saved || null,
         saveStats: (s) => { ctx.storage.put('stats', s); },
         note: 'Totals are kept since the game moved to Cloudflare.',
+        pairStates: true, // the free plan counts every message, so send half as many
       });
     });
   }

@@ -44,32 +44,32 @@ again. Free personal accounts get 60 hours a month at this size.
 
 ## Run it on the internet (so friends can join from anywhere)
 
-The game runs on Cloudflare's free plan (no card needed). It never goes to
-sleep, every room runs on one server in Oceania (quick for Australia and New
-Zealand), and it deploys by itself whenever `main` changes. `worker.js` and
-`wrangler.toml` set it up.
+The game runs on Render's free plan, as one Node process (`npm start`; the
+server reads `PORT`), set up by `render.yaml`:
 
-1. Sign up at https://dash.cloudflare.com (free) and open **Workers & Pages**.
-2. **Create** a Worker and choose to import a repository from Git. Connect
-   GitHub, pick `drift-club`, and keep the name `drift-club` (it has to match
-   `name` in `wrangler.toml`). Leave the build command empty; the deploy
-   command is `npx wrangler deploy`. Then **Deploy**.
-3. Cloudflare gives you an address like
-   `https://drift-club.<your-subdomain>.workers.dev`. Share it.
+1. On https://render.com create a **Web Service** from this repo. Build
+   command: `npm install`. Start command: `npm start`.
+2. Render gives you a URL like `https://drift-club.onrender.com`. Share it.
+3. After merging changes, deploy them with **Manual Deploy → Deploy latest
+   commit** (unless Render's auto-deploy is working for you).
 
-From then on every merge to `main` is live a minute or two later. The
-Worker's page in the dashboard shows each build under **Deployments**.
+The free plan goes to sleep after 15 minutes with nobody on, so the first
+visit after that takes about a minute to wake it.
 
-The free plan has daily limits (they reset at midnight UTC, which is mid
-morning in Australia). Messages from players during a race are what count,
-so cars send their position 30 times a second but two at a time. That's
-plenty for groups of friends; if a big session ever hits the limit, the game
-stops connecting until the reset, and Cloudflare's $5/month plan lifts it.
+### Cloudflare (ready, on hold)
 
-Still on an old host? Any host that runs Node also works (`npm start`; the
-server reads `PORT`). To send players from an old address to the new one,
-set `MOVED_TO` on the old host to the new address and every visit is
-redirected there.
+The repo can also run on Cloudflare's free plan, which never sleeps, runs
+every room on one server in Oceania, and deploys by itself on every push.
+`worker.js` and `wrangler.toml` set it up: in the Cloudflare dashboard,
+**Workers & Pages → Create → import a repository**, pick `drift-club`, keep
+the name `drift-club`, leave the build command empty and deploy. Its address
+looks like `https://drift-club.<your-subdomain>.workers.dev`.
+
+The free plan has daily limits (they reset at midnight UTC, mid morning in
+Australia) that count every message players send during a race, so on
+Cloudflare the server asks cars to send their positions two at a time. A
+room made on one host can't be joined from the other, so keep everyone on
+one address.
 
 ## Playing on a school or work network
 
@@ -167,7 +167,7 @@ everyone drives the same family saloon.
 ## Seeing who's playing
 
 Open `/stats` on your site (for example
-`https://drift-club.<your-subdomain>.workers.dev/stats`) for a live count:
+`https://drift-club.onrender.com/stats`) for a live count:
 how many people have the game open, how many are racing, in a lobby or on the
 home screen, and how many rooms are open, plus the most online at once, the
 times the game was opened and the races started. It refreshes itself every
@@ -181,12 +181,13 @@ sets no cookies, so it needs no cookie banner:
 1. Sign in at https://dash.cloudflare.com (a free account is fine) and open
    **Web Analytics**. If it isn't in the sidebar, search for it.
 2. **Add a site** and enter your game's address, e.g.
-   `drift-club.<your-subdomain>.workers.dev`.
+   `drift-club.onrender.com`.
 3. Cloudflare shows a snippet with `"token": "..."` in it. Copy the token, the
    long code between the quotes.
-4. Open the `drift-club` Worker, go to **Settings → Variables and Secrets**,
-   add a text variable called `CF_BEACON_TOKEN` with the token as its value,
-   and deploy. (On a Node host, set the same environment variable instead.)
+4. On Render, open the service, go to **Environment**, add a variable called
+   `CF_BEACON_TOKEN` with the token as its value, save, and deploy. (On
+   Cloudflare it goes under the Worker's **Settings → Variables and
+   Secrets**.)
 5. Play a race. Visits show up in Cloudflare within a few minutes.
 
 The server only adds Cloudflare's script to the page when `CF_BEACON_TOKEN`
