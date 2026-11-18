@@ -11,9 +11,6 @@ import { createGame, beaconTag } from './server/core.js';
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
-// Moved somewhere else? Set MOVED_TO to the new address (e.g.
-// https://drift-club.example.workers.dev) and every visit is sent there.
-const MOVED_TO = String(process.env.MOVED_TO || '').replace(/\/+$/, '');
 // Cloudflare Web Analytics: the token from Cloudflare's JS snippet.
 const BEACON = beaconTag(process.env.CF_BEACON_TOKEN);
 const withBeacon = (html) => BEACON ? html.toString().replace('</body>', BEACON + '\n</body>') : html;
@@ -36,10 +33,6 @@ const game = createGame({
 // ---------- static files, /stats ----------
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  if (MOVED_TO) {
-    res.writeHead(301, { Location: MOVED_TO + url.pathname + url.search });
-    return res.end();
-  }
   if (url.pathname === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     return res.end('ok');

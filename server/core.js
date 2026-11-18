@@ -21,7 +21,9 @@ export function beaconTag(token) {
 // qualiMs: qualifying length. stats: totals saved last time (if the host keeps
 // them). saveStats(stats): called now and then with the totals to keep.
 // note: a line for the bottom of the /stats page about how the totals behave.
-export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '' } = {}) {
+// pairStates: ask clients to send their positions two at a time (half the
+// messages, a little less smooth), for hosts that count every message.
+export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '', pairStates = false } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
@@ -114,7 +116,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
   function addPlayer(room, p) {
     room.players.set(p.id, p);
     p.room = room;
-    send(p, { t: 'joined', id: p.id, code: room.code });
+    send(p, { t: 'joined', id: p.id, code: room.code, pair: pairStates });
     broadcast(room, roomSnapshot(room));
   }
   function removePlayer(p) {
@@ -253,8 +255,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         break;
       }
       case 'state': {
-        // A position, or two: clients send their last two positions together
-        // (q, then s), 15 messages a second carrying 30 positions.
+        // A position (s), or two when pairStates is on (q, then s).
         if (!room || (room.phase !== 'racing' && room.phase !== 'countdown')) return;
         const now = Date.now();
         if (now - player.budgetAt >= 1000) { player.budgetAt = now; player.stateCount = 0; }
