@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '1.19', date: '18 Nov 2026', title: 'Sharper open seater',
+    items: [
+      'The open seater turns in a bit sharper: about 15% more grip through corners and quicker steering. Its braking, and the other cars, are unchanged.',
+    ],
+  },
+  {
     v: '1.18', date: '17 Nov 2026', title: 'Not for phones',
     items: [
       'The touch controls are gone: Drift Club is made for a computer with a keyboard. Phones and tablets now show a warning on the home screen.',

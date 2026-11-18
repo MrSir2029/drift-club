@@ -194,6 +194,15 @@ The server only adds Cloudflare's script to the page when `CF_BEACON_TOKEN`
 is set. If a school filter blocks the script, the game still works; those
 visits just aren't counted.
 
+## Feedback
+
+The **Feedback** button on the home screen and **Send feedback** in the Esc
+menu open a page in a new tab: set `FEEDBACK_URL` at the top of
+`public/game.js` to its link. A Google Form works well: make one at
+https://forms.google.com with a paragraph question, set it to not collect
+email addresses, and use its share link. Replies show up in the form's
+**Responses** tab. The buttons stay hidden while `FEEDBACK_URL` is empty.
+
 ## Telling players what's new
 
 `public/updates.js` is the list behind the **What's new** button on the
