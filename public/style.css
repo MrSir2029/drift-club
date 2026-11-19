@@ -326,3 +326,18 @@ input:focus { border-color: var(--blue); }
 .home-tip:hover { background: #fff; }
 .tip-tag { flex: none; margin-top: 1px; background: var(--orange); border: 2px solid var(--ink); border-radius: 8px; padding: 0 7px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }
 @media (max-width: 900px) { .home-tip { width: max(260px, min(460px, calc(100vw - 420px))); margin-bottom: 44px; } } /* narrower, and lifted, to clear the What's new button in the corner */
+
+/* ---------- leaderboard ---------- */
+.boardpanel { width: min(520px, 100%); max-height: 90vh; display: flex; flex-direction: column; gap: 10px; }
+.boardpanel .label { margin: 0; }
+.boardpanel .seg button { font-size: 13px; padding: 7px 4px; }
+.board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; overflow: auto; }
+.board-list li { display: flex; align-items: center; gap: 10px; border: 3px solid var(--ink); border-radius: 10px; padding: 6px 12px; font-weight: 800; background: #fff; }
+.board-list li .place { width: 22px; color: var(--muted); }
+.board-list li .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-list li .time { font-variant-numeric: tabular-nums; }
+.board-list li.first { background: #ffd23f; }
+.board-list li.me { outline: 3px solid var(--blue); outline-offset: -3px; }
+.board-list li.empty { justify-content: center; color: var(--muted); font-weight: 700; }
+.label .record { float: right; color: var(--ink); text-transform: none; letter-spacing: 0; font-weight: 800; }
+

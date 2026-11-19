@@ -28,10 +28,13 @@ export class GameServer {
     // the object going to sleep when nobody's on.
     ctx.blockConcurrencyWhile(async () => {
       const saved = await ctx.storage.get('stats');
+      const boards = await ctx.storage.get('boards');
       this.game = createGame({
         qualiMs: +env.QUALI_MS || 240000,
         stats: saved || null,
         saveStats: (s) => { ctx.storage.put('stats', s); },
+        boards: boards || null,
+        saveBoards: (b) => { ctx.storage.put('boards', b); },
         note: 'Totals are kept since the game moved to Cloudflare.',
         pairStates: true, // the free plan counts every message, so send half as many
       });

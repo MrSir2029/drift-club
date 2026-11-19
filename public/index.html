@@ -39,6 +39,7 @@
       </div>
       <div class="homerow">
         <button id="btn-settings" class="btn ghost small whatsnew">Settings</button>
+        <button id="btn-board" class="btn ghost small whatsnew">Leaderboard</button>
         <button id="btn-feedback" class="btn ghost small whatsnew hidden">Feedback</button>
       </div>
     </div>
@@ -63,7 +64,7 @@
     </div>
     <div class="lobby-bottom">
       <div class="panel tracks">
-        <div class="label">Track <span id="track-hint" class="muted"></span></div>
+        <div class="label">Track <span id="track-hint" class="muted"></span><span id="track-record" class="record"></span></div>
         <div id="track-list" class="trackcards"></div>
         <div class="carrow">
           <div class="label">Cars <span id="car-hint" class="muted"></span></div>
@@ -80,6 +81,7 @@
         <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
         <div class="lobby-row">
           <button id="btn-settings-lobby" class="btn small">Settings</button>
+          <button id="btn-board-lobby" class="btn small">Leaderboard</button>
         </div>
         <div id="secrets" class="panel secrets hidden">
           <div class="label">Secrets</div>
@@ -156,6 +158,17 @@
       <div class="label">What's new in Drift Club</div>
       <div id="updates-list" class="updates-list"></div>
       <button id="btn-updates-close" class="btn primary">Close</button>
+    </div>
+  </div>
+
+  <div id="board" class="overlay hidden">
+    <div class="panel boardpanel">
+      <div class="label">Leaderboard <span class="muted">best laps</span></div>
+      <div id="board-tracks" class="seg"></div>
+      <div id="board-cars" class="seg"></div>
+      <ol id="board-list" class="board-list"></ol>
+      <div class="hint">Every lap counts, in races and qualifying. Your best goes on the board under your name.</div>
+      <button id="btn-board-close" class="btn primary">Close</button>
     </div>
   </div>
 

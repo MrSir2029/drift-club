@@ -12,6 +12,11 @@ const COUNTDOWN_MS = 4000; // the start lights
 const BROADCAST_HZ = 30;
 const SILENT_MS = 150000; // a connection that sends nothing at all (clients send a heartbeat every 25 s) is dropped
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, they look like 1 and 0
+const CAR_CLASSES = ['open', 'rally', 'camry'];
+// The leaderboard ignores laps faster than any car could manage on each track
+// (270 km/h the whole way round).
+const MIN_LAP_MS = [20000, 24500, 22500, 19500];
+const BOARD_SIZE = 10;
 
 // The Cloudflare Web Analytics beacon for a token (letters and digits only).
 export function beaconTag(token) {
@@ -22,9 +27,10 @@ export function beaconTag(token) {
 // qualiMs: qualifying length. stats: totals saved last time (if the host keeps
 // them). saveStats(stats): called now and then with the totals to keep.
 // note: a line for the bottom of the /stats page about how the totals behave.
+// boards / saveBoards(boards): the leaderboard, for hosts that can keep it.
 // pairStates: ask clients to send their positions two at a time (half the
 // messages, a little less smooth), for hosts that count every message.
-export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '', pairStates = false } = {}) {
+export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
@@ -47,6 +53,41 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
     return { online, racing, lobby: inRooms - racing, home: Math.max(0, online - inRooms), rooms: rooms.size };
   }
   const statsJson = () => ({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races });
+
+  // ---------- leaderboard: the best laps on each track, per car, by name ----------
+  // No accounts: a name is a name. There's no database either, so on a host
+  // that forgets everything when it sleeps (Render's free plan), each player's
+  // game keeps a copy of the boards and hands it back on connecting ('lbseed'),
+  // which fills them in again.
+  const boards = new Map(); // 'track:car' -> [{ n: name, ms }], fastest first
+  const boardKey = (t, c) => `${t}:${c}`;
+  function validKey(k) {
+    const [t, c] = String(k).split(':');
+    return Number.isInteger(+t) && +t >= 0 && +t < TRACK_COUNT && CAR_CLASSES.includes(c) ? [+t, c] : null;
+  }
+  // Puts a lap on the board if it's good enough; returns its place (1..10) or 0.
+  function addLap(name, t, c, ms) {
+    if (!(ms >= MIN_LAP_MS[t] && ms < 3600000)) return 0;
+    const k = boardKey(t, c), list = boards.get(k) || [], low = name.toLowerCase();
+    const old = list.findIndex(e => e.n.toLowerCase() === low);
+    if (old >= 0) { if (list[old].ms <= ms) return 0; list.splice(old, 1); }
+    const entry = { n: name, ms: Math.round(ms) };
+    list.push(entry);
+    list.sort((a, b) => a.ms - b.ms);
+    if (list.length > BOARD_SIZE) list.length = BOARD_SIZE;
+    boards.set(k, list);
+    return list.indexOf(entry) + 1;
+  }
+  let boardsTimer = null;
+  function boardChanged(k) {
+    const data = JSON.stringify({ t: 'lb', k, list: boards.get(k) });
+    for (const p of conns) { try { p.sock.send(data); } catch {} }
+    if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; saveBoards(Object.fromEntries(boards)); }, 20000);
+  }
+  for (const [k, list] of Object.entries(savedBoards || {})) {
+    const kv = validKey(k);
+    if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1], +e.ms);
+  }
 
   // ---------- helpers ----------
   function makeCode() {
@@ -146,7 +187,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
     room.phase = 'countdown';
     room.results = [];
     resetPositions(room);
-    for (const p of room.players.values()) { p.finished = false; p.best = null; }
+    for (const p of room.players.values()) { p.finished = false; p.best = null; p.lapAt = 0; }
     room.startAt = Date.now() + COUNTDOWN_MS;
     stats.races++; statsChanged(true);
     broadcast(room, startMessage(room));
@@ -240,13 +281,42 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         break;
       }
       case 'lap': {
-        if (!room || room.mode !== 'quali' || room.phase !== 'racing') return;
-        const time = +msg.time;
+        // a lap in qualifying (it sets the grid) or in a race; either way it
+        // can go on the leaderboard
+        if (!room || room.phase !== 'racing' || (room.mode !== 'quali' && room.mode !== 'race')) return;
+        const time = +msg.time, now = Date.now();
         if (!(time > 5000 && time < 3600000)) return;
-        if (player.best == null || time < player.best) {
+        // it can't be quicker than the time since this player's last lap by the
+        // server's own clock (a little slack for the network)
+        const since = now - (player.lapAt || room.startAt);
+        player.lapAt = now;
+        if (time < since - 3000) return;
+        if (room.mode === 'quali' && (player.best == null || time < player.best)) {
           player.best = Math.round(time);
           broadcast(room, { t: 'best', id: player.id, time: player.best });
         }
+        const place = addLap(player.name, room.trackId, room.car, time);
+        if (place) {
+          boardChanged(boardKey(room.trackId, room.car));
+          broadcast(room, { t: 'record', id: player.id, name: player.name, place, time: Math.round(time), track: room.trackId, car: room.car });
+        }
+        break;
+      }
+      case 'lbseed': {
+        // a returning player's copy of the boards (see the leaderboard above)
+        if (player.seeded || !msg.boards || typeof msg.boards !== 'object') return;
+        player.seeded = true;
+        const changed = new Set();
+        let n = 0;
+        for (const [k, list] of Object.entries(msg.boards)) {
+          const kv = validKey(k);
+          if (!kv || !Array.isArray(list)) continue;
+          for (const e of list.slice(0, BOARD_SIZE)) {
+            if (++n > 200) break;
+            if (e && typeof e.n === 'string' && addLap(cleanName(e.n), kv[0], kv[1], +e.ms)) changed.add(k);
+          }
+        }
+        for (const k of changed) boardChanged(k);
         break;
       }
       case 'endquali': {
@@ -340,8 +410,9 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
       if (conns.size > stats.peak) { stats.peak = conns.size; stats.peakAt = Date.now(); }
       statsChanged();
       sweepTimer ??= setInterval(sweep, 20000);
+      send(p, { t: 'lbs', boards: Object.fromEntries(boards) }); // the leaderboard, to start with
       return {
-        message(raw) { p.seen = Date.now(); if (raw.length <= 2048) handle(p, raw); },
+        message(raw) { p.seen = Date.now(); if (raw.length <= 16384) handle(p, raw); },
         close() { drop(p); },
       };
     },

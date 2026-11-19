@@ -820,6 +820,7 @@ function collideCars(car) {
 function updateGhost(now) {
   const car = app.local, lap = app.ghostLap;
   const on = car && lap && app.mode === 'quali' && app.phase === 'racing';
+  app.ghostOn = false; // set below once the ghost has a place on the lap (the minimap shows it then)
   if (!on) { if (app.ghost) app.ghost.group.visible = false; app.ghostDelta = null; return; }
   if (!app.ghost) {
     app.ghost = makeCarMesh(app.color, '', true);
@@ -845,6 +846,7 @@ function updateGhost(now) {
   const u = clamp((t - a.t) / (b.t - a.t), 0, 1);
   g.position.set(lerp(a.x, b.x, u), lerp(a.y, b.y, u), lerp(a.z, b.z, u));
   g.rotation.set(0, lerpAngle(a.h, b.h, u), 0);
+  app.ghostOn = true;
   g.visible = (g.position.x - car.pos.x) ** 2 + (g.position.z - car.pos.z) ** 2 > 9; // not when it's sitting on top of you
 }
 
@@ -2955,7 +2957,8 @@ function stepLocal(car, dt, canDrive) {
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          if (app.mode === 'quali') { send({ t: 'lap', time: Math.round(lapTime) }); raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500); }
+          if (app.mode !== 'dash') send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the grid, in qualifying)
+          if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
           else raceToast(`Lap ${car.lap - 1}  ${fmtTime(lapTime)}${lapTime === app.bestLap && car.lap > 2 ? '  ★ best' : ''}`, 2200);
         }
@@ -3158,7 +3161,10 @@ function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
   app.ws = ws;
-  ws.onopen = () => { $('#btn-create').disabled = false; $('#btn-join').disabled = false; };
+  ws.onopen = () => {
+    $('#btn-create').disabled = false; $('#btn-join').disabled = false;
+    if (Object.keys(app.boards).length) send({ t: 'lbseed', boards: app.boards }); // fills the leaderboard back in if the server has restarted
+  };
   ws.onclose = () => {
     toast('Connection lost. Reconnecting…');
     $('#btn-create').disabled = true; $('#btn-join').disabled = true;
@@ -3242,6 +3248,14 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
+    case 'lbs': app.boards = msg.boards || {}; boardsChanged(); break;
+    case 'lb': app.boards[msg.k] = msg.list || []; boardsChanged(msg.k); break;
+    case 'record': {
+      const where = TRACKS[msg.track]?.name || 'this track';
+      if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
+      else if (msg.place === 1) raceToast(`${msg.name} set a new track record: ${fmtTime(msg.time)}`, 3000);
+      break;
+    }
     case 'results': showResults(msg.results, !!msg.quali, msg.mode === 'dash'); break;
   }
 }
@@ -3288,6 +3302,42 @@ function beginRace(msg) {
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
   if (app.mode === 'quali') raceToast('Qualifying: fastest lap sets the grid', 3500);
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
+}
+
+// ---- leaderboard: best laps per track and car (see server/core.js) ----
+// A copy is kept in this browser, so a server that has restarted gets its
+// boards back from returning players.
+app.boards = {};
+try { app.boards = JSON.parse(localStorage.getItem('dc-lb') || '{}') || {}; } catch {}
+const BOARD_CARS = [['open', 'Open seater'], ['rally', 'Rally'], ['camry', 'Toyota Camry']];
+const board = { track: 0, car: 'open' };
+function boardsChanged(key) {
+  try { localStorage.setItem('dc-lb', JSON.stringify(app.boards)); } catch {}
+  if (!$('#board').classList.contains('hidden') && (!key || key === `${board.track}:${board.car}`)) renderBoard();
+  renderRecord();
+}
+function openBoard(track, car) {
+  if (track != null) board.track = track;
+  if (car) board.car = car;
+  $('#board').classList.remove('hidden');
+  renderBoard();
+}
+function renderBoard() {
+  $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}">${esc(t.name)}</button>`).join('');
+  // the Camry is a secret: its tab shows once someone has a Camry time, or the secrets are open
+  const cars = BOARD_CARS.filter(([c]) => c !== 'camry' || app.secrets || board.car === 'camry' || Object.keys(app.boards).some(k => k.endsWith(':camry') && app.boards[k].length));
+  $('#board-cars').innerHTML = cars.map(([c, label]) => `<button data-c="${c}" class="${c === board.car ? 'on' : ''}">${label}</button>`).join('');
+  const list = app.boards[`${board.track}:${board.car}`] || [], me = (app.name || '').toLowerCase();
+  $('#board-list').innerHTML = list.length
+    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="name">${esc(e.n)}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
+    : '<li class="empty">No laps yet. Set the first one!</li>';
+}
+// the record for the track and car picked in the lobby
+function renderRecord() {
+  const r = app.room, el = $('#track-record');
+  if (!el) return;
+  const best = r && (app.boards[`${r.trackId}:${r.car || 'open'}`] || [])[0];
+  el.textContent = best ? `Record ${fmtTime(best.ms)} by ${best.n}` : '';
 }
 
 // a random tip on the home screen, never the same one twice in a row
@@ -3425,6 +3475,7 @@ function renderLobby() {
   $('#wait-host').classList.toggle('hidden', isHost);
   $('#track-list').classList.toggle('locked', !isHost);
   $('#track-hint').textContent = isHost ? '— you pick' : '— host picks';
+  renderRecord();
   document.querySelectorAll('.trackcard').forEach((el, i) => el.classList.toggle('on', i === r.trackId));
   $('#car-list').classList.toggle('locked', !isHost);
   document.querySelectorAll('.carpick').forEach((el) => el.classList.toggle('on', el.dataset.car === (r.car || 'open')));
@@ -3559,6 +3610,10 @@ function wireUI() {
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   $('#home-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
+  for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(app.room ? app.room.trackId : null, app.room ? app.room.car || 'open' : null); });
+  $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
+  $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = +b.dataset.t; renderBoard(); } });
+  $('#board-cars').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.car = b.dataset.c; renderBoard(); } });
   showTip();
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
@@ -3571,6 +3626,7 @@ function wireUI() {
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Escape' && !$('#settings').classList.contains('hidden')) { $('#settings').classList.add('hidden'); return; }
+    if (e.code === 'Escape' && !$('#board').classList.contains('hidden')) { $('#board').classList.add('hidden'); return; }
     if (e.key && e.key.length === 1) {
       secretTyped = (secretTyped + e.key.toUpperCase()).slice(-SECRET_CODE.length);
       if (secretTyped === SECRET_CODE && app.phase === 'lobby' && app.room?.hostId === app.myId) {
@@ -3733,6 +3789,9 @@ function drawMinimap() {
     mmCtx.fillRect(x - 6, y - 6, 12, 12); mmCtx.strokeRect(x - 6, y - 6, 12, 12);
   }
   for (const c of app.cars.values()) if (c.mesh.group.visible) dot(c.mesh.group.position.x, c.mesh.group.position.z, COLOR_CSS[c.color], 4);
+  if (app.ghostOn && app.ghost) { // your qualifying ghost: a see-through blue dot
+    mmCtx.globalAlpha = 0.75; dot(app.ghost.group.position.x, app.ghost.group.position.z, '#9fd4ff', 5); mmCtx.globalAlpha = 1;
+  }
   if (app.local) dot(app.local.pos.x, app.local.pos.z, COLOR_CSS[app.color], 6);
 }
 

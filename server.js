@@ -104,7 +104,7 @@ const server = http.createServer((req, res) => {
 });
 
 // ---------- the game, over WebSockets ----------
-const wss = new WebSocketServer({ server, maxPayload: 2048 });
+const wss = new WebSocketServer({ server, maxPayload: 16384 }); // the leaderboard copy a player sends back can be a few KB
 wss.on('connection', (ws) => {
   const conn = game.connect({
     send: (text) => { if (ws.readyState === ws.OPEN) ws.send(text); },
