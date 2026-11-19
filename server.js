@@ -66,9 +66,15 @@ function sendFile(req, res, f) {
   res.end(req.method === 'HEAD' ? undefined : body);
 }
 
+// The leaderboard lives in memory, and players' browsers keep copies to hand
+// back after a restart. Each entry is signed with this key so a copy can't be
+// edited. Set LB_SECRET on the host for a key of your own that isn't in the
+// code (changing it wipes the boards).
+const LB_KEY = process.env.LB_SECRET || 'drift-club-leaderboard';
 const game = createGame({
   qualiMs: +process.env.QUALI_MS || 240000,
   note: 'The totals start again from zero whenever the server restarts.',
+  sign: (text) => crypto.createHmac('sha256', LB_KEY).update(text).digest('base64url').slice(0, 12),
 });
 
 // ---------- static files, /stats ----------

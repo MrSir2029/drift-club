@@ -2957,7 +2957,8 @@ function stepLocal(car, dt, canDrive) {
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          if (app.mode !== 'dash') send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the grid, in qualifying)
+          send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the grid, in qualifying)
+          notePersonalBest(lapTime);
           if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
           else raceToast(`Lap ${car.lap - 1}  ${fmtTime(lapTime)}${lapTime === app.bestLap && car.lap > 2 ? '  ★ best' : ''}`, 2200);
@@ -3163,7 +3164,9 @@ function connect() {
   app.ws = ws;
   ws.onopen = () => {
     $('#btn-create').disabled = false; $('#btn-join').disabled = false;
-    if (Object.keys(app.boards).length) send({ t: 'lbseed', boards: app.boards }); // fills the leaderboard back in if the server has restarted
+    // our copy of the leaderboard: fills it back in if the server has restarted
+    const seed = JSON.stringify({ t: 'lbseed', boards: app.boards });
+    if (seed.length > 30 && seed.length < 12000) ws.send(seed);
   };
   ws.onclose = () => {
     toast('Connection lost. Reconnecting…');
@@ -3248,8 +3251,8 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
-    case 'lbs': app.boards = msg.boards || {}; boardsChanged(); break;
-    case 'lb': app.boards[msg.k] = msg.list || []; boardsChanged(msg.k); break;
+    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; boardsChanged(); break;
+    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; boardsChanged(msg.k); } break;
     case 'record': {
       const where = TRACKS[msg.track]?.name || 'this track';
       if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
@@ -3276,6 +3279,7 @@ function beginRace(msg) {
   app.myLaps = [];
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.sessionOver = false;
+  app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Time left' : 'Time';
   if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
   setCarClass(msg.car);
@@ -3306,15 +3310,24 @@ function beginRace(msg) {
 
 // ---- leaderboard: best laps per track and car (see server/core.js) ----
 // A copy is kept in this browser, so a server that has restarted gets its
-// boards back from returning players.
+// boards back from returning players. Your own best laps are kept here too.
 app.boards = {};
-try { app.boards = JSON.parse(localStorage.getItem('dc-lb') || '{}') || {}; } catch {}
+app.pbs = {};
+try { const b = JSON.parse(localStorage.getItem('dc-lb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.boards = b; } catch {}
+try { const b = JSON.parse(localStorage.getItem('dc-pb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.pbs = b; } catch {}
 const BOARD_CARS = [['open', 'Open seater'], ['rally', 'Rally'], ['camry', 'Toyota Camry']];
 const board = { track: 0, car: 'open' };
+const boardList = (t, c) => { const l = app.boards[`${t}:${c}`]; return Array.isArray(l) ? l.filter(e => e && typeof e.n === 'string' && e.ms > 0) : []; };
 function boardsChanged(key) {
   try { localStorage.setItem('dc-lb', JSON.stringify(app.boards)); } catch {}
   if (!$('#board').classList.contains('hidden') && (!key || key === `${board.track}:${board.car}`)) renderBoard();
   renderRecord();
+}
+function notePersonalBest(lapTime) {
+  const k = `${app.trackId}:${app.carClass}`, ms = Math.round(lapTime);
+  if (app.pbs[k] && app.pbs[k] <= ms) return;
+  app.pbs[k] = ms;
+  try { localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); } catch {}
 }
 function openBoard(track, car) {
   if (track != null) board.track = track;
@@ -3325,18 +3338,21 @@ function openBoard(track, car) {
 function renderBoard() {
   $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}">${esc(t.name)}</button>`).join('');
   // the Camry is a secret: its tab shows once someone has a Camry time, or the secrets are open
-  const cars = BOARD_CARS.filter(([c]) => c !== 'camry' || app.secrets || board.car === 'camry' || Object.keys(app.boards).some(k => k.endsWith(':camry') && app.boards[k].length));
+  const cars = BOARD_CARS.filter(([c]) => c !== 'camry' || app.secrets || board.car === 'camry' || TRACKS.some((t, i) => boardList(i, 'camry').length));
   $('#board-cars').innerHTML = cars.map(([c, label]) => `<button data-c="${c}" class="${c === board.car ? 'on' : ''}">${label}</button>`).join('');
-  const list = app.boards[`${board.track}:${board.car}`] || [], me = (app.name || '').toLowerCase();
+  const list = boardList(board.track, board.car);
+  const me = (app.room ? app.name : $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer').toLowerCase();
   $('#board-list').innerHTML = list.length
     ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="name">${esc(e.n)}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
     : '<li class="empty">No laps yet. Set the first one!</li>';
+  const pb = app.pbs[`${board.track}:${board.car}`];
+  $('#board-pb').textContent = pb ? `Your best here: ${fmtTime(pb)}` : '';
 }
 // the record for the track and car picked in the lobby
 function renderRecord() {
   const r = app.room, el = $('#track-record');
   if (!el) return;
-  const best = r && (app.boards[`${r.trackId}:${r.car || 'open'}`] || [])[0];
+  const best = r && boardList(r.trackId, r.car || 'open')[0];
   el.textContent = best ? `Record ${fmtTime(best.ms)} by ${best.n}` : '';
 }
 
@@ -3713,7 +3729,9 @@ function updateHud(now) {
     }
     if (left <= 0) {
       app.phase = 'racing';
-      car.lapStart = raceStartPerf(); // the exact start, like the race clock (not this frame, a moment later)
+      // the exact start, like the race clock (not this frame, a moment later);
+      // or, joining a session that's already going, the moment you joined
+      car.lapStart = Math.max(raceStartPerf(), app.joinedRaceAt || 0);
       beep(1040, 0.6, 0.25);
       const el = $('#countdown');
       el.textContent = 'GO!'; el.classList.remove('hidden'); el.classList.add('go');
@@ -3789,8 +3807,10 @@ function drawMinimap() {
     mmCtx.fillRect(x - 6, y - 6, 12, 12); mmCtx.strokeRect(x - 6, y - 6, 12, 12);
   }
   for (const c of app.cars.values()) if (c.mesh.group.visible) dot(c.mesh.group.position.x, c.mesh.group.position.z, COLOR_CSS[c.color], 4);
-  if (app.ghostOn && app.ghost) { // your qualifying ghost: a see-through blue dot
-    mmCtx.globalAlpha = 0.75; dot(app.ghost.group.position.x, app.ghost.group.position.z, '#9fd4ff', 5); mmCtx.globalAlpha = 1;
+  if (app.ghostOn && app.ghost) { // your qualifying ghost: a pale dot with a blue ring, unlike any real car's
+    const gp = app.ghost.group.position;
+    mmCtx.beginPath(); mmCtx.arc(gp.x * sc + ox, gp.z * sc + oz, 4.5, 0, Math.PI * 2);
+    mmCtx.fillStyle = 'rgba(255,255,255,0.6)'; mmCtx.fill(); mmCtx.strokeStyle = '#3d8bff'; mmCtx.lineWidth = 2.5; mmCtx.stroke();
   }
   if (app.local) dot(app.local.pos.x, app.local.pos.z, COLOR_CSS[app.color], 6);
 }

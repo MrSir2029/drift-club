@@ -13,10 +13,30 @@ const BROADCAST_HZ = 30;
 const SILENT_MS = 150000; // a connection that sends nothing at all (clients send a heartbeat every 25 s) is dropped
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, they look like 1 and 0
 const CAR_CLASSES = ['open', 'rally', 'camry'];
-// The leaderboard ignores laps faster than any car could manage on each track
-// (270 km/h the whole way round).
-const MIN_LAP_MS = [20000, 24500, 22500, 19500];
+
+// ---- leaderboard settings ----
 const BOARD_SIZE = 10;
+// Bump this to wipe every leaderboard and start a new season: boards saved
+// under an older season are ignored.
+const BOARD_SEASON = 1;
+// The leaderboard ignores laps no car could manage: quicker than flat out at
+// top speed the whole way round (with 10% in hand for cutting the corners).
+// Lengths in metres, one per track in tracks.js; top speeds in m/s, as in
+// CAR_CLASSES in game.js.
+const TRACK_LENGTH = [1510, 1867, 1715, 1488];
+const TOP_SPEED = { open: 60, rally: 52, camry: 46 };
+const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
+// Names with these in them stay off the leaderboard (everyone sees it, not
+// just the room). The lists are rot13'd so the code isn't full of swear words:
+// the first matches anywhere in a name, the second only as a whole word.
+const rot13 = (s) => s.replace(/[a-z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 84) % 26 + 97));
+const BLOCKED_ANYWHERE = rot13('shpx fuvg ovgpu phag avtt sntt jnax fyhg juber encvfg anmv uvgyre cbea cravf intva qvyqb obbo chffl ergneq qvpx cvff onfgneq crqbcu cnrqb nffubyr nefrubyr wvmm genaal puvax xvxr').split(' ');
+const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb').split(' '));
+const unleet = (s) => s.toLowerCase().replace(/0/g, 'o').replace(/[1!]/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't');
+function nameAllowed(name) {
+  const words = unleet(name).split(/[^a-z]+/).filter(Boolean), joined = words.join('');
+  return !BLOCKED_ANYWHERE.some(w => joined.includes(w)) && !words.some(w => BLOCKED_WORDS.has(w)) && !BLOCKED_WORDS.has(joined);
+}
 
 // The Cloudflare Web Analytics beacon for a token (letters and digits only).
 export function beaconTag(token) {
@@ -28,9 +48,15 @@ export function beaconTag(token) {
 // them). saveStats(stats): called now and then with the totals to keep.
 // note: a line for the bottom of the /stats page about how the totals behave.
 // boards / saveBoards(boards): the leaderboard, for hosts that can keep it.
+// sign(text): for hosts that can't keep it. It returns a short signature only
+// this server can make, which lets players' browsers hold copies of the
+// leaderboard and hand them back after a restart without being able to
+// change them.
+// dropSilent: drop connections that send nothing for a while, for hosts that
+// can't tell when a connection has died.
 // pairStates: ask clients to send their positions two at a time (half the
 // messages, a little less smooth), for hosts that count every message.
-export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null } = {}) {
+export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, sign = null, dropSilent = false } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
@@ -55,23 +81,30 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
   const statsJson = () => ({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races });
 
   // ---------- leaderboard: the best laps on each track, per car, by name ----------
-  // No accounts: a name is a name. There's no database either, so on a host
-  // that forgets everything when it sleeps (Render's free plan), each player's
-  // game keeps a copy of the boards and hands it back on connecting ('lbseed'),
-  // which fills them in again.
-  const boards = new Map(); // 'track:car' -> [{ n: name, ms }], fastest first
+  // No accounts: a name is a name, and anyone can race under any name. There's
+  // no database either. A host that can store things (Cloudflare) saves the
+  // boards. On one that forgets everything when it sleeps (Render's free
+  // plan), every player's browser keeps a copy and hands it back on connecting
+  // ('lbseed'); each entry carries the server's signature, so a copy can be
+  // returned but not edited.
+  const boards = new Map(); // 'track:car' -> [{ n: name, ms, s: signature }], fastest first
   const boardKey = (t, c) => `${t}:${c}`;
+  const signature = (k, n, ms) => sign(`${BOARD_SEASON}|${k}|${n}|${ms}`);
   function validKey(k) {
     const [t, c] = String(k).split(':');
-    return Number.isInteger(+t) && +t >= 0 && +t < TRACK_COUNT && CAR_CLASSES.includes(c) ? [+t, c] : null;
+    return /^\d$/.test(t) && +t < TRACK_COUNT && CAR_CLASSES.includes(c) ? [+t, c] : null;
   }
   // Puts a lap on the board if it's good enough; returns its place (1..10) or 0.
   function addLap(name, t, c, ms) {
-    if (!(ms >= MIN_LAP_MS[t] && ms < 3600000)) return 0;
+    ms = Math.round(ms);
+    if (!(ms >= minLapMs(t, c) && ms < 3600000) || !nameAllowed(name)) return 0;
     const k = boardKey(t, c), list = boards.get(k) || [], low = name.toLowerCase();
     const old = list.findIndex(e => e.n.toLowerCase() === low);
-    if (old >= 0) { if (list[old].ms <= ms) return 0; list.splice(old, 1); }
-    const entry = { n: name, ms: Math.round(ms) };
+    if (old >= 0 && list[old].ms <= ms) return 0; // one line per name: their best
+    if (old < 0 && list.length >= BOARD_SIZE && list[list.length - 1].ms <= ms) return 0;
+    if (old >= 0) list.splice(old, 1);
+    const entry = { n: name, ms };
+    if (sign) entry.s = signature(k, name, ms);
     list.push(entry);
     list.sort((a, b) => a.ms - b.ms);
     if (list.length > BOARD_SIZE) list.length = BOARD_SIZE;
@@ -82,11 +115,13 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
   function boardChanged(k) {
     const data = JSON.stringify({ t: 'lb', k, list: boards.get(k) });
     for (const p of conns) { try { p.sock.send(data); } catch {} }
-    if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; saveBoards(Object.fromEntries(boards)); }, 20000);
+    if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; saveBoards({ season: BOARD_SEASON, boards: Object.fromEntries(boards) }); }, 20000);
   }
-  for (const [k, list] of Object.entries(savedBoards || {})) {
-    const kv = validKey(k);
-    if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1], +e.ms);
+  if (savedBoards && savedBoards.season === BOARD_SEASON) {
+    for (const [k, list] of Object.entries(savedBoards.boards || {})) {
+      const kv = validKey(k);
+      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1], +e.ms);
+    }
   }
 
   // ---------- helpers ----------
@@ -248,6 +283,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         player.name = cleanName(msg.name);
         player.color = cleanColor(msg.color);
         player.best = null;
+        player.lapAt = Math.max(Date.now(), target.startAt); // their first lap runs from now, not from the start of the session
         player.finished = target.mode !== 'quali' && (target.phase === 'racing' || target.phase === 'countdown'); // late joiners spectate a race, but can join qualifying
         addPlayer(target, player);
         if (target.phase === 'countdown' || target.phase === 'racing') send(player, startMessage(target, { spectate: target.mode !== 'quali' }));
@@ -285,16 +321,16 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         // can go on the leaderboard
         if (!room || room.phase !== 'racing' || (room.mode !== 'quali' && room.mode !== 'race')) return;
         const time = +msg.time, now = Date.now();
-        if (!(time > 5000 && time < 3600000)) return;
-        // it can't be quicker than the time since this player's last lap by the
-        // server's own clock (a little slack for the network)
+        if (!(time > 5000 && time < 3600000) || player.finished) return;
+        // For the leaderboard, the lap has to match this server's own clock:
+        // about as long as the time since the player's last lap (or the start).
         const since = now - (player.lapAt || room.startAt);
         player.lapAt = now;
-        if (time < since - 3000) return;
         if (room.mode === 'quali' && (player.best == null || time < player.best)) {
           player.best = Math.round(time);
           broadcast(room, { t: 'best', id: player.id, time: player.best });
         }
+        if (Math.abs(time - since) > 3000) return;
         const place = addLap(player.name, room.trackId, room.car, time);
         if (place) {
           boardChanged(boardKey(room.trackId, room.car));
@@ -303,8 +339,9 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         break;
       }
       case 'lbseed': {
-        // a returning player's copy of the boards (see the leaderboard above)
-        if (player.seeded || !msg.boards || typeof msg.boards !== 'object') return;
+        // a returning player's copy of the boards (see the leaderboard above):
+        // only entries this server signed are taken back
+        if (!sign || player.seeded || !msg.boards || typeof msg.boards !== 'object') return;
         player.seeded = true;
         const changed = new Set();
         let n = 0;
@@ -313,7 +350,9 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
           if (!kv || !Array.isArray(list)) continue;
           for (const e of list.slice(0, BOARD_SIZE)) {
             if (++n > 200) break;
-            if (e && typeof e.n === 'string' && addLap(cleanName(e.n), kv[0], kv[1], +e.ms)) changed.add(k);
+            if (!e || typeof e.n !== 'string' || typeof e.s !== 'string' || !Number.isInteger(e.ms)) continue;
+            if (e.n !== cleanName(e.n) || e.s !== signature(k, e.n, e.ms)) continue;
+            if (addLap(e.n, kv[0], kv[1], e.ms)) changed.add(k);
           }
         }
         for (const k of changed) boardChanged(k);
@@ -388,7 +427,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
   // Drop connections that have gone silent, and save the totals now and then.
   function sweep() {
     const now = Date.now();
-    for (const p of conns) if (now - p.seen > SILENT_MS) { try { p.sock.close(); } catch {} drop(p); }
+    if (dropSilent) for (const p of conns) if (now - p.seen > SILENT_MS) { try { p.sock.close(); } catch {} drop(p); }
     if (statsDirty) statsChanged();
   }
   function drop(p) {
@@ -412,7 +451,11 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
       sweepTimer ??= setInterval(sweep, 20000);
       send(p, { t: 'lbs', boards: Object.fromEntries(boards) }); // the leaderboard, to start with
       return {
-        message(raw) { p.seen = Date.now(); if (raw.length <= 16384) handle(p, raw); },
+        message(raw) {
+          p.seen = Date.now();
+          if (raw.length > 16384) return;
+          try { handle(p, raw); } catch (err) { console.error('message failed:', err); } // one bad message must never take the server down
+        },
         close() { drop(p); },
       };
     },

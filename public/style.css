@@ -263,7 +263,7 @@ input:focus { border-color: var(--blue); }
 .lapsbox .label { margin: 0; }
 #laps-val { font-size: 22px; font-weight: 900; min-width: 30px; text-align: center; }
 .lobby-row { display: flex; gap: 10px; }
-.lobby-row .btn { flex: 1; }
+.lobby-row .btn { flex: 1; min-width: 0; padding: 8px 4px; font-size: 12px; }
 .corner-btn { position: fixed; left: 12px; bottom: 12px; font-size: 11px; padding: 6px 10px; }
 .hud-delta { font-size: 14px; font-weight: 900; line-height: 1; }
 .hud-delta:empty { display: none; }
@@ -339,5 +339,7 @@ input:focus { border-color: var(--blue); }
 .board-list li.first { background: #ffd23f; }
 .board-list li.me { outline: 3px solid var(--blue); outline-offset: -3px; }
 .board-list li.empty { justify-content: center; color: var(--muted); font-weight: 700; }
+.board-pb { font-weight: 800; font-size: 14px; }
+.board-pb:empty { display: none; }
 .label .record { float: right; color: var(--ink); text-transform: none; letter-spacing: 0; font-weight: 800; }
 

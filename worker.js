@@ -37,6 +37,7 @@ export class GameServer {
         saveBoards: (b) => { ctx.storage.put('boards', b); },
         note: 'Totals are kept since the game moved to Cloudflare.',
         pairStates: true, // the free plan counts every message, so send half as many
+        dropSilent: true, // nothing else here notices a connection that has died
       });
     });
   }
