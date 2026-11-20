@@ -343,3 +343,11 @@ input:focus { border-color: var(--blue); }
 .board-pb:empty { display: none; }
 .label .record { float: right; color: var(--ink); text-transform: none; letter-spacing: 0; font-weight: 800; }
 
+/* ---------- podium ---------- */
+#screen-race.podium-on .hud-left, #screen-race.podium-on .hud-right, #screen-race.podium-on .hud-speed,
+#screen-race.podium-on #lights, #screen-race.podium-on #countdown, #screen-race.podium-on #toast-race,
+#screen-race.podium-on #respawn-tip, #screen-race.podium-on #dash-nav, #screen-race.podium-on #btn-endq { display: none !important; }
+.podium-ui { position: absolute; left: 50%; top: 8%; transform: translateX(-50%); text-align: center; pointer-events: none; width: 92%; }
+.podium-title { font-size: 46px; font-weight: 900; line-height: 1.05; color: #ffd23f; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; animation: pop .5s ease-out; }
+.podium-skip { margin-top: 10px; display: inline-block; background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; }
+
