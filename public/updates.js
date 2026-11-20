@@ -7,6 +7,7 @@ export const UPDATES = [
     items: [
       'Qualifying is now called Polytrack mode: free laps against your ghost, and the fastest lap sets the grid for the next race.',
       'A bigger, bolder Leaderboard button on the home screen and in the lobby.',
+      'The lobby now says "Lap time record" above the tracks, so it\'s clear what the record is.',
     ],
   },
   {

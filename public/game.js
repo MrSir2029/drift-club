@@ -3427,7 +3427,7 @@ function renderRecord() {
   const r = app.room, el = $('#track-record');
   if (!el) return;
   const best = r && boardList(r.trackId)[0];
-  el.textContent = best ? `Record ${fmtTime(best.ms)} by ${best.n}${CAR_NAMES[best.c] ? ` (${CAR_NAMES[best.c]})` : ''}` : '';
+  el.textContent = best ? `Lap time record ${fmtTime(best.ms)} by ${best.n}${CAR_NAMES[best.c] ? ` (${CAR_NAMES[best.c]})` : ''}` : '';
 }
 
 // a random tip on the home screen, never the same one twice in a row

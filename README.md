@@ -139,7 +139,7 @@ shows on the minimap.
 Every lap anyone drives, in races and in qualifying, counts for the
 leaderboard: the ten fastest names on each track, in any car (each time shows
 the car it was set in). Open it from the home screen or the lobby; the lobby
-also shows the record for the track that's picked, and setting a time on the
+also shows the lap time record for the track that's picked, and setting a time on the
 board pops up a message.
 
 There are no accounts: it goes by the name you race with, one line per name.
