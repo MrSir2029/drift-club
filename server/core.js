@@ -44,7 +44,7 @@ export function beaconTag(token) {
   return t ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${t}"}'></script>` : '';
 }
 
-// qualiMs: qualifying length. stats: totals saved last time (if the host keeps
+// stats: totals saved last time (if the host keeps
 // them). saveStats(stats): called now and then with the totals to keep.
 // note: a line for the bottom of the /stats page about how the totals behave.
 // boards / saveBoards(boards): the leaderboard, for hosts that can keep it.
@@ -56,7 +56,7 @@ export function beaconTag(token) {
 // can't tell when a connection has died.
 // pairStates: ask clients to send their positions two at a time (half the
 // messages, a little less smooth), for hosts that count every message.
-export function createGame({ qualiMs = 240000, stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, sign = null, dropSilent = false } = {}) {
+export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, sign = null, dropSilent = false } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
@@ -231,11 +231,11 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
     broadcast(room, startMessage(room));
     setTimeout(() => { if (room.phase === 'countdown') room.phase = 'racing'; }, COUNTDOWN_MS);
     if (room.endTimer) clearTimeout(room.endTimer);
-    room.endTimer = room.mode === 'quali' ? setTimeout(() => endQualifying(room), COUNTDOWN_MS + qualiMs) : null;
+    room.endTimer = null; // Polytrack mode ('quali') runs until the host ends it
     tickTimer ??= setInterval(tick, 1000 / BROADCAST_HZ);
   }
   function startMessage(room, extra) {
-    return { t: 'start', mode: room.mode, startAt: room.startAt, endAt: room.startAt + qualiMs, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, now: Date.now(), ...extra };
+    return { t: 'start', mode: room.mode, startAt: room.startAt, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, now: Date.now(), ...extra };
   }
   // Qualifying ends on the clock: fastest lap first, no-time drivers at the back.
   function endQualifying(room) {
@@ -243,9 +243,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
     room.endTimer = null;
     room.phase = 'results';
     const order = [...room.players.values()].sort((a, b) => (a.best ?? Infinity) - (b.best ?? Infinity));
-    room.grid = order.map(p => p.id);
-    room.gridTimes = {};
-    for (const p of order) if (p.best != null) room.gridTimes[p.id] = p.best;
+    // Polytrack mode stands on its own: its times don't set the grid for a race
     broadcast(room, { t: 'results', quali: true, results: order.map(p => ({ id: p.id, name: p.name, color: p.color, time: p.best ?? null })) });
   }
   function maybeFinishRace(room) {
@@ -321,7 +319,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         break;
       }
       case 'lap': {
-        // a lap in qualifying (it sets the grid) or in a race; either way it
+        // a lap in Polytrack mode or in a race; either way it
         // can go on the leaderboard
         if (!room || room.phase !== 'racing' || (room.mode !== 'quali' && room.mode !== 'race')) return;
         const time = +msg.time, now = Date.now();
