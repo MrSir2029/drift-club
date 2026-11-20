@@ -72,6 +72,9 @@ input:focus { border-color: var(--blue); }
 .btn.small { font-size: 13px; padding: 8px 12px; }
 .btn.board-btn { width: 100%; margin-top: 12px; font-size: 18px; padding: 12px 20px; background: #ffd23f; }
 .lobby-actions .board-btn { margin-top: 0; }
+/* home screen: the leaderboard in its own bubble under the main one */
+.board-bubble { width: min(420px, 100%); margin-top: 14px; padding: 12px; }
+.board-bubble .board-btn { margin-top: 0; }
 .btn.ghost { background: transparent; box-shadow: none; border-color: transparent; color: var(--muted); }
 .btn.ghost:hover { border-color: var(--ink); color: var(--ink); transform: none; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }

@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.11', date: '21 Nov 2026', title: 'Leaderboard bubble',
+    items: [
+      'The Leaderboard button has its own bubble on the home screen, under the main one.',
+    ],
+  },
+  {
     v: '2.10', date: '21 Nov 2026', title: 'Polytrack mode, no time limit',
     items: [
       'Polytrack mode has no time limit: drive as many laps as you like until the host ends it. The clock counts up.',
