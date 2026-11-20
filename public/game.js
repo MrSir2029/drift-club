@@ -37,8 +37,8 @@ const TIPS = [
   'Brake in a straight line, then turn in.',
   'Lift off the gas to tuck the nose into a tight corner.',
   "Hold the brake once you've stopped to reverse.",
-  'Qualifying sets the grid: the fastest lap starts at the front.',
-  "In qualifying, race your blue ghost. The timer under your best lap shows if you're ahead.",
+  'Polytrack mode sets the grid: the fastest lap starts at the front.',
+  "In Polytrack mode, race your blue ghost. The timer under your best lap shows if you're ahead.",
   'The rally car grips on gravel and grass; the open seater is happiest on tarmac.',
   "Hit the jumps on Red Canyon flat out and you'll fly.",
   'Gold stars are hidden around the map. Can you find them all?',
@@ -3375,7 +3375,7 @@ function beginRace(msg) {
   $('#dash-nav').classList.toggle('hidden', !dash);
   if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
-  if (app.mode === 'quali') raceToast('Qualifying: fastest lap sets the grid', 3500);
+  if (app.mode === 'quali') raceToast('Polytrack mode: fastest lap sets the grid', 3500);
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
 }
 
@@ -3454,7 +3454,7 @@ function showResults(results, quali, dash) {
   app.phase = 'results';
   app.finished = true;
   if (quali) app.finishTime = 0;
-  $('#results-title').textContent = quali ? 'Qualifying — this is the grid for the next race' : dash ? 'Race to 9LAT2 — results' : 'Race results';
+  $('#results-title').textContent = quali ? 'Polytrack mode — this is the grid for the next race' : dash ? 'Race to 9LAT2 — results' : 'Race results';
   $('#btn-endq').classList.add('hidden');
   const list = $('#results-list');
   list.innerHTML = '';

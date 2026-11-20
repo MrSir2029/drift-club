@@ -37,9 +37,9 @@
         <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">
         <button id="btn-join" class="btn">Join</button>
       </div>
+      <button id="btn-board" class="btn board-btn">&#127942; Leaderboard</button>
       <div class="homerow">
         <button id="btn-settings" class="btn ghost small whatsnew">Settings</button>
-        <button id="btn-board" class="btn ghost small whatsnew">Leaderboard</button>
         <button id="btn-feedback" class="btn ghost small whatsnew hidden">Feedback</button>
       </div>
     </div>
@@ -77,11 +77,11 @@
       <div class="lobby-actions">
         <div class="lapsbox"><span class="label">Laps</span><button id="laps-minus" class="btn small">&minus;</button><b id="laps-val">3</b><button id="laps-plus" class="btn small">+</button></div>
         <button id="btn-start" class="btn primary big">Start race</button>
-        <button id="btn-quali" class="btn">Qualifying</button>
+        <button id="btn-quali" class="btn">Polytrack mode</button>
         <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
+        <button id="btn-board-lobby" class="btn board-btn">&#127942; Leaderboard</button>
         <div class="lobby-row">
           <button id="btn-settings-lobby" class="btn small">Settings</button>
-          <button id="btn-board-lobby" class="btn small">Leaderboard</button>
         </div>
         <div id="secrets" class="panel secrets hidden">
           <div class="label">Secrets</div>
@@ -128,7 +128,7 @@
     <div id="gate-nav" class="dash-nav gate-nav hidden"><span id="gate-arrow">&#9650;</span><b>Missed a gate!</b><span>Go back through it, or press <b>R</b></span><span id="gate-dist"></span></div>
     <div id="dash-nav" class="dash-nav hidden"><span id="dash-arrow">&#9650;</span><b>9LAT2</b><span id="dash-dist"></span></div>
     <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or press <b>R</b> to reset</div>
-    <button id="btn-endq" class="btn small endq hidden">End qualifying</button>
+    <button id="btn-endq" class="btn small endq hidden">End Polytrack mode</button>
     <div id="podium-ui" class="podium-ui hidden"><div id="podium-title" class="podium-title"></div><div class="podium-skip">Click or press any key to skip</div></div>
 
     <div id="pause" class="results hidden">
@@ -169,7 +169,7 @@
       <div id="board-tracks" class="seg"></div>
       <ol id="board-list" class="board-list"></ol>
       <div id="board-pb" class="board-pb"></div>
-      <div class="hint">Every lap counts, in races and qualifying. The ten fastest names make the board, so pick yours on the home screen.</div>
+      <div class="hint">Every lap counts, in races and Polytrack mode. The ten fastest names make the board, so pick yours on the home screen.</div>
       <button id="btn-board-close" class="btn primary">Close</button>
     </div>
   </div>

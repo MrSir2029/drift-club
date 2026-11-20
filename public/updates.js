@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.8', date: '20 Nov 2026', title: 'Polytrack mode',
+    items: [
+      'Qualifying is now called Polytrack mode: free laps against your ghost, and the fastest lap sets the grid for the next race.',
+      'A bigger, bolder Leaderboard button on the home screen and in the lobby.',
+    ],
+  },
+  {
     v: '2.7', date: '20 Nov 2026', title: 'Gates and standings fixed',
     items: [
       'Gates are easier to hit: going through one a little wide, with a wheel or two on the grass, now counts. Before, running wide at a gate could miss it without you noticing.',
