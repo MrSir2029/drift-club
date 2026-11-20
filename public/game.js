@@ -21,6 +21,9 @@ const THEMES = {
 // panel (and typing it again hides it). Letters and numbers only; change it
 // to anything you like.
 const SECRET_CODE = '9LAT2';
+// The rally car is hidden too: a host types this in the lobby to show it (and
+// again to hide it). This browser remembers.
+const RALLY_CODE = 'RALLY';
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
@@ -3630,6 +3633,10 @@ function renderLobby() {
   renderRecord();
   document.querySelectorAll('.trackcard').forEach((el, i) => el.classList.toggle('on', i === r.trackId));
   $('#car-list').classList.toggle('locked', !isHost);
+  // the car row only shows when there's a choice to make (the rally car is unlocked) or the host picked another car
+  const showRally = app.rallyOn || r.car === 'rally';
+  $('.carrow').classList.toggle('hidden', !showRally && (r.car || 'open') === 'open');
+  $('.carpick[data-car="rally"]').classList.toggle('hidden', !showRally);
   document.querySelectorAll('.carpick').forEach((el) => el.classList.toggle('on', el.dataset.car === (r.car || 'open')));
 }
 
@@ -3694,7 +3701,8 @@ function readName() {
   return n;
 }
 
-let secretTyped = ''; // the last few keys pressed, checked against SECRET_CODE
+let secretTyped = ''; // the last few keys pressed, checked against SECRET_CODE and RALLY_CODE
+app.rallyOn = (() => { try { return localStorage.getItem('dc-rally') === '1'; } catch { return false; } })();
 
 function wireUI() {
   try {
@@ -3778,8 +3786,16 @@ function wireUI() {
     if (e.code === 'Escape' && !$('#settings').classList.contains('hidden')) { $('#settings').classList.add('hidden'); return; }
     if (e.code === 'Escape' && !$('#board').classList.contains('hidden')) { $('#board').classList.add('hidden'); return; }
     if (e.key && e.key.length === 1) {
-      secretTyped = (secretTyped + e.key.toUpperCase()).slice(-SECRET_CODE.length);
-      if (secretTyped === SECRET_CODE && app.phase === 'lobby' && app.room?.hostId === app.myId) {
+      secretTyped = (secretTyped + e.key.toUpperCase()).slice(-12);
+      if (secretTyped.endsWith(RALLY_CODE) && app.phase === 'lobby' && app.room?.hostId === app.myId) {
+        secretTyped = '';
+        app.rallyOn = !app.rallyOn;
+        try { localStorage.setItem('dc-rally', app.rallyOn ? '1' : '0'); } catch {}
+        if (!app.rallyOn && app.room.car === 'rally') send({ t: 'car', car: 'open' });
+        renderLobby();
+        toast(app.rallyOn ? 'Rally car unlocked' : 'Rally car hidden');
+      }
+      if (secretTyped.endsWith(SECRET_CODE) && app.phase === 'lobby' && app.room?.hostId === app.myId) {
         secretTyped = '';
         app.secrets = !app.secrets;
         renderLobby();
