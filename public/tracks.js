@@ -14,11 +14,11 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Red Canyon',
-    blurb: 'Desert gravel stage: two jumps, cacti and a rock arch.',
+    name: 'Pinewood',
+    blurb: 'Forest gravel stage: two jumps, tall pines and a rock arch.',
     width: 15,
     surface: 'gravel',
-    theme: 'desert',
+    theme: 'forest',
     jumps: [{ at: 0.093, h: 1.6 }, { at: 0.18, h: 1.5 }], // the only stretches with a straight run-up and landing
     arch: 0.215,                                                                 // a stone arch over the road
     points: [

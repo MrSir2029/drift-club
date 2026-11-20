@@ -10,11 +10,13 @@ const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30; // positions a second (sent two at a time when the server asks: see 'joined')
 // Each track's look. The meadow is the default; the desert turns the grass to
 // sand and red rock, the trees to cacti and the green hills to mesas; snow
-// gives white ground, snowy pines, white mountains, snowmen and falling snow.
+// gives white ground, snowy pines, white mountains, snowmen and falling snow;
+// the forest is dark green, thick with pines, with ferns and mossy rocks.
 const THEMES = {
   meadow: { sky: 0x8ad4f5, skyLight: 0xcfeeff, bounce: 0x5f9c48, lo: 0x6db85e, hi: 0x9ad46a, rock: 0x8f917c, verge: 0x5fa653, gravelVerge: 0x9c8a62, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x6fb963, noise: 1 },
   night: { sky: 0x0b1430, skyLight: 0x5b6b9c, bounce: 0x151b2c, lo: 0x4f8a4a, hi: 0x6aa35a, rock: 0x6b6f7c, verge: 0x4f8a4a, gravelVerge: 0x6b5d45, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x1c2638, noise: 1, night: true, hemiI: 0.95, sunI: 0.7, sunColor: 0xa9c0ff },
   snow: { sky: 0xc8d6e4, skyLight: 0xeef4ff, bounce: 0xb9c6d3, lo: 0xdce3ea, hi: 0xeef2f6, rock: 0x7d8794, verge: 0xe2e8ee, gravelVerge: 0xe2e8ee, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0xe8eef4, noise: 1.6 },
+  forest: { sky: 0xa9d3c4, skyLight: 0xdcefe4, bounce: 0x3f6b3a, lo: 0x4a8442, hi: 0x6a9c4e, rock: 0x7d8173, verge: 0x467c3e, gravelVerge: 0x8a7a58, road: 0x9c8462, curbs: [0x6d5a40, 0xe2d7bd], hills: 0x2f5e3a, noise: 1.8 },
   desert: { sky: 0xf0d3a2, skyLight: 0xffe9c9, bounce: 0xc8955a, lo: 0xd8a466, hi: 0xeac58b, rock: 0xa9563a, verge: 0xc99a62, gravelVerge: 0xc99a62, road: 0x96694a, curbs: [0x7a4a32, 0xe0c9a0], hills: 0xc0683f, noise: 2.2 },
 };
 // Typed on the keyboard by the host in the lobby, this opens the secrets
@@ -1816,7 +1818,7 @@ function buildNight(track) {
 // turbines, mountains, drifting clouds, hot-air balloons, birds.
 function buildScenery(track) {
   const rnd = mulberry32(1234 + app.trackId * 99);
-  const desert = track.theme === 'desert', snow = track.theme === 'snow';
+  const desert = track.theme === 'desert', snow = track.theme === 'snow', forest = track.theme === 'forest';
   const { hw, bounds } = track;
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const center = bounds.getCenter(new THREE.Vector3());
@@ -1877,7 +1879,7 @@ function buildScenery(track) {
   const faces = new THREE.InstancedMesh(new THREE.BoxGeometry(0.32, 0.36, 0.4), lam(0x2b2f3a), 60);
   wool.castShadow = true;
   const sheep = [], M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
-  for (let f = 0; f < (desert || snow ? 0 : 5); f++) { // no sheep in the desert or the snow
+  for (let f = 0; f < (desert || snow || forest ? 0 : 5); f++) { // no sheep in the desert, the snow or the forest
     const c = pick(9, hw + 16);
     if (!c) continue;
     claim(c.x, c.z, 4);
@@ -1905,7 +1907,7 @@ function buildScenery(track) {
   const bales = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.9, 0.9, 1.4, 9).rotateZ(Math.PI / 2), lam(0xd9b752), 40);
   bales.castShadow = true;
   let nb = 0;
-  for (let f = 0; f < (desert || snow ? 0 : 5); f++) { // or hay
+  for (let f = 0; f < (desert || snow || forest ? 0 : 5); f++) { // or hay
     const c = pick(8, hw + 14);
     if (!c) continue;
     for (let k = 0; k < 8; k++) {
@@ -1968,7 +1970,8 @@ function buildScenery(track) {
   } else {
   // trees: conifers and round broadleaf ones
   const areaK = clamp((lim.r / 360) ** 2, 1, 2.5); // a bigger map gets more trees, so it isn't bare
-  const TREES = Math.round((snow ? 520 : 380) * areaK), ROUND = snow ? 0 : Math.round(170 * areaK); // only pines in the snow
+  // only pines in the snow; the forest is thick with them, a few broadleaf trees among them
+  const TREES = Math.round((snow ? 520 : forest ? 1000 : 380) * areaK), ROUND = snow ? 0 : Math.round((forest ? 120 : 170) * areaK);
   const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 3, 5);
   const trunkMat = lam(0x7a4a2a);
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREES + ROUND);
@@ -1978,7 +1981,7 @@ function buildScenery(track) {
   const caps = snow ? new THREE.InstancedMesh(new THREE.ConeGeometry(1.9, 3.4, 6), lam(0xf4f7fa), TREES) : null;
   if (caps) caps.castShadow = true;
   const m = new THREE.Matrix4();
-  const greens = snow ? [0x2f6b4a, 0x3a7a55, 0x2c5e43, 0x356f4c, 0x2a5a41] : [0x3f9a4a, 0x55b35a, 0x2f8a52, 0x6cc46a, 0x3b8f3f], warm = [0x6cc46a, 0x86c95a, 0xa7c957, 0x4fae54, 0xd9a441];
+  const greens = snow || forest ? [0x2f6b4a, 0x3a7a55, 0x2c5e43, 0x356f4c, 0x2a5a41] : [0x3f9a4a, 0x55b35a, 0x2f8a52, 0x6cc46a, 0x3b8f3f], warm = [0x6cc46a, 0x86c95a, 0xa7c957, 0x4fae54, 0xd9a441];
   let placed = 0, nc = 0, nr = 0, tries = 0;
   while (placed < TREES + ROUND && tries++ < 6000 * areaK) {
     const [x, z] = randIn(5);
@@ -2016,8 +2019,8 @@ function buildScenery(track) {
   }
 
   // bushes and rocks
-  const bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 260);
-  const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 120);
+  const bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 340); // room for the forest's undergrowth
+  const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 140);
   bushes.castShadow = rocks.castShadow = true;
   const scatter = (mesh, count, colors, smin, smax, sink, hard) => {
     let put = 0, t2 = 0;
@@ -2036,6 +2039,9 @@ function buildScenery(track) {
   if (desert) {
     scatter(bushes, 260, [0xa38a52, 0x8c7a45, 0x7d8a4a, 0x9a9a5a], 0.5, 1.2, 0.35); // dry scrub
     scatter(rocks, 120, [0xb5603c, 0xc97a4c, 0xa95a38, 0xd09060], 0.7, 3.2, 0.25, true);
+  } else if (forest) {
+    scatter(bushes, 340, [0x3f7a3a, 0x2f6a35, 0x4f8a45, 0x5f8a3a], 0.8, 1.9, 0.35); // ferns and undergrowth
+    scatter(rocks, 140, [0x7d8173, 0x6f7a66, 0x8a8f80, 0x6a7a5a], 0.6, 2.6, 0.2, true); // mossy rocks
   } else if (snow) {
     scatter(bushes, 260, [0xdfe7ee, 0xc9d6cf, 0xb7c7bd], 0.7, 1.6, 0.35); // shrubs under snow
     scatter(rocks, 120, [0x7d8794, 0x8f99a5, 0x6b7480], 0.6, 2.6, 0.2, true);
@@ -3659,6 +3665,7 @@ function buildTrackCards() {
     const cv = document.createElement('canvas');
     cv.width = 240; cv.height = 120;
     if (def.theme === 'desert') cv.style.background = '#e2b77c';
+    if (def.theme === 'forest') cv.style.background = '#3f7a3a';
     if (def.theme === 'snow') cv.style.background = '#e6edf3';
     if (def.theme === 'night') cv.style.background = '#1b2442';
     drawTrackPreview(cv, buildTrack(def));

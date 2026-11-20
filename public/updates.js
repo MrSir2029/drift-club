@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.14', date: '21 Nov 2026', title: 'Pinewood',
+    items: [
+      'Red Canyon is now Pinewood: the desert is gone, and the same gravel stage runs through a thick pine forest with ferns and mossy rocks. The jumps and the rock arch are still there, and so are your lap times on the leaderboard.',
+    ],
+  },
+  {
     v: '2.13', date: '21 Nov 2026', title: 'Bug fixes',
     items: [
       'Players who join part-way through a race now drive around as see-through ghosts until the next race: nobody can crash into them, and they stay out of the standings.',
