@@ -820,6 +820,7 @@ function collideCars(car) {
 function updateGhost(now) {
   const car = app.local, lap = app.ghostLap;
   const on = car && lap && app.mode === 'quali' && app.phase === 'racing';
+  app.ghostOn = false; // set below once the ghost has a place on the lap (the minimap shows it then)
   if (!on) { if (app.ghost) app.ghost.group.visible = false; app.ghostDelta = null; return; }
   if (!app.ghost) {
     app.ghost = makeCarMesh(app.color, '', true);
@@ -845,6 +846,7 @@ function updateGhost(now) {
   const u = clamp((t - a.t) / (b.t - a.t), 0, 1);
   g.position.set(lerp(a.x, b.x, u), lerp(a.y, b.y, u), lerp(a.z, b.z, u));
   g.rotation.set(0, lerpAngle(a.h, b.h, u), 0);
+  app.ghostOn = true;
   g.visible = (g.position.x - car.pos.x) ** 2 + (g.position.z - car.pos.z) ** 2 > 9; // not when it's sitting on top of you
 }
 
@@ -1767,6 +1769,67 @@ function buildNight(track) {
   const moon = new THREE.Mesh(new THREE.SphereGeometry(26, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf4f1de, fog: false }));
   moon.position.set(260, 380, -520); sky.add(moon);
   anim.push(() => sky.position.copy(camera.position));
+
+  // road studs: glowing red down the left edge, white down the right
+  const studs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), new THREE.MeshBasicMaterial({ color: 0xffffff }), Math.ceil(N / 6) * 2);
+  studs.userData.dyn = true; studs.frustumCulled = false;
+  const red = new THREE.Color(0xff3b30), white = new THREE.Color(0xfff6d0);
+  let m = 0;
+  for (let i = 0; i < N; i += 6) for (const side of [1, -1]) {
+    const q = samples[i];
+    M.makeRotationY(Math.atan2(q.th.x, q.th.z)); M.setPosition(q.p.x + q.left.x * side * (hw - 0.4), q.p.y + 0.05, q.p.z + q.left.z * side * (hw - 0.4));
+    studs.setMatrixAt(m, M); studs.setColorAt(m++, side > 0 ? red : white);
+  }
+  studs.count = m; worldGroup.add(studs);
+
+  // two searchlights by the start line, sweeping the sky
+  const s0 = samples[0], beamMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const beamGeo = new THREE.CylinderGeometry(10, 0.7, 240, 14, 1, true).translate(0, 120, 0); // narrow at the lamp, spreading up into the sky
+  for (const side of [1, -1]) {
+    const x = s0.p.x + s0.left.x * side * 45, z = s0.p.z + s0.left.z * side * 45, y = terrainHeight(x, z);
+    const spin = new THREE.Group(); spin.position.set(x, y, z); spin.userData.dyn = true;
+    const beam = new THREE.Mesh(beamGeo, beamMat); beam.rotation.z = 0.42; beam.renderOrder = 2; spin.add(beam);
+    worldGroup.add(spin);
+    anim.push((t) => { spin.rotation.y = t * 0.35 * side + side; beam.rotation.z = 0.32 + Math.sin(t * 0.5 + side) * 0.14; });
+  }
+
+  // fireworks: a burst somewhere over the track every second or two
+  const FW = 6, PER = 70, fwN = FW * PER, fwP = new Float32Array(fwN * 3), fwC = new Float32Array(fwN * 3), fwV = new Float32Array(fwN * 3);
+  const bursts = Array.from({ length: FW }, () => ({ age: 99, life: 2, col: new THREE.Color() }));
+  const fwg = new THREE.BufferGeometry();
+  fwg.setAttribute('position', new THREE.BufferAttribute(fwP, 3)); fwg.setAttribute('color', new THREE.BufferAttribute(fwC, 3));
+  const fw = new THREE.Points(fwg, new THREE.PointsMaterial({ size: 2.6, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  fw.frustumCulled = false; fw.userData.dyn = true; worldGroup.add(fw);
+  const fwCols = [0xff4d6d, 0xffd23f, 0x5ad1ff, 0x7ed957, 0xff8a3d, 0xd98bff];
+  let nextBurst = 0, slot = 0;
+  anim.push((t, dt) => {
+    if (t > nextBurst) {
+      nextBurst = t + 0.7 + Math.random() * 1.6;
+      const b = bursts[slot], q = samples[Math.floor(Math.random() * N)], off = (Math.random() < 0.5 ? -1 : 1) * (25 + Math.random() * 50);
+      const cx = q.p.x + q.left.x * off, cz = q.p.z + q.left.z * off, cy = q.p.y + 38 + Math.random() * 32;
+      b.age = 0; b.life = 1.6 + Math.random() * 0.8; b.col.setHex(fwCols[Math.floor(Math.random() * fwCols.length)]);
+      const sp = 16 + Math.random() * 10;
+      for (let j = 0; j < PER; j++) {
+        const i = (slot * PER + j) * 3, u = Math.random() * 2 - 1, a = Math.random() * 6.2832, r = Math.sqrt(1 - u * u), v = sp * (0.75 + Math.random() * 0.25);
+        fwP[i] = cx; fwP[i + 1] = cy; fwP[i + 2] = cz;
+        fwV[i] = Math.cos(a) * r * v; fwV[i + 1] = u * v; fwV[i + 2] = Math.sin(a) * r * v;
+      }
+      slot = (slot + 1) % FW;
+    }
+    for (let b = 0; b < FW; b++) {
+      const B = bursts[b];
+      if (B.age > B.life) continue;
+      B.age += dt;
+      const fade = Math.max(0, 1 - B.age / B.life) ** 1.5, drag = Math.exp(-dt * 1.6);
+      for (let j = 0; j < PER; j++) {
+        const i = (b * PER + j) * 3;
+        fwV[i] *= drag; fwV[i + 1] = fwV[i + 1] * drag - 7 * dt; fwV[i + 2] *= drag;
+        fwP[i] += fwV[i] * dt; fwP[i + 1] += fwV[i + 1] * dt; fwP[i + 2] += fwV[i + 2] * dt;
+        fwC[i] = B.col.r * fade; fwC[i + 1] = B.col.g * fade; fwC[i + 2] = B.col.b * fade;
+      }
+    }
+    fwg.attributes.position.needsUpdate = true; fwg.attributes.color.needsUpdate = true;
+  });
 }
 
 // Countryside and sky: trees, bushes, rocks, a farm, sheep, hay bales, wind
@@ -2955,7 +3018,9 @@ function stepLocal(car, dt, canDrive) {
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          if (app.mode === 'quali') { send({ t: 'lap', time: Math.round(lapTime) }); raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500); }
+          send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the grid, in qualifying)
+          notePersonalBest(lapTime);
+          if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
           else raceToast(`Lap ${car.lap - 1}  ${fmtTime(lapTime)}${lapTime === app.bestLap && car.lap > 2 ? '  ★ best' : ''}`, 2200);
         }
@@ -3091,6 +3156,7 @@ const _ce = new THREE.Euler(), _cq = new THREE.Quaternion();
 let camInit = false;
 
 function updateCamera(dt) {
+  if (podium) return; // the podium has the camera (updatePodium)
   if (app.phase === 'home' || app.phase === 'lobby' || !app.local) {
     // slow orbit around the track for the menus
     app.inCockpit = false;
@@ -3158,7 +3224,12 @@ function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
   app.ws = ws;
-  ws.onopen = () => { $('#btn-create').disabled = false; $('#btn-join').disabled = false; };
+  ws.onopen = () => {
+    $('#btn-create').disabled = false; $('#btn-join').disabled = false;
+    // our copy of the leaderboard: fills it back in if the server has restarted
+    const seed = JSON.stringify({ t: 'lbseed', boards: app.boards });
+    if (seed.length > 30 && seed.length < 12000) ws.send(seed);
+  };
   ws.onclose = () => {
     toast('Connection lost. Reconnecting…');
     $('#btn-create').disabled = true; $('#btn-join').disabled = true;
@@ -3242,6 +3313,14 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
+    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; boardsChanged(); break;
+    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; boardsChanged(msg.k); } break;
+    case 'record': {
+      const where = TRACKS[msg.track]?.name || 'this track';
+      if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
+      else if (msg.place === 1) raceToast(`${msg.name} set a new track record: ${fmtTime(msg.time)}`, 3000);
+      break;
+    }
     case 'results': showResults(msg.results, !!msg.quali, msg.mode === 'dash'); break;
   }
 }
@@ -3262,6 +3341,7 @@ function beginRace(msg) {
   app.myLaps = [];
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.sessionOver = false;
+  app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Time left' : 'Time';
   if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
   setCarClass(msg.car);
@@ -3288,6 +3368,54 @@ function beginRace(msg) {
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
   if (app.mode === 'quali') raceToast('Qualifying: fastest lap sets the grid', 3500);
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
+}
+
+// ---- leaderboard: best laps per track and car (see server/core.js) ----
+// A copy is kept in this browser, so a server that has restarted gets its
+// boards back from returning players. Your own best laps are kept here too.
+app.boards = {};
+app.pbs = {};
+try { const b = JSON.parse(localStorage.getItem('dc-lb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.boards = b; } catch {}
+try { const b = JSON.parse(localStorage.getItem('dc-pb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.pbs = b; } catch {}
+const BOARD_CARS = [['open', 'Open seater'], ['rally', 'Rally'], ['camry', 'Toyota Camry']];
+const board = { track: 0, car: 'open' };
+const boardList = (t, c) => { const l = app.boards[`${t}:${c}`]; return Array.isArray(l) ? l.filter(e => e && typeof e.n === 'string' && e.ms > 0) : []; };
+function boardsChanged(key) {
+  try { localStorage.setItem('dc-lb', JSON.stringify(app.boards)); } catch {}
+  if (!$('#board').classList.contains('hidden') && (!key || key === `${board.track}:${board.car}`)) renderBoard();
+  renderRecord();
+}
+function notePersonalBest(lapTime) {
+  const k = `${app.trackId}:${app.carClass}`, ms = Math.round(lapTime);
+  if (app.pbs[k] && app.pbs[k] <= ms) return;
+  app.pbs[k] = ms;
+  try { localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); } catch {}
+}
+function openBoard(track, car) {
+  if (track != null) board.track = track;
+  if (car) board.car = car;
+  $('#board').classList.remove('hidden');
+  renderBoard();
+}
+function renderBoard() {
+  $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}">${esc(t.name)}</button>`).join('');
+  // the Camry is a secret: its tab shows once someone has a Camry time, or the secrets are open
+  const cars = BOARD_CARS.filter(([c]) => c !== 'camry' || app.secrets || board.car === 'camry' || TRACKS.some((t, i) => boardList(i, 'camry').length));
+  $('#board-cars').innerHTML = cars.map(([c, label]) => `<button data-c="${c}" class="${c === board.car ? 'on' : ''}">${label}</button>`).join('');
+  const list = boardList(board.track, board.car);
+  const me = (app.room ? app.name : $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer').toLowerCase();
+  $('#board-list').innerHTML = list.length
+    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="name">${esc(e.n)}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
+    : '<li class="empty">No laps yet. Set the first one!</li>';
+  const pb = app.pbs[`${board.track}:${board.car}`];
+  $('#board-pb').textContent = pb ? `Your best here: ${fmtTime(pb)}` : '';
+}
+// the record for the track and car picked in the lobby
+function renderRecord() {
+  const r = app.room, el = $('#track-record');
+  if (!el) return;
+  const best = r && boardList(r.trackId, r.car || 'open')[0];
+  el.textContent = best ? `Record ${fmtTime(best.ms)} by ${best.n}` : '';
 }
 
 // a random tip on the home screen, never the same one twice in a row
@@ -3336,7 +3464,99 @@ function showResults(results, quali, dash) {
   const laps = app.myLaps || [], best = Math.min(...laps);
   $('#results-laps').innerHTML = laps.length ? '<span class="lbl">Your laps</span>' + laps.map((t, i) => `<span class="lap${t === best ? ' best' : ''}">L${i + 1} ${fmtTime(t)}</span>`).join('') : '';
   resultsButtons();
-  $('#results').classList.remove('hidden');
+  // after a race: the top three on the podium first, then the results
+  const podiumTop = quali ? [] : results.filter(r => r.time != null).slice(0, 3);
+  if (podiumTop.length) startPodium(podiumTop, dash, () => $('#results').classList.remove('hidden'));
+  else $('#results').classList.remove('hidden');
+}
+
+// ---- podium: the top three on gold, silver and bronze steps just past the
+// finish line, confetti falling and the camera swinging round them. Any key
+// or click skips to the results. ----
+let podium = null;
+const PODIUM_MS = 7000;
+function plate(text, size) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.font = '900 104px "Segoe UI", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 12; ctx.strokeStyle = '#1d2230'; ctx.strokeText(text, 64, 70); ctx.fillStyle = '#fffaf0'; ctx.fillText(text, 64, 70);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+}
+function startPodium(top, dash, done) {
+  endPodium(false);
+  const T = app.track, step = T.length / T.N, s = T.samples[Math.round(20 / step) % T.N];
+  const head = Math.atan2(s.th.x, s.th.z);
+  const g = new THREE.Group(); g.position.copy(s.p); g.rotation.y = head;
+  const night = !!T.look?.night;
+  [[0, 1.4, 0xffd23f], [3.8, 1.0, 0xcfd6e0], [-3.8, 0.65, 0xd08a4a]].forEach(([x, h, col], i) => {
+    const r = top[i];
+    const block = new THREE.Mesh(new THREE.BoxGeometry(3.6, h, 5.6), new THREE.MeshLambertMaterial({ color: col, emissive: night ? col : 0, emissiveIntensity: 0.35, flatShading: true }));
+    block.position.set(x, h / 2, 0); block.castShadow = block.receiveShadow = true; g.add(block);
+    const num = plate(String(i + 1), Math.min(1.25, h * 0.9)); num.position.set(x, h / 2, 2.81); g.add(num);
+    if (!r) return; // fewer than three finishers: an empty step
+    const car = makeCarMesh(r.color, r.name, false, app.carClass);
+    car.group.position.set(x, h, -0.2); g.add(car.group);
+  });
+  // confetti: squares in the team colours, drifting down and starting again at the top
+  const n = 420, P = new Float32Array(n * 3), C = new Float32Array(n * 3), fall = [];
+  const pal = [0xff8a3d, 0x3d8bff, 0xffd23f, 0x7ed957, 0xff6bcb, 0xffffff].map(c => new THREE.Color(c));
+  for (let i = 0; i < n; i++) {
+    P.set([(Math.random() - 0.5) * 16, 1 + Math.random() * 15, (Math.random() - 0.5) * 12], i * 3);
+    const c = pal[i % pal.length]; C.set([c.r, c.g, c.b], i * 3);
+    fall.push([0.9 + Math.random() * 1.6, Math.random() * 6.28]);
+  }
+  const cg = new THREE.BufferGeometry();
+  cg.setAttribute('position', new THREE.BufferAttribute(P, 3)); cg.setAttribute('color', new THREE.BufferAttribute(C, 3));
+  const confetti = new THREE.Points(cg, new THREE.PointsMaterial({ size: 0.3, vertexColors: true }));
+  confetti.frustumCulled = false; g.add(confetti);
+  scene.add(g);
+  carsGroup.visible = false;
+  if (app.ghost) app.ghost.group.visible = false;
+  const winner = top[0];
+  $('#podium-title').textContent = winner.id === app.myId ? (dash ? 'You got to 9LAT2 first!' : 'You win!') : `${winner.name} ${dash ? 'got to 9LAT2 first!' : 'wins!'}`;
+  $('#podium-ui').classList.remove('hidden');
+  $('#screen-race').classList.add('podium-on');
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, i === 3 ? 0.5 : 0.16, 0.18), i * 170)); // ta-da
+  const skip = (e) => {
+    if (performance.now() - podium.t0 < 800 || e.repeat) return; // not a key still held from driving
+    e.stopImmediatePropagation(); e.preventDefault();
+    endPodium(true);
+  };
+  window.addEventListener('keydown', skip, true);
+  window.addEventListener('pointerdown', skip, true);
+  podium = { g, cg, fall, head, x: s.p.x, y: s.p.y, z: s.p.z, t0: performance.now(), done, skip, timer: setTimeout(() => endPodium(true), PODIUM_MS) };
+}
+function endPodium(showDone) {
+  if (!podium) return;
+  const p = podium; podium = null;
+  clearTimeout(p.timer);
+  window.removeEventListener('keydown', p.skip, true);
+  window.removeEventListener('pointerdown', p.skip, true);
+  scene.remove(p.g); disposeTree(p.g);
+  carsGroup.visible = true;
+  $('#podium-ui').classList.add('hidden');
+  $('#screen-race').classList.remove('podium-on');
+  camInit = false;
+  if (showDone) p.done();
+}
+function updatePodium(dt, now) {
+  const P = podium.cg.attributes.position.array, t = now / 1000;
+  podium.fall.forEach(([v, ph], i) => {
+    P[i * 3 + 1] -= v * dt;
+    P[i * 3] += Math.sin(t * 2.2 + ph) * 0.7 * dt;
+    if (P[i * 3 + 1] < 0.1) P[i * 3 + 1] = 14 + Math.random() * 2;
+  });
+  podium.cg.attributes.position.needsUpdate = true;
+  // the camera swings round in front of the podium and closes in
+  const k = clamp((now - podium.t0) / PODIUM_MS, 0, 1), e = k * k * (3 - 2 * k);
+  const a = lerp(-1.05, 0.8, e), r = lerp(17, 10.5, e), lx = Math.sin(a) * r, lz = Math.cos(a) * r;
+  const c = Math.cos(podium.head), sn = Math.sin(podium.head);
+  camera.position.set(podium.x + lx * c + lz * sn, podium.y + lerp(5.5, 3.1, e), podium.z - lx * sn + lz * c);
+  camera.lookAt(podium.x, podium.y + 1.9, podium.z);
+  camera.near = 0.5; camera.fov = 50; camera.updateProjectionMatrix();
+  sun.position.set(podium.x + 80, podium.y + 140, podium.z + 60); sun.target.position.set(podium.x, podium.y, podium.z);
+  app.inCockpit = false;
 }
 // whoever is host gets the button (the host can change if someone leaves)
 function resultsButtons() {
@@ -3382,6 +3602,7 @@ function toggleCamera() {
 }
 
 function goHome() {
+  endPodium(false);
   setMenu(false);
   showTip();
   $('#results').classList.add('hidden');
@@ -3396,6 +3617,7 @@ function goHome() {
 }
 
 function showLobby() {
+  endPodium(false);
   setMenu(false);
   app.phase = 'lobby';
   showScreen('lobby');
@@ -3425,6 +3647,7 @@ function renderLobby() {
   $('#wait-host').classList.toggle('hidden', isHost);
   $('#track-list').classList.toggle('locked', !isHost);
   $('#track-hint').textContent = isHost ? '— you pick' : '— host picks';
+  renderRecord();
   document.querySelectorAll('.trackcard').forEach((el, i) => el.classList.toggle('on', i === r.trackId));
   $('#car-list').classList.toggle('locked', !isHost);
   document.querySelectorAll('.carpick').forEach((el) => el.classList.toggle('on', el.dataset.car === (r.car || 'open')));
@@ -3559,6 +3782,10 @@ function wireUI() {
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   $('#home-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
+  for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(app.room ? app.room.trackId : null, app.room ? app.room.car || 'open' : null); });
+  $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
+  $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = +b.dataset.t; renderBoard(); } });
+  $('#board-cars').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.car = b.dataset.c; renderBoard(); } });
   showTip();
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
@@ -3571,6 +3798,7 @@ function wireUI() {
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Escape' && !$('#settings').classList.contains('hidden')) { $('#settings').classList.add('hidden'); return; }
+    if (e.code === 'Escape' && !$('#board').classList.contains('hidden')) { $('#board').classList.add('hidden'); return; }
     if (e.key && e.key.length === 1) {
       secretTyped = (secretTyped + e.key.toUpperCase()).slice(-SECRET_CODE.length);
       if (secretTyped === SECRET_CODE && app.phase === 'lobby' && app.room?.hostId === app.myId) {
@@ -3657,7 +3885,9 @@ function updateHud(now) {
     }
     if (left <= 0) {
       app.phase = 'racing';
-      car.lapStart = raceStartPerf(); // the exact start, like the race clock (not this frame, a moment later)
+      // the exact start, like the race clock (not this frame, a moment later);
+      // or, joining a session that's already going, the moment you joined
+      car.lapStart = Math.max(raceStartPerf(), app.joinedRaceAt || 0);
       beep(1040, 0.6, 0.25);
       const el = $('#countdown');
       el.textContent = 'GO!'; el.classList.remove('hidden'); el.classList.add('go');
@@ -3733,6 +3963,11 @@ function drawMinimap() {
     mmCtx.fillRect(x - 6, y - 6, 12, 12); mmCtx.strokeRect(x - 6, y - 6, 12, 12);
   }
   for (const c of app.cars.values()) if (c.mesh.group.visible) dot(c.mesh.group.position.x, c.mesh.group.position.z, COLOR_CSS[c.color], 4);
+  if (app.ghostOn && app.ghost) { // your qualifying ghost: a pale dot with a blue ring, unlike any real car's
+    const gp = app.ghost.group.position;
+    mmCtx.beginPath(); mmCtx.arc(gp.x * sc + ox, gp.z * sc + oz, 4.5, 0, Math.PI * 2);
+    mmCtx.fillStyle = 'rgba(255,255,255,0.6)'; mmCtx.fill(); mmCtx.strokeStyle = '#3d8bff'; mmCtx.lineWidth = 2.5; mmCtx.stroke();
+  }
   if (app.local) dot(app.local.pos.x, app.local.pos.z, COLOR_CSS[app.color], 6);
 }
 
@@ -3864,6 +4099,7 @@ function frame(now) {
   if (!app.local || app.phase === 'home' || app.phase === 'lobby') quietAudio();
   for (const f of anim) f(now / 1000, dt);
   updateDust(dt);
+  if (podium) updatePodium(dt, now);
   updateCamera(dt);
   app.camHook?.(camera); // debugging: lets the console place the camera
   renderFrame();
