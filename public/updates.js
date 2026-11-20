@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.6', date: '20 Nov 2026', title: 'One leaderboard per track',
+    items: [
+      'The leaderboard is one list per track now, whatever car you drive: the ten fastest laps on each track, with the car each one was set in shown next to it.',
+      'Times already on the per-car boards carry over, so nobody loses theirs.',
+    ],
+  },
+  {
     v: '2.5', date: '20 Nov 2026', title: 'Leaderboard and podium',
     items: [
       'A live leaderboard: the ten fastest laps on every track, for each car. Every lap counts, in races and qualifying, under the name you race with. Find it on the home screen and in the lobby.',
