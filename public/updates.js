@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.9', date: '21 Nov 2026', title: 'A tidier lobby',
+    items: [
+      'The lobby is simpler: the room code and the racers sit in one short strip at the top, so you can see more of the map.',
+      'Track and car cards just show their names (hover over one for its description).',
+      'Settings and Leave room share a row under the Leaderboard button.',
+    ],
+  },
+  {
     v: '2.8', date: '20 Nov 2026', title: 'Polytrack mode',
     items: [
       'Qualifying is now called Polytrack mode: free laps against your ghost, and the fastest lap sets the grid for the next race.',
