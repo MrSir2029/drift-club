@@ -3,6 +3,15 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.10', date: '21 Nov 2026', title: 'Polytrack mode, no time limit',
+    items: [
+      'Polytrack mode has no time limit: drive as many laps as you like until the host ends it. The clock counts up.',
+      'Polytrack mode stands on its own now: its times no longer set the grid for the next race.',
+      'If the host leaves during Polytrack mode, the new host can end it.',
+      'No more tips on the home screen, to keep it clean.',
+    ],
+  },
+  {
     v: '2.9', date: '21 Nov 2026', title: 'A tidier lobby',
     items: [
       'The lobby is simpler: the room code and the racers sit in one short strip at the top, so you can see more of the map.',

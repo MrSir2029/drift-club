@@ -124,11 +124,11 @@ ten, the standings show the top eight plus you.
 ## Hosting a session
 
 The host picks the track, the car class and the number of laps (1 to 10)
-in the lobby, then either starts
-a race or runs **Polytrack mode** (qualifying) first. Polytrack mode is four
-minutes of free laps (the host can end it early); everyone's fastest lap sets
-the grid for the next race. The results screen shows the order, the gaps, and every lap
-you set, and the lobby keeps the grid and times on show.
+in the lobby, then starts either a race or **Polytrack mode**. Polytrack
+mode is free laps against your ghost with no time limit, until the host ends
+it (if the host leaves, whoever becomes host can end it); the results list
+everyone's best lap. It stands on its own: its times don't change the grid
+for a race. A race's results show the order, the gaps, and every lap you set.
 After a race (or a Race to 9LAT2) the top three stand on a podium just past
 the finish line, with confetti, for a few seconds before the results; any
 key or click skips it. In qualifying your ghost (your best lap so far) also
@@ -162,8 +162,8 @@ hides a gold star; the counter under the standings shows how many you've
 found on that map. These are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
 building is always there, hidden as far from the roads as the map allows,
-down in low ground, with a sign you only make out up close; one of the
-home screen tips hints at it. A TV helicopter follows the race leader.
+down in low ground, with a sign you only make out up close. A TV
+helicopter follows the race leader.
 
 Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
 spires and mesas, a stone arch over the road, and two jumps. Frost Pass (the
@@ -224,13 +224,6 @@ menu open a page in a new tab: set `FEEDBACK_URL` at the top of
 https://forms.google.com with a paragraph question, set it to not collect
 email addresses, and use its share link. Replies show up in the form's
 **Responses** tab. The buttons stay hidden while `FEEDBACK_URL` is empty.
-
-## Tips
-
-The home screen shows a random tip under the controls, a new one each time
-you come back to it;
-clicking it shows another. The tips are `TIPS` near the top of
-`public/game.js`; add or change them freely.
 
 ## Telling players what's new
 

@@ -25,29 +25,6 @@ const SECRET_CODE = '9LAT2';
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
 const FEEDBACK_URL = '';
-// Tips on the home screen: a random one each time you're there, and
-// clicking it shows another. Add as many as you like.
-const TIPS = [
-  "Don't accelerate and brake at the same time.",
-  'Turn and use the handbrake (Space) to drift.',
-  'Sometimes crashing into the barrier is faster than braking.',
-  'Press C to switch between the cockpit and chase cameras.',
-  'Off the track? Press R to go back to the last gate.',
-  'Drive through the orange gates in order: the glowing one is next.',
-  'Brake in a straight line, then turn in.',
-  'Lift off the gas to tuck the nose into a tight corner.',
-  "Hold the brake once you've stopped to reverse.",
-  'Polytrack mode sets the grid: the fastest lap starts at the front.',
-  "In Polytrack mode, race your blue ghost. The timer under your best lap shows if you're ahead.",
-  'The rally car grips on gravel and grass; the open seater is happiest on tarmac.',
-  "Hit the jumps on Red Canyon flat out and you'll fly.",
-  'Gold stars are hidden around the map. Can you find them all?',
-  'The TV helicopter always follows the leader.',
-  'Esc opens the menu, but the race keeps going without you.',
-  'Do your Homework!',
-  'Check the change log! The What\'s new button lists every update (and maybe a clue or two).',
-  'Somewhere far from the track stands a building with a strange name on its roof. Find it, and remember that name…',
-];
 const LIGHTS_MS = 4000; // the start lights take the 4 s countdown
 
 const $ = (s) => document.querySelector(s);
@@ -3274,6 +3251,8 @@ function handle(msg) {
     case 'room':
       app.room = msg;
       app.laps = msg.laps;
+      // Polytrack mode has no time limit, so whoever is host now can end it
+      if ((app.phase === 'racing' || app.phase === 'countdown') && app.mode === 'quali') $('#btn-endq').classList.toggle('hidden', msg.hostId !== app.myId);
       if ((msg.car || 'open') !== app.carClass && app.phase !== 'countdown' && app.phase !== 'racing') setCarClass(msg.car);
       if (app.phase === 'home' || app.phase === 'results' || app.phase === 'lobby') {
         if (msg.phase === 'lobby') {
@@ -3344,14 +3323,12 @@ function beginRace(msg) {
   app.finished = false;
   app.spectate = !!msg.spectate;
   app.mode = msg.mode === 'quali' ? 'quali' : msg.mode === 'dash' && app.track?.goal !== undefined ? 'dash' : 'race';
-  app.endAt = (msg.endAt || 0) - offset;
   app.myPlace = 0;
   app.bests = new Map();
   app.myLaps = [];
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
-  app.sessionOver = false;
   app.joinedRaceAt = performance.now();
-  $('#hud-time-label').textContent = app.mode === 'quali' ? 'Time left' : 'Time';
+  $('#hud-time-label').textContent = 'Time';
   if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
   setCarClass(msg.car);
   clearCars();
@@ -3375,7 +3352,7 @@ function beginRace(msg) {
   $('#dash-nav').classList.toggle('hidden', !dash);
   if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
-  if (app.mode === 'quali') raceToast('Polytrack mode: fastest lap sets the grid', 3500);
+  if (app.mode === 'quali') raceToast('Polytrack mode: free laps, no time limit. Race your ghost!', 3500);
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
 }
 
@@ -3430,15 +3407,6 @@ function renderRecord() {
   el.textContent = best ? `Lap time record ${fmtTime(best.ms)} by ${best.n}${CAR_NAMES[best.c] ? ` (${CAR_NAMES[best.c]})` : ''}` : '';
 }
 
-// a random tip on the home screen, never the same one twice in a row
-let lastTip = -1;
-function showTip() {
-  let i;
-  do i = Math.floor(Math.random() * TIPS.length); while (i === lastTip && TIPS.length > 1);
-  lastTip = i;
-  $('#tip-text').textContent = TIPS[i];
-}
-
 function finishRace() {
   app.finished = true;
   app.finishTime = performance.now() - raceStartPerf();
@@ -3454,7 +3422,7 @@ function showResults(results, quali, dash) {
   app.phase = 'results';
   app.finished = true;
   if (quali) app.finishTime = 0;
-  $('#results-title').textContent = quali ? 'Polytrack mode — this is the grid for the next race' : dash ? 'Race to 9LAT2 — results' : 'Race results';
+  $('#results-title').textContent = quali ? 'Polytrack mode — best laps' : dash ? 'Race to 9LAT2 — results' : 'Race results';
   $('#btn-endq').classList.add('hidden');
   const list = $('#results-list');
   list.innerHTML = '';
@@ -3471,7 +3439,7 @@ function showResults(results, quali, dash) {
   const mine = results.findIndex(r => r.id === app.myId), me = results[mine];
   let sub = '';
   if (me && me.time != null) sub = quali ? `You start ${ordinal(mine + 1)} — best lap ${fmtTime(me.time)}` : `You finished ${ordinal(mine + 1)} — ${fmtTime(me.time)}`;
-  else if (me) sub = quali ? 'No lap time set — you start at the back' : app.spectate ? 'You joined part-way through' : 'Did not finish';
+  else if (me) sub = quali ? 'No lap time set' : app.spectate ? 'You joined part-way through' : 'Did not finish';
   $('#results-sub').textContent = sub;
   const laps = app.myLaps || [], best = Math.min(...laps);
   $('#results-laps').innerHTML = laps.length ? '<span class="lbl">Your laps</span>' + laps.map((t, i) => `<span class="lap${t === best ? ' best' : ''}">L${i + 1} ${fmtTime(t)}</span>`).join('') : '';
@@ -3616,7 +3584,6 @@ function toggleCamera() {
 function goHome() {
   endPodium(false);
   setMenu(false);
-  showTip();
   $('#results').classList.add('hidden');
   $('#lights').classList.add('hidden');
   $('#countdown').classList.add('hidden');
@@ -3795,11 +3762,9 @@ function wireUI() {
   $('#laps-minus').addEventListener('click', (e) => setLaps(e, -1));
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
-  $('#home-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
   for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(app.room ? app.room.trackId : null); });
   $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
   $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = +b.dataset.t; renderBoard(); } });
-  showTip();
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
     $(id).addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
@@ -3924,9 +3889,8 @@ function updateHud(now) {
   setText('#hud-delta', gd == null ? '' : (gd >= 0 ? '+' : '\u2212') + Math.abs(gd).toFixed(2));
   if (gd != null) { const el = textCache.get('#hud-delta').el; el.classList.toggle('ahead', gd < 0); el.classList.toggle('behind', gd >= 0); }
   if (app.phase === 'racing' || app.phase === 'results') {
-    const t = app.mode === 'quali' ? (app.phase === 'results' ? 0 : Math.max(0, app.endAt - Date.now())) : app.finished && !app.spectate ? app.finishTime : Math.max(0, now - raceStartPerf());
+    const t = app.mode !== 'quali' && app.finished && !app.spectate ? app.finishTime : Math.max(0, now - raceStartPerf()); // Polytrack mode has no time limit: the clock counts up
     setText('#hud-time', fmtTime(t));
-    if (app.mode === 'quali' && app.phase === 'racing' && t <= 0 && !app.sessionOver) { app.sessionOver = true; raceToast('Session over — results coming up', 3000); }
   }
   const goal = app.mode === 'dash' ? app.track.goal : null;
   if (goal) {

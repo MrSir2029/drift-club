@@ -30,7 +30,6 @@ export class GameServer {
       const saved = await ctx.storage.get('stats');
       const boards = await ctx.storage.get('boards');
       this.game = createGame({
-        qualiMs: +env.QUALI_MS || 240000,
         stats: saved || null,
         saveStats: (s) => { ctx.storage.put('stats', s); },
         boards: boards || null,

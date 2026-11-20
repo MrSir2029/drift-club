@@ -72,7 +72,6 @@ function sendFile(req, res, f) {
 // code (changing it wipes the boards).
 const LB_KEY = process.env.LB_SECRET || 'drift-club-leaderboard';
 const game = createGame({
-  qualiMs: +process.env.QUALI_MS || 240000,
   note: 'The totals start again from zero whenever the server restarts.',
   sign: (text) => crypto.createHmac('sha256', LB_KEY).update(text).digest('base64url').slice(0, 12),
 });
