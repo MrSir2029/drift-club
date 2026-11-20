@@ -2959,7 +2959,7 @@ function stepLocal(car, dt, canDrive) {
   if (car.airborne) {
     car.vy -= PHYS.gravity * dt;
     car.pos.y += car.vy * dt;
-    if (car.pos.y <= targetY) { car.pos.y = targetY; car.vy = 0; car.airborne = false; }
+    if (car.pos.y <= targetY) { car.pos.y = targetY; car.vy = 0; car.airborne = false; car.landedAt = performance.now(); }
   } else {
     // The wheels follow the surface exactly. (The old smoothing lagged behind
     // it, which sank cars up to 30 cm into the road going uphill and floated
@@ -2992,7 +2992,10 @@ function stepLocal(car, dt, canDrive) {
     // along the road a normal step. It used to need the middle of the car on
     // the tarmac, so running a little wide at a gate missed it without anyone
     // noticing. A shortcut that leaves the road and skips a gate still doesn't count.
-    if (d > 0 && d <= 8 && Math.abs(loc.lateral) <= app.track.hw + 3.5 && Math.abs(loc.y - car.pos.y) < 8) {
+    // (Just after landing from a jump the step can be the length of the flight:
+    // high in the air the car may not have been placed on the road at all.)
+    const maxStep = performance.now() - (car.landedAt || 0) < 300 ? 45 : 8;
+    if (d > 0 && d <= maxStep && Math.abs(loc.lateral) <= app.track.hw + 3.5 && Math.abs(loc.y - car.pos.y) < 8) {
       const cpIdx = app.track.cps[car.nextCp];
       const dc = (cpIdx - car.lastIdx + N) % N;
       if (dc > 0 && dc <= d) {
