@@ -248,6 +248,13 @@ input:focus { border-color: var(--blue); }
 .dash-nav { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; font-weight: 900; box-shadow: 0 4px 0 var(--ink); }
 #dash-arrow { display: inline-block; font-size: 24px; color: var(--orange-dark); line-height: 1; }
 #dash-dist { font-variant-numeric: tabular-nums; color: var(--muted); }
+.gate-nav { background: #ffd23f; animation: gate-pulse 0.9s ease-in-out infinite alternate; }
+.gate-nav b, .gate-nav span { white-space: nowrap; }
+.gate-nav span:not(#gate-arrow) { font-weight: 700; font-size: 14px; }
+.gate-nav span b { color: var(--orange-dark); }
+#gate-arrow { display: inline-block; font-size: 24px; color: var(--ink); line-height: 1; }
+#gate-dist { font-variant-numeric: tabular-nums; color: var(--muted); }
+@keyframes gate-pulse { to { box-shadow: 0 4px 0 var(--ink), 0 0 0 6px rgba(255, 106, 0, .45); } }
 
 .homerow { display: flex; gap: 8px; margin-top: 14px; }
 .homerow .whatsnew { margin-top: 0; flex: 1; }
@@ -347,7 +354,7 @@ input:focus { border-color: var(--blue); }
 /* ---------- podium ---------- */
 #screen-race.podium-on .hud-left, #screen-race.podium-on .hud-right, #screen-race.podium-on .hud-speed,
 #screen-race.podium-on #lights, #screen-race.podium-on #countdown, #screen-race.podium-on #toast-race,
-#screen-race.podium-on #respawn-tip, #screen-race.podium-on #dash-nav, #screen-race.podium-on #btn-endq { display: none !important; }
+#screen-race.podium-on #respawn-tip, #screen-race.podium-on #dash-nav, #screen-race.podium-on #gate-nav, #screen-race.podium-on #btn-endq { display: none !important; }
 .podium-ui { position: absolute; left: 50%; top: 8%; transform: translateX(-50%); text-align: center; pointer-events: none; width: 92%; }
 .podium-title { font-size: 46px; font-weight: 900; line-height: 1.05; color: #ffd23f; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; animation: pop .5s ease-out; }
 .podium-skip { margin-top: 10px; display: inline-block; background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; }

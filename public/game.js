@@ -2767,6 +2767,7 @@ function respawn(car) {
   car.vx = 0; car.vz = 0; car.speed = 0; car.yawRate = 0; car.steerAngle = 0; car.ax = 0;
   car.vy = 0; car.airborne = false;
   car.idx = car.lastIdx = car.lastCpIdx;
+  car.missedGate = false;
   car.fellTimer = 0; car.offTrackTimer = 0;
   car.onTrack = true;
 }
@@ -2783,12 +2784,10 @@ function stepLocal(car, dt, canDrive) {
   let onTrack = false, trackY = 0, slopeAlong = 0;
   if (loc && Math.abs(loc.lateral) <= app.track.hw + 1.6 && Math.abs(loc.along) < 2.5 && Math.abs(loc.y - car.pos.y) < 3.5) {
     onTrack = true; trackY = loc.y;
-    car.lastIdx = car.idx; car.idx = loc.i;
     const fx = Math.sin(car.h), fz = Math.cos(car.h);
     slopeAlong = loc.s.t.y * (fx * loc.s.th.x + fz * loc.s.th.z);
-  } else if (loc) {
-    car.lastIdx = car.idx = loc.i;
   }
+  if (loc) { car.lastIdx = car.idx; car.idx = loc.i; } // on the road or off it, for the gates
   // off the road, read the slope of the ground under the car so it climbs,
   // rolls downhill and tilts with the terrain instead of skating over it
   let sideSlope = 0;
@@ -3001,14 +3000,20 @@ function stepLocal(car, dt, canDrive) {
   const goal = app.track.goal;
   if (app.mode === 'dash') {
     if (goal && app.phase === 'racing' && !app.finished && (car.pos.x - goal.x) ** 2 + (car.pos.z - goal.z) ** 2 < goal.r * goal.r) finishRace();
-  } else if (onTrack && app.phase === 'racing' && !app.finished) {
+  } else if (loc && app.phase === 'racing' && !app.finished) {
     const N = app.track.N;
     const d = (car.idx - car.lastIdx + N) % N;
-    if (d > 0 && d < N / 2) {
+    // A gate counts when you go through it: between its posts, or just
+    // outside them (a wheel on the grass or a slide wide still counts), moving
+    // along the road a normal step. It used to need the middle of the car on
+    // the tarmac, so running a little wide at a gate missed it without anyone
+    // noticing. A shortcut that leaves the road and skips a gate still doesn't count.
+    if (d > 0 && d <= 8 && Math.abs(loc.lateral) <= app.track.hw + 3.5 && Math.abs(loc.y - car.pos.y) < 8) {
       const cpIdx = app.track.cps[car.nextCp];
       const dc = (cpIdx - car.lastIdx + N) % N;
       if (dc > 0 && dc <= d) {
         car.lastCpIdx = cpIdx;
+        car.missedGate = false;
         if (car.nextCp === 0) {
           const nowP = performance.now();
           const lapTime = nowP - (car.lapStart || raceStartPerf());
@@ -3027,7 +3032,11 @@ function stepLocal(car, dt, canDrive) {
         car.nextCp = (car.nextCp + 1) % CHECKPOINT_COUNT;
       }
     }
-  }
+    // gone well past the next gate without going through it? The warning
+    // stays up until you go back through it, or press R.
+    const past = (car.idx - app.track.cps[car.nextCp] + N) % N;
+    if (past > 12 && past < N * 0.6) car.missedGate = true;
+  } else car.missedGate = false;
 
   // ---- visuals: pitch with slope and acceleration, roll with cornering ----
   // The chassis lies along the ground under it, so the wheels stay on the
@@ -3612,6 +3621,7 @@ function goHome() {
   $('#lights').classList.add('hidden');
   $('#countdown').classList.add('hidden');
   $('#dash-nav').classList.add('hidden');
+  $('#gate-nav').classList.add('hidden');
   app.phase = 'home';
   app.room = null;
   clearCars();
@@ -3830,16 +3840,28 @@ const mm = $('#minimap');
 const mmCtx = mm.getContext('2d');
 let mmPath = null;
 
+// How far round the race a car is, for the standings. Progress only counts
+// up to the next gate it has to go through: a car that missed a gate stays
+// there in the order (instead of jumping about), and cars still behind the
+// line at the start are behind the ones that have crossed it.
+function raceKey(lap, nextCp, idx) {
+  const { N, cps } = app.track, C = cps.length;
+  if (!(lap >= 1) || !(nextCp >= 0 && nextCp < C) || !(idx >= 0)) return -N;
+  const last = cps[(nextCp + C - 1) % C], seg = (cps[nextCp] - last + N) % N || N;
+  let ahead = (idx - last + N) % N;
+  if (ahead > N / 2) ahead -= N; // just behind the last gate
+  return (lap - 1) * N + last + Math.min(ahead, seg);
+}
 function standingsOrder() {
   const N = app.track.N;
   const entries = [];
-  if (app.local) {
-    entries.push({ id: app.myId, name: app.name, color: app.color, finished: app.finished && !app.spectate, place: app.myPlace || 0, lap: app.local.lap, key: (app.local.lap - 1) * N + app.local.idx, me: true });
+  if (app.local && !app.spectate) {
+    entries.push({ id: app.myId, name: app.name, color: app.color, finished: app.finished, place: app.myPlace || 0, lap: app.local.lap, key: raceKey(app.local.lap, app.local.nextCp, app.local.idx), me: true });
   }
   for (const p of app.room?.players || []) {
-    if (p.id === app.myId) continue;
+    if (p.id === app.myId || (p.spec && app.mode !== 'quali')) continue; // joined part-way through: watching, not racing
     const c = app.cars.get(p.id);
-    entries.push({ id: p.id, name: p.name, color: p.color, finished: !!c?.finished, place: c?.place || 0, lap: c?.lap || 1, key: c ? (c.lap - 1) * N + c.pr * N : -1, me: false });
+    entries.push({ id: p.id, name: p.name, color: p.color, finished: !!c?.finished, place: c?.place || 0, lap: c?.lap || 1, key: c ? raceKey(c.lap, c.cp, Math.round(c.pr * N) % N) : -N, me: false });
   }
   if (app.mode === 'dash' && app.track.goal) {
     // order by how far each car still has to go
@@ -3912,18 +3934,26 @@ function updateHud(now) {
     setText('#dash-dist', d + ' m');
     $('#dash-arrow').style.transform = `rotate(${(-(Math.atan2(dx, dz) - car.h)).toFixed(2)}rad)`; // points where 9LAT2 is, relative to the nose
   } else setText('#hud-lap', app.mode === 'quali' ? car.lap : Math.min(car.lap, app.laps));
-  $('#respawn-tip').classList.toggle('hidden', car.onTrack || app.phase === 'countdown' || app.mode === 'dash');
+  const missed = !!car.missedGate && app.phase === 'racing' && !app.finished && app.mode !== 'dash';
+  $('#gate-nav').classList.toggle('hidden', !missed);
+  if (missed) {
+    const g = app.track.samples[app.track.cps[car.nextCp]].p, dx = g.x - car.pos.x, dz = g.z - car.pos.z;
+    $('#gate-arrow').style.transform = `rotate(${(-(Math.atan2(dx, dz) - car.h)).toFixed(2)}rad)`; // points at the gate you missed
+    setText('#gate-dist', Math.round(Math.hypot(dx, dz)) + ' m');
+  }
+  $('#respawn-tip').classList.toggle('hidden', car.onTrack || missed || app.phase === 'countdown' || app.mode === 'dash');
 
   if (++hudTick % 6 === 0) {
     const order = standingsOrder();
     const myIdx = order.findIndex(e => e.me);
-    if (app.finished && !app.spectate) {
-      const me = order[myIdx];
-      setText('#hud-pos', me.place || myIdx + 1);
-    } else setText('#hud-pos', myIdx + 1);
+    if (myIdx < 0) setText('#hud-pos', '-');
+    else if (app.finished) setText('#hud-pos', order[myIdx].place || myIdx + 1);
+    else setText('#hud-pos', myIdx + 1);
     setText('#hud-pos-of', '/' + order.length);
     const st = $('#standings');
-    const html = order.slice(0, 20).map((e, i) =>
+    // a big room: the top eight, then you
+    const shown = order.map((e, i) => [e, i]).filter(([e, i]) => order.length <= 10 || i < 8 || e.me);
+    const html = shown.map(([e, i]) =>
       `<div class="standing${e.me ? ' me' : ''}${e.finished ? ' done' : ''}"><span class="n">${i + 1}</span><span class="dot" style="background:${COLOR_CSS[e.color]}"></span><span>${esc(e.name)}</span><span class="lap">${app.mode === 'quali' ? (e.best ? fmtTime(e.best) : '--') : e.finished ? 'FIN' : app.mode === 'dash' ? (e.togo < 99999 ? Math.round(e.togo) + 'm' : '--') : 'L' + Math.min(e.lap, app.laps)}</span></div>`
     ).join('');
     if (html !== st._html) { st._html = html; st.innerHTML = html; }

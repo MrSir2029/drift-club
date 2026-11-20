@@ -111,8 +111,15 @@ controls, so phones and tablets get a "Not for phones" warning on the home
 screen.
 
 Drive through the orange gates in order. The glowing one is your next gate.
-Cutting across the grass doesn't count. There is no automatic reset: drive
-back on, or press R.
+Going through one a little wide (a wheel on the grass, or just outside a
+post) still counts, but a shortcut that skips a gate doesn't: a yellow
+"Missed a gate!" banner points back to it until you drive through it or press
+R. There is no automatic reset: drive back on, or press R.
+
+The standings count each car's progress only as far as its next gate, so a
+car that missed one stays there in the order. Players who join part-way
+through a race watch it and aren't in the standings; in a room of more than
+ten, the standings show the top eight plus you.
 
 ## Hosting a session
 
