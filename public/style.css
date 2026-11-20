@@ -70,6 +70,7 @@ input:focus { border-color: var(--blue); }
 .btn.primary { background: var(--orange); }
 .btn.big { width: 100%; font-size: 20px; padding: 14px 20px; }
 .btn.small { font-size: 13px; padding: 8px 12px; }
+.btn.board-btn { width: 100%; margin-top: 12px; font-size: 18px; padding: 12px 20px; background: #ffd23f; }
 .btn.ghost { background: transparent; box-shadow: none; border-color: transparent; color: var(--muted); }
 .btn.ghost:hover { border-color: var(--ink); color: var(--ink); transform: none; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }

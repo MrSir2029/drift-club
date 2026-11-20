@@ -125,9 +125,9 @@ ten, the standings show the top eight plus you.
 
 The host picks the track, the car class and the number of laps (1 to 10)
 in the lobby, then either starts
-a race or runs **Qualifying** first. Qualifying is four minutes of free
-laps (the host can end it early); everyone's fastest lap sets the grid for
-the next race. The results screen shows the order, the gaps, and every lap
+a race or runs **Polytrack mode** (qualifying) first. Polytrack mode is four
+minutes of free laps (the host can end it early); everyone's fastest lap sets
+the grid for the next race. The results screen shows the order, the gaps, and every lap
 you set, and the lobby keeps the grid and times on show.
 After a race (or a Race to 9LAT2) the top three stand on a podium just past
 the finish line, with confetti, for a few seconds before the results; any
