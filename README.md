@@ -114,12 +114,15 @@ Drive through the orange gates in order. The glowing one is your next gate.
 Going through one a little wide (a wheel on the grass, or just outside a
 post) still counts, but a shortcut that skips a gate doesn't: a yellow
 "Missed a gate!" banner points back to it until you drive through it or press
-R. There is no automatic reset: drive back on, or press R.
+R. The minimap marks your next gate with an orange bar (red once you've missed
+it). There is no automatic reset: drive back on, or press R.
 
 The standings count each car's progress only as far as its next gate, so a
 car that missed one stays there in the order. Players who join part-way
-through a race watch it and aren't in the standings; in a room of more than
-ten, the standings show the top eight plus you.
+through a race can drive around while they wait, but only as a see-through
+ghost: nobody can hit them, and they aren't in the standings. They race
+properly from the next race. In a room of more than ten, the standings show
+the top eight plus you.
 
 ## Hosting a session
 

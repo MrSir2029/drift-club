@@ -237,7 +237,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   function startMessage(room, extra) {
     return { t: 'start', mode: room.mode, startAt: room.startAt, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, now: Date.now(), ...extra };
   }
-  // Qualifying ends on the clock: fastest lap first, no-time drivers at the back.
+  // Polytrack mode ends when the host ends it: fastest lap first, no-time drivers at the back.
   function endQualifying(room) {
     if (room.mode !== 'quali' || (room.phase !== 'racing' && room.phase !== 'countdown')) return;
     room.endTimer = null;
@@ -399,6 +399,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         if (!room || room.hostId !== player.id || room.phase !== 'results') return;
         room.phase = 'lobby';
         resetPositions(room);
+        for (const p of room.players.values()) p.spec = false; // they only watched the race they joined in the middle of
         broadcast(room, roomSnapshot(room));
         break;
       }
