@@ -122,6 +122,27 @@ a race or runs **Qualifying** first. Qualifying is four minutes of free
 laps (the host can end it early); everyone's fastest lap sets the grid for
 the next race. The results screen shows the order, the gaps, and every lap
 you set, and the lobby keeps the grid and times on show.
+After a race (or a Race to 9LAT2) the top three stand on a podium just past
+the finish line, with confetti, for a few seconds before the results; any
+key or click skips it. In qualifying your ghost (your best lap so far) also
+shows on the minimap.
+
+## Leaderboard
+
+Every lap anyone drives, in races and in qualifying, counts for the
+leaderboard: the ten fastest names on each track, for each car. Open it from
+the home screen or the lobby; the lobby also shows the record for the track
+and car that are picked, and setting a time on the board pops up a message.
+
+There are no accounts: it goes by the name you race with, one line per name.
+The server keeps the boards in memory, so on a host that restarts or sleeps
+(Render's free plan) they would be lost; instead every player's browser keeps
+a copy, signed by the server so it can't be edited, and hands it back when it
+next connects, which fills the boards in again. Laps quicker than any car
+could manage, or that don't match the server's own clock, are ignored, and
+names on a short blocklist stay off the board. To wipe the boards and start a
+new season, bump `BOARD_SEASON` in `server/core.js`. Set `LB_SECRET` on the
+host for a signing key of your own (changing it also wipes the boards).
 
 ## The map
 
@@ -140,7 +161,9 @@ Red Canyon (the second track) is a desert: sand and red rock, cacti, rock
 spires and mesas, a stone arch over the road, and two jumps. Frost Pass (the
 third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
-drive off it). Switchback (the fourth) is raced at night, under floodlights.
+drive off it). Switchback (the fourth) is raced at night, under floodlights,
+with fireworks overhead, searchlights sweeping the sky and glowing studs
+along the track edges.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.

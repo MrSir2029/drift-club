@@ -3,6 +3,16 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.5', date: '20 Nov 2026', title: 'Leaderboard and podium',
+    items: [
+      'A live leaderboard: the ten fastest laps on every track, for each car. Every lap counts, in races and qualifying, under the name you race with. Find it on the home screen and in the lobby.',
+      'A podium after every race: the top three on the steps, with confetti. Press any key to skip.',
+      'In qualifying, your ghost shows on the minimap.',
+      'Switchback at night: fireworks, searchlights sweeping the sky, and glowing studs along the track edges.',
+      'Fixed: joining a session part-way through now times your first lap properly.',
+    ],
+  },
+  {
     v: '2.4', date: '18 Nov 2026', title: 'Quicker reverse, no halo',
     items: [
       'Reversing is a little quicker on every car: up to about 38 km/h, and it gets there sooner.',
