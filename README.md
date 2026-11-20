@@ -3,7 +3,7 @@
 A tiny multiplayer racing game you play in the browser with friends. One person
 hosts, gets a 4-letter room code, and everyone else joins with the code or the
 invite link. Up to 20 racers per room, 1 to 10 laps, four tracks, two car
-classes (open seater and rally), qualifying sessions, low-poly 3D.
+classes (open seater, plus a hidden rally car), Polytrack mode, low-poly 3D.
 
 No accounts, no chat, no ads, no cookies, no downloads. Everything the game
 needs is served from this folder, including the 3D library, so it works on a
@@ -196,6 +196,11 @@ is `SECRET_CODE` at the top of `public/game.js`. Inside: **Race to 9LAT2**
 (no laps or gates, first car to reach the 9LAT2 building wins; follow the
 arrow and the beam of light) and **Toyota Camry**, a car class where
 everyone drives the same family saloon.
+
+The rally car is hidden the same way: the host types `RALLY` in the lobby
+(`RALLY_CODE` in `public/game.js`) and a Cars row appears with the open seater
+and the rally car. Typing it again hides it and switches back to the open
+seater. The browser remembers. Without it, the lobby has no Cars row at all.
 
 ## Seeing who's playing
 

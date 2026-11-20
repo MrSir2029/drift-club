@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.12', date: '21 Nov 2026', title: 'Just the open seater',
+    items: [
+      'The rally car is hidden for now, so the lobby is simpler: everyone races the open seater. Hosts who know the code can still bring it back.',
+    ],
+  },
+  {
     v: '2.11', date: '21 Nov 2026', title: 'Leaderboard bubble',
     items: [
       'The Leaderboard button has its own bubble on the home screen, under the main one.',
