@@ -3671,6 +3671,7 @@ function buildTrackCards() {
   TRACKS.forEach((def, i) => {
     const card = document.createElement('button');
     card.className = 'trackcard';
+    card.title = def.blurb;
     const cv = document.createElement('canvas');
     cv.width = 240; cv.height = 120;
     if (def.theme === 'desert') cv.style.background = '#e2b77c';

@@ -53,9 +53,7 @@
     <div class="lobby-top">
       <div class="panel codebox">
         <div class="label">Room code</div>
-        <div id="lobby-code" class="code">----</div>
-        <button id="btn-copy" class="btn small">Copy invite link</button>
-        <div class="hint">Friends open the link, or type the code on the home screen.</div>
+        <div class="coderow"><div id="lobby-code" class="code">----</div><button id="btn-copy" class="btn small" title="Friends open the link, or type the code on the home screen">Copy invite link</button></div>
       </div>
       <div class="panel players">
         <div class="label">Racers <span id="player-count">0</span>/20</div>
@@ -69,8 +67,8 @@
         <div class="carrow">
           <div class="label">Cars <span id="car-hint" class="muted"></span></div>
           <div id="car-list" class="carpicks">
-            <button class="carpick on" data-car="open"><b>Open seater</b><span>Fast and grippy on tarmac</span></button>
-            <button class="carpick" data-car="rally"><b>Rally</b><span>Slides, and loves gravel</span></button>
+            <button class="carpick on" data-car="open" title="Fast and grippy on tarmac"><b>Open seater</b><span>Fast and grippy on tarmac</span></button>
+            <button class="carpick" data-car="rally" title="Slides, and loves gravel"><b>Rally</b><span>Slides, and loves gravel</span></button>
           </div>
         </div>
       </div>
@@ -80,16 +78,16 @@
         <button id="btn-quali" class="btn">Polytrack mode</button>
         <div id="wait-host" class="waiting hidden">Waiting for the host to start&hellip;</div>
         <button id="btn-board-lobby" class="btn board-btn">&#127942; Leaderboard</button>
-        <div class="lobby-row">
-          <button id="btn-settings-lobby" class="btn small">Settings</button>
-        </div>
         <div id="secrets" class="panel secrets hidden">
           <div class="label">Secrets</div>
           <button id="btn-dash" class="btn">Race to 9LAT2</button>
           <div class="hint">No laps, no gates. First car to reach the 9LAT2 building wins.</div>
           <button class="carpick" data-car="camry"><b>Toyota Camry</b><span>Everyone drives a Camry</span></button>
         </div>
-        <button id="btn-leave" class="btn small">Leave room</button>
+        <div class="lobby-row">
+          <button id="btn-settings-lobby" class="btn small">Settings</button>
+          <button id="btn-leave" class="btn small">Leave room</button>
+        </div>
       </div>
     </div>
   </section>
