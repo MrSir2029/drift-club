@@ -80,31 +80,33 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
   }
   const statsJson = () => ({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races });
 
-  // ---------- leaderboard: the best laps on each track, per car, by name ----------
+  // ---------- leaderboard: the best laps on each track (any car), by name ----------
   // No accounts: a name is a name, and anyone can race under any name. There's
   // no database either. A host that can store things (Cloudflare) saves the
   // boards. On one that forgets everything when it sleeps (Render's free
   // plan), every player's browser keeps a copy and hands it back on connecting
   // ('lbseed'); each entry carries the server's signature, so a copy can be
   // returned but not edited.
-  const boards = new Map(); // 'track:car' -> [{ n: name, ms, s: signature }], fastest first
-  const boardKey = (t, c) => `${t}:${c}`;
-  const signature = (k, n, ms) => sign(`${BOARD_SEASON}|${k}|${n}|${ms}`);
-  function validKey(k) {
-    const [t, c] = String(k).split(':');
-    return /^\d$/.test(t) && +t < TRACK_COUNT && CAR_CLASSES.includes(c) ? [+t, c] : null;
+  const boards = new Map(); // 'track' -> [{ n: name, ms, c: car, s: signature }], fastest first
+  const boardKey = (t) => String(t);
+  const signature = (k, n, ms, c) => sign(`${BOARD_SEASON}|${k}|${n}|${ms}|${c}`);
+  // A board's key, read as [track, car]. The car is null for today's boards
+  // (one per track, any car); boards from v2.5 were kept per car, 'track:car'.
+  function readKey(k) {
+    const m = /^(\d)(?::(open|rally|camry))?$/.exec(String(k));
+    return m && +m[1] < TRACK_COUNT ? [+m[1], m[2] || null] : null;
   }
   // Puts a lap on the board if it's good enough; returns its place (1..10) or 0.
   function addLap(name, t, c, ms) {
     ms = Math.round(ms);
-    if (!(ms >= minLapMs(t, c) && ms < 3600000) || !nameAllowed(name)) return 0;
-    const k = boardKey(t, c), list = boards.get(k) || [], low = name.toLowerCase();
+    if (!CAR_CLASSES.includes(c) || !(ms >= minLapMs(t, c) && ms < 3600000) || !nameAllowed(name)) return 0;
+    const k = boardKey(t), list = boards.get(k) || [], low = name.toLowerCase();
     const old = list.findIndex(e => e.n.toLowerCase() === low);
     if (old >= 0 && list[old].ms <= ms) return 0; // one line per name: their best
     if (old < 0 && list.length >= BOARD_SIZE && list[list.length - 1].ms <= ms) return 0;
     if (old >= 0) list.splice(old, 1);
-    const entry = { n: name, ms };
-    if (sign) entry.s = signature(k, name, ms);
+    const entry = { n: name, ms, c };
+    if (sign) entry.s = signature(k, name, ms, c);
     list.push(entry);
     list.sort((a, b) => a.ms - b.ms);
     if (list.length > BOARD_SIZE) list.length = BOARD_SIZE;
@@ -119,8 +121,8 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
   }
   if (savedBoards && savedBoards.season === BOARD_SEASON) {
     for (const [k, list] of Object.entries(savedBoards.boards || {})) {
-      const kv = validKey(k);
-      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1], +e.ms);
+      const kv = readKey(k);
+      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1] || e.c, +e.ms);
     }
   }
 
@@ -333,7 +335,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         if (Math.abs(time - since) > 3000) return;
         const place = addLap(player.name, room.trackId, room.car, time);
         if (place) {
-          boardChanged(boardKey(room.trackId, room.car));
+          boardChanged(boardKey(room.trackId));
           broadcast(room, { t: 'record', id: player.id, name: player.name, place, time: Math.round(time), track: room.trackId, car: room.car });
         }
         break;
@@ -346,13 +348,16 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         const changed = new Set();
         let n = 0;
         for (const [k, list] of Object.entries(msg.boards)) {
-          const kv = validKey(k);
+          const kv = readKey(k);
           if (!kv || !Array.isArray(list)) continue;
+          const [t, oldCar] = kv;
           for (const e of list.slice(0, BOARD_SIZE)) {
             if (++n > 200) break;
-            if (!e || typeof e.n !== 'string' || typeof e.s !== 'string' || !Number.isInteger(e.ms)) continue;
-            if (e.n !== cleanName(e.n) || e.s !== signature(k, e.n, e.ms)) continue;
-            if (addLap(e.n, kv[0], kv[1], e.ms)) changed.add(k);
+            if (!e || typeof e.n !== 'string' || typeof e.s !== 'string' || !Number.isInteger(e.ms) || e.n !== cleanName(e.n)) continue;
+            const c = oldCar || e.c;
+            // a v2.5 copy (per car) was signed without the car on the end
+            if (!CAR_CLASSES.includes(c) || e.s !== (oldCar ? sign(`${BOARD_SEASON}|${k}|${e.n}|${e.ms}`) : signature(k, e.n, e.ms, c))) continue;
+            if (addLap(e.n, t, c, e.ms)) changed.add(boardKey(t));
           }
         }
         for (const k of changed) boardChanged(k);

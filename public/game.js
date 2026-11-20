@@ -3370,52 +3370,55 @@ function beginRace(msg) {
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
 }
 
-// ---- leaderboard: best laps per track and car (see server/core.js) ----
+// ---- leaderboard: the best laps on each track, in any car (see server/core.js) ----
 // A copy is kept in this browser, so a server that has restarted gets its
 // boards back from returning players. Your own best laps are kept here too.
 app.boards = {};
 app.pbs = {};
 try { const b = JSON.parse(localStorage.getItem('dc-lb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.boards = b; } catch {}
 try { const b = JSON.parse(localStorage.getItem('dc-pb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.pbs = b; } catch {}
-const BOARD_CARS = [['open', 'Open seater'], ['rally', 'Rally'], ['camry', 'Toyota Camry']];
-const board = { track: 0, car: 'open' };
-const boardList = (t, c) => { const l = app.boards[`${t}:${c}`]; return Array.isArray(l) ? l.filter(e => e && typeof e.n === 'string' && e.ms > 0) : []; };
+// personal bests from v2.5 were kept per car ('track:car'): keep the best one for each track
+for (const [k, ms] of Object.entries(app.pbs)) {
+  const m = /^(\d+):/.exec(k);
+  if (!m) continue;
+  delete app.pbs[k];
+  if (ms > 0 && !(app.pbs[m[1]] <= ms)) app.pbs[m[1]] = ms;
+}
+const CAR_NAMES = { open: 'Open seater', rally: 'Rally', camry: 'Camry' };
+const board = { track: 0 };
+const boardList = (t) => { const l = app.boards[String(t)]; return Array.isArray(l) ? l.filter(e => e && typeof e.n === 'string' && e.ms > 0) : []; };
 function boardsChanged(key) {
   try { localStorage.setItem('dc-lb', JSON.stringify(app.boards)); } catch {}
-  if (!$('#board').classList.contains('hidden') && (!key || key === `${board.track}:${board.car}`)) renderBoard();
+  if (!$('#board').classList.contains('hidden') && (!key || key === String(board.track))) renderBoard();
   renderRecord();
 }
 function notePersonalBest(lapTime) {
-  const k = `${app.trackId}:${app.carClass}`, ms = Math.round(lapTime);
+  const k = String(app.trackId), ms = Math.round(lapTime);
   if (app.pbs[k] && app.pbs[k] <= ms) return;
   app.pbs[k] = ms;
   try { localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); } catch {}
 }
-function openBoard(track, car) {
+function openBoard(track) {
   if (track != null) board.track = track;
-  if (car) board.car = car;
   $('#board').classList.remove('hidden');
   renderBoard();
 }
 function renderBoard() {
   $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}">${esc(t.name)}</button>`).join('');
-  // the Camry is a secret: its tab shows once someone has a Camry time, or the secrets are open
-  const cars = BOARD_CARS.filter(([c]) => c !== 'camry' || app.secrets || board.car === 'camry' || TRACKS.some((t, i) => boardList(i, 'camry').length));
-  $('#board-cars').innerHTML = cars.map(([c, label]) => `<button data-c="${c}" class="${c === board.car ? 'on' : ''}">${label}</button>`).join('');
-  const list = boardList(board.track, board.car);
+  const list = boardList(board.track);
   const me = (app.room ? app.name : $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer').toLowerCase();
   $('#board-list').innerHTML = list.length
-    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="name">${esc(e.n)}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
+    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="name">${esc(e.n)}</span><span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
     : '<li class="empty">No laps yet. Set the first one!</li>';
-  const pb = app.pbs[`${board.track}:${board.car}`];
+  const pb = app.pbs[String(board.track)];
   $('#board-pb').textContent = pb ? `Your best here: ${fmtTime(pb)}` : '';
 }
-// the record for the track and car picked in the lobby
+// the record for the track picked in the lobby
 function renderRecord() {
   const r = app.room, el = $('#track-record');
   if (!el) return;
-  const best = r && boardList(r.trackId, r.car || 'open')[0];
-  el.textContent = best ? `Record ${fmtTime(best.ms)} by ${best.n}` : '';
+  const best = r && boardList(r.trackId)[0];
+  el.textContent = best ? `Record ${fmtTime(best.ms)} by ${best.n}${CAR_NAMES[best.c] ? ` (${CAR_NAMES[best.c]})` : ''}` : '';
 }
 
 // a random tip on the home screen, never the same one twice in a row
@@ -3782,10 +3785,9 @@ function wireUI() {
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   $('#home-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
-  for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(app.room ? app.room.trackId : null, app.room ? app.room.car || 'open' : null); });
+  for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(app.room ? app.room.trackId : null); });
   $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
   $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = +b.dataset.t; renderBoard(); } });
-  $('#board-cars').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.car = b.dataset.c; renderBoard(); } });
   showTip();
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
