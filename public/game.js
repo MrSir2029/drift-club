@@ -770,11 +770,11 @@ function collideWalls(car) {
 // obstacles, steps out of any overlap and takes half the knock. The other
 // player's game does the same from its side, so both cars react.
 function collideCars(car) {
-  if (app.phase !== 'racing' && app.phase !== 'results') return 0;
+  if ((app.phase !== 'racing' && app.phase !== 'results') || app.spectate) return 0; // a spectator drives through everyone
   const R = 0.95, offs = [1.7, 0, -1.6], fx = Math.sin(car.h), fz = Math.cos(car.h);
   let hit = 0;
   for (const c of app.cars.values()) {
-    if (!c.shown) continue;
+    if (!c.shown || c.spec) continue; // and everyone drives through a spectator
     const ddx = car.pos.x - c.sx, ddz = car.pos.z - c.sz;
     if (ddx * ddx + ddz * ddz > 36 || Math.abs(car.pos.y - c.sy) > 2.5) continue;
     const ox = Math.sin(c.sh), oz = Math.cos(c.sh);
@@ -2534,7 +2534,11 @@ function ensureRemote(p) {
   let c = app.cars.get(p.id);
   if (c) return c;
   const mesh = makeCarMesh(p.color, p.name, false);
-  c = { id: p.id, name: p.name, color: p.color, mesh, buf: [], minCur: Infinity, minPrev: Infinity, winStart: -Infinity, off: 0, jit: 0, lap: 1, cp: 1, pr: 0, finished: false, place: 0, wheelSpin: 0 };
+  // spec: joined a race part-way through and is only driving around until the
+  // next one, so their car is see-through and nobody can hit it
+  const spec = !!p.spec && app.mode !== 'quali';
+  c = { id: p.id, name: p.name, color: p.color, mesh, spec, buf: [], minCur: Infinity, minPrev: Infinity, winStart: -Infinity, off: 0, jit: 0, lap: 1, cp: 1, pr: 0, finished: false, place: 0, wheelSpin: 0 };
+  if (spec) mesh.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.35; m.material.depthWrite = false; m.castShadow = false; } });
   mesh.group.visible = false;
   carsGroup.add(mesh.group);
   app.cars.set(p.id, c);
@@ -2582,7 +2586,7 @@ function updateDust(dt) {
   }
 }
 
-// players in start order: qualifying grid first (if one was set), then everyone else
+// players in start order: a grid first (if the server sent one), then everyone else
 function gridOrder(grid) {
   const players = app.room?.players || [];
   const g = grid || [];
@@ -3003,7 +3007,7 @@ function stepLocal(car, dt, canDrive) {
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the grid, in qualifying)
+          send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the best laps, in Polytrack mode)
           notePersonalBest(lapTime);
           if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
@@ -3335,6 +3339,9 @@ function beginRace(msg) {
   if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
   setCarClass(msg.car);
   clearCars();
+  // A new race: everyone in the room is in it. (Only someone joining part-way
+  // through, who gets msg.spectate, keeps the others' spectator flags.)
+  if (!msg.spectate) for (const p of app.room.players) delete p.spec;
   const slot = Math.max(0, gridOrder(msg.grid).findIndex(p => p.id === app.myId));
   spawnLocal(slot);
   for (const p of app.room.players) if (p.id !== app.myId) ensureRemote(p);
@@ -3441,7 +3448,7 @@ function showResults(results, quali, dash) {
   // your own line: where you ended up, and every lap you set
   const mine = results.findIndex(r => r.id === app.myId), me = results[mine];
   let sub = '';
-  if (me && me.time != null) sub = quali ? `You start ${ordinal(mine + 1)} — best lap ${fmtTime(me.time)}` : `You finished ${ordinal(mine + 1)} — ${fmtTime(me.time)}`;
+  if (me && me.time != null) sub = quali ? `Your best lap ${fmtTime(me.time)} — ${ordinal(mine + 1)} fastest` : `You finished ${ordinal(mine + 1)} — ${fmtTime(me.time)}`;
   else if (me) sub = quali ? 'No lap time set' : app.spectate ? 'You joined part-way through' : 'Did not finish';
   $('#results-sub').textContent = sub;
   const laps = app.myLaps || [], best = Math.min(...laps);
@@ -3634,7 +3641,7 @@ function renderLobby() {
   document.querySelectorAll('.trackcard').forEach((el, i) => el.classList.toggle('on', i === r.trackId));
   $('#car-list').classList.toggle('locked', !isHost);
   // the car row only shows when there's a choice to make (the rally car is unlocked) or the host picked another car
-  const showRally = app.rallyOn || r.car === 'rally';
+  const showRally = (isHost && app.rallyOn) || r.car === 'rally';
   $('.carrow').classList.toggle('hidden', !showRally && (r.car || 'open') === 'open');
   $('.carpick[data-car="rally"]').classList.toggle('hidden', !showRally);
   document.querySelectorAll('.carpick').forEach((el) => el.classList.toggle('on', el.dataset.car === (r.car || 'open')));
@@ -3975,7 +3982,21 @@ function drawMinimap() {
     mmCtx.fillStyle = '#ffd23f'; mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2;
     mmCtx.fillRect(x - 6, y - 6, 12, 12); mmCtx.strokeRect(x - 6, y - 6, 12, 12);
   }
-  for (const c of app.cars.values()) if (c.mesh.group.visible) dot(c.mesh.group.position.x, c.mesh.group.position.z, COLOR_CSS[c.color], 4);
+  // your next gate: an orange bar across the track
+  if (app.local && app.mode !== 'dash' && app.phase === 'racing' && !app.finished) {
+    const s = app.track.samples[app.track.cps[app.local.nextCp]], hw = app.track.hw + 5;
+    mmCtx.beginPath();
+    mmCtx.moveTo((s.p.x + s.left.x * hw) * sc + ox, (s.p.z + s.left.z * hw) * sc + oz);
+    mmCtx.lineTo((s.p.x - s.left.x * hw) * sc + ox, (s.p.z - s.left.z * hw) * sc + oz);
+    mmCtx.lineCap = 'butt'; mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 7; mmCtx.stroke();
+    mmCtx.strokeStyle = app.local.missedGate ? '#ff3b30' : '#ff8a3d'; mmCtx.lineWidth = 4; mmCtx.stroke();
+    mmCtx.lineCap = 'round';
+  }
+  for (const c of app.cars.values()) if (c.mesh.group.visible) {
+    if (c.spec) mmCtx.globalAlpha = 0.35; // a spectator, just driving around
+    dot(c.mesh.group.position.x, c.mesh.group.position.z, COLOR_CSS[c.color], 4);
+    mmCtx.globalAlpha = 1;
+  }
   if (app.ghostOn && app.ghost) { // your qualifying ghost: a pale dot with a blue ring, unlike any real car's
     const gp = app.ghost.group.position;
     mmCtx.beginPath(); mmCtx.arc(gp.x * sc + ox, gp.z * sc + oz, 4.5, 0, Math.PI * 2);

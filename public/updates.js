@@ -3,6 +3,15 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.13', date: '21 Nov 2026', title: 'Bug fixes',
+    items: [
+      'Players who join part-way through a race now drive around as see-through ghosts until the next race: nobody can crash into them, and they stay out of the standings.',
+      'Fixed: someone who joined part-way through a race could be left out of the standings for the whole of the next race too.',
+      'The minimap marks your next gate with an orange bar. It turns red if you miss it.',
+      'Polytrack mode results no longer say "You start 1st" (it doesn\'t set the grid): they show your best lap and where it ranks.',
+    ],
+  },
+  {
     v: '2.12', date: '21 Nov 2026', title: 'Just the open seater',
     items: [
       'The rally car is hidden for now, so the lobby is simpler: everyone races the open seater. Hosts who know the code can still bring it back.',
@@ -34,7 +43,7 @@ export const UPDATES = [
   {
     v: '2.8', date: '20 Nov 2026', title: 'Polytrack mode',
     items: [
-      'Qualifying is now called Polytrack mode: free laps against your ghost, and the fastest lap sets the grid for the next race.',
+      'Qualifying is now called Polytrack mode: free laps against your ghost.',
       'A bigger, bolder Leaderboard button on the home screen and in the lobby.',
       'The lobby now says "Lap time record" above the tracks, so it\'s clear what the record is.',
     ],
