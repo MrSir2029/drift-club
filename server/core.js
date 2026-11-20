@@ -169,7 +169,8 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
       t: 'room', code: room.code, hostId: room.hostId, trackId: room.trackId, car: room.car, phase: room.phase, laps: room.laps,
       maxPlayers: MAX_PLAYERS, grid: room.grid,
       times: room.gridTimes, // best qualifying lap per player id, for the lobby
-      players: [...room.players.values()].map(p => ({ id: p.id, name: p.name, color: p.color })),
+      // spec: joined a race part-way through, so watching it, not racing
+      players: [...room.players.values()].map(p => (p.spec ? { id: p.id, name: p.name, color: p.color, spec: 1 } : { id: p.id, name: p.name, color: p.color })),
     };
   }
 
@@ -224,7 +225,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
     room.phase = 'countdown';
     room.results = [];
     resetPositions(room);
-    for (const p of room.players.values()) { p.finished = false; p.best = null; p.lapAt = 0; }
+    for (const p of room.players.values()) { p.finished = false; p.spec = false; p.best = null; p.lapAt = 0; }
     room.startAt = Date.now() + COUNTDOWN_MS;
     stats.races++; statsChanged(true);
     broadcast(room, startMessage(room));
@@ -287,6 +288,7 @@ export function createGame({ qualiMs = 240000, stats: savedStats = null, saveSta
         player.best = null;
         player.lapAt = Math.max(Date.now(), target.startAt); // their first lap runs from now, not from the start of the session
         player.finished = target.mode !== 'quali' && (target.phase === 'racing' || target.phase === 'countdown'); // late joiners spectate a race, but can join qualifying
+        player.spec = player.finished;
         addPlayer(target, player);
         if (target.phase === 'countdown' || target.phase === 'racing') send(player, startMessage(target, { spectate: target.mode !== 'quali' }));
         break;

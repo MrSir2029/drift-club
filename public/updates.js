@@ -3,6 +3,15 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.7', date: '20 Nov 2026', title: 'Gates and standings fixed',
+    items: [
+      'Gates are easier to hit: going through one a little wide, with a wheel or two on the grass, now counts. Before, running wide at a gate could miss it without you noticing.',
+      'Miss a gate and a yellow "Missed a gate!" banner pops up, with an arrow and the distance back to it. Drive back through it, or press R.',
+      'The standings during a race are fixed: a car that missed a gate stays where it missed it instead of jumping about, the order is right at the start, and players who join part-way through a race (to watch) are left out.',
+      'In a big room the standings show the top eight, plus you.',
+    ],
+  },
+  {
     v: '2.6', date: '20 Nov 2026', title: 'One leaderboard per track',
     items: [
       'The leaderboard is one list per track now, whatever car you drive: the ten fastest laps on each track, with the car each one was set in shown next to it.',
