@@ -79,13 +79,16 @@ function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text, ink) {
   const q = sx > 0 ? [pt(a1, b0), pt(a0, b0), pt(a0, b1), pt(a1, b1)] : [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)];
   return paintQuad(g, q, mat, text, ink);
 }
-// On the top face of a block, read from in front of the car (like a nose
-// number): a from back to front, c from the left edge (-1) to the right (+1).
-function onTop(g, spec, a0, a1, c0, c1, mat, text, ink) {
+// On the top face of a block: a from back to front, c across it from -1 (the
+// -x edge) to +1. Lettering reads from in front of the car (like a nose
+// number), or with driver set, from the cockpit.
+function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
   const pt = (a, c) => new THREE.Vector3(px + c * (w / 2) * s(0, a), py + 0.5 * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
-  return paintQuad(g, [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)], mat, text, ink);
+  if (c0 > c1) [c0, c1] = [c1, c0]; // either way round: it always faces up
+  const q = driver ? [pt(a0, c1), pt(a0, c0), pt(a1, c0), pt(a1, c1)] : [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)];
+  return paintQuad(g, q, mat, text, ink);
 }
 
 // Every open seater wears a livery painted onto its panels (these specs are
@@ -119,6 +122,9 @@ function paintLivery(K, g, colorIdx, name) {
     onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, stripe);         // and along the nose
     onPanel(g, FRONT_PLATE, sx, 0, 1, 0.82, 0.93, stripe);   // the same colour on the front wing endplates
     K.box(0.48, 0.022, 0.06, stripe, sx * 0.72, 0.631, 0.36, false); // and on each sidepod intake
+    // what you see from the cockpit: pinstripes down both top edges of the tub and nose
+    onTop(g, TUB, 0.4, 1, sx * 0.72, sx * 0.86, stripe);
+    onTop(g, NOSE, 0, 0.96, sx * 0.62, sx * 0.8, stripe);
     lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods)); // white on the black
     if (secret) {
       onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);          // black airbox sides
@@ -129,7 +135,8 @@ function paintLivery(K, g, colorIdx, name) {
       lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
     }
   }
-  lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose
+  lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose, for everyone in front
+  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
   const byMat = new Map();
