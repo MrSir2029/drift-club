@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.22', date: '21 Nov 2026', title: 'A secret livery',
+    items: [
+      'There\'s a secret racing green livery hidden on the home screen, for those who know the code.',
+    ],
+  },
+  {
     v: '2.21', date: '21 Nov 2026', title: 'Click to skip',
     items: [
       'The podium just says "Click to skip", back at the top of the screen, and the spotlights are gone.',
