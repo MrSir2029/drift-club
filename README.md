@@ -147,7 +147,9 @@ the car it was set in). Open it from the home screen or the lobby; the lobby
 also shows the lap time record for the track that's picked, and setting a time on the
 board pops up a message.
 
-There are no accounts: it goes by the name you race with, one line per name.
+There are no accounts: it goes by the name you race with, one line per name. Names with a
+bad word in them (a short blocklist in `server/core.js`) are swapped for
+"Racer" everywhere, not just on the board.
 The server keeps the boards in memory, so on a host that restarts or sleeps
 (Render's free plan) they would be lost; instead every player's browser keeps
 a copy, signed by the server so it can't be edited, and hands it back when it
@@ -210,7 +212,8 @@ everyone drives the same family saloon.
 
 On the home screen, typing `LANCESTROLL` (`LIVERY_CODE`) adds a secret
 colour to the car colours: a detailed racing green livery, teal green on top
-and black underneath with a thin lime pinstripe down each side (no logos).
+and black underneath with a thin lime pinstripe down each side, and made-up
+sponsor lettering (`SPONSORS` in `game.js`; no real brands or logos).
 Typing it again hides it. Everyone in the race sees it.
 
 The rally car is hidden the same way: the host types `RALLY` in the lobby

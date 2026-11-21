@@ -30,6 +30,20 @@ const RALLY_CODE = 'RALLY';
 // green livery with lime trim (colour 12). Again to hide it. This browser remembers.
 const LIVERY_CODE = 'LANCESTROLL';
 const LIVERY = 12;
+// The sponsor lettering on that livery. Made-up names: no real brands.
+const SPONSORS = { pods: 'DRIFT CLUB', cover: 'HOMEWORK', wing: '9LAT2' };
+// white lettering on a see-through plane, for the livery's sponsor decals
+function decal(text, w, h) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const x = c.getContext('2d');
+  let size = 92;
+  do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > 496 && size > 20);
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#f2f5f0'; x.fillText(text, 256, 68);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false }));
+  m.castShadow = false;
+  return m;
+}
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
@@ -2336,9 +2350,14 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
       K.box(0.025, 0.02, 1.2, K.lime, sx * 0.4, 0.66, 1.0, false);                                         // and on down the chassis
       K.box(0.03, 0.018, 1.1, K.lime, sx * 0.16, 0.588, 2.5, false).rotation.x = 0.156;                    // and the nose
       K.box(0.26, 0.16, 0.05, K.carbon, sx * 0.72, 0.4, 0.37, false);                                       // black under the intakes
+      // sponsor lettering: big on the sidepods, smaller on the engine cover and the rear wing endplates
+      const add = (m, x, y, z, ry) => { m.position.set(x, y, z); m.rotation.y = ry; g.add(m); (K.decals ??= []).push(m.material); };
+      add(decal(SPONSORS.pods, 0.82, 0.2), sx * 0.945, 0.37, -0.25, sx * (Math.PI / 2 + 0.14));
+      add(decal(SPONSORS.cover, 0.5, 0.13), sx * 0.268, 0.8, -0.42, sx * (Math.PI / 2 + 0.096));
+      add(decal(SPONSORS.wing, 0.72, 0.18), sx * 0.632, 1.35, -2.25, sx * Math.PI / 2);
     }
   }
-  mergeStatic(g, new Set([K.brake])); // ~70 parts into one; the brake lights stay apart because they light up
+  mergeStatic(g, new Set([K.brake, ...(K.decals || [])])); // ~70 parts into one; the brake lights (and any lettering) stay apart
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
   // The body leans on its springs about a point at hub height; the wheels and
   // the name tag are added after this, so they stay level with the road.
@@ -3371,6 +3390,11 @@ function handle(msg) {
     case 'error': toast(msg.msg); break;
     case 'joined':
       app.myId = msg.id;
+      if (typeof msg.name === 'string' && msg.name !== app.name) {
+        app.name = msg.name; $('#name').value = msg.name;
+        try { localStorage.setItem('dc-name', msg.name); } catch {}
+        toast(`That name isn't allowed, so you're racing as ${msg.name}.`);
+      }
       app.pairStates = !!msg.pair; // the server wants positions two at a time (Cloudflare)
       history.replaceState(null, '', `/?room=${msg.code}`);
       break;

@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.23', date: '21 Nov 2026', title: 'Name filter',
+    items: [
+      'Names with bad words in them are swapped for "Racer", everywhere in the game.',
+      'The secret livery has sponsor lettering now.',
+    ],
+  },
+  {
     v: '2.22', date: '21 Nov 2026', title: 'A secret livery',
     items: [
       'There\'s a secret racing green livery hidden on the home screen, for those who know the code.',
