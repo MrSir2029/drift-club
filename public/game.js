@@ -36,12 +36,13 @@ const LIVERY = 12;
 const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
 // Paint and lettering laid flat on the car's blocks, so nothing pokes out of
 // the bodywork or sinks into it. q = four corners as someone looking at it
-// sees them: bottom-left, bottom-right, top-right, top-left. It sits 3 mm off
-// the surface; lettering gets a canvas the shape of its patch.
+// sees them: bottom-left, bottom-right, top-right, top-left. Paint sits 3 mm off
+// the surface, and lettering 3 mm further out, so lettering on paint (DRIFT CLUB
+// on the black) is never half hidden by it; lettering gets a canvas the shape of its patch.
 const textMats = new Map(); // lettering, shared between cars with the same words
 function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
   const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize();
-  const p = q.map(v => v.clone().addScaledVector(n, 0.003)), order = [0, 1, 2, 0, 2, 3];
+  const p = q.map(v => v.clone().addScaledVector(n, text ? 0.006 : 0.003)), order = [0, 1, 2, 0, 2, 3];
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(order.flatMap(i => p[i].toArray()), 3));
   if (text) {
@@ -154,8 +155,9 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
     }
   }
   lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose, for everyone in front
-  // the driver's name down each side of the tub, between the front wheel and the sidepod
-  if (name) for (const sx of [-1, 1]) lettering(onPanel(g, TUB, sx, 0.36, 0.88, secret ? 0.385 : 0.43, secret ? 0.515 : 0.55, null, name.toUpperCase(), ink));
+  // the driver's name on each sidepod, up at the front in the car's colour (on the
+  // secret livery, above its level lime line), clear of the black and the intake
+  if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
   lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
