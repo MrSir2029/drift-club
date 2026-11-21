@@ -98,7 +98,8 @@ function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
 // buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
 // the car's colour on top, black underneath, a pinstripe in a colour that
 // stands out against it, DRIFT CLUB on the sidepods, and the driver's race
-// number (random, handed out by the server) on the nose and engine cover. The secret livery adds its sponsors and lime trim.
+// number (random, handed out by the server) on the engine cover and once on top,
+// facing the driver. The secret livery adds its sponsors and lime trim.
 const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
 const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
@@ -107,7 +108,9 @@ const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
 const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
 const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
 // the pinstripe for each car colour (CAR_COLORS order)
-const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xd9b44a, 0xf3e3c3, 0xe6453a];
+// (pairs real teams have raced: red and white, papaya and navy, black and gold,
+// powder blue and navy with orange tyres and helmet, like the old Gulf colours)
+const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xd9b44a, 0xf3e3c3, 0x1d2b5c];
 // only if the server didn't give one (an older server): one from the name
 function raceNumber(name) { let h = 7; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 2 + (h % 98); }
 function paintLivery(K, g, colorIdx, name, raceNum) {
@@ -141,7 +144,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
     K.box(0.48, 0.022, 0.06, stripe, sx * 0.72, 0.631, 0.36, false); // and on each sidepod intake
     // what you see from the cockpit: pinstripes down both top edges of the tub and nose
     onTop(g, TUB, 0.4, 1, sx * 0.72, sx * 0.86, stripe);
-    onTop(g, NOSE, 0, 0.96, sx * 0.62, sx * 0.8, stripe);
+    onTop(g, NOSE, 0, 0.96, sx * 0.72, sx * 0.86, stripe); // (meeting the tub's without a step)
     if (secret) {
       lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods)); // white on the black
       onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);          // black airbox sides
@@ -154,11 +157,10 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
       lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
     }
   }
-  lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose, for everyone in front
   // the driver's name on each sidepod, up at the front in the car's colour (on the
   // secret livery, above its level lime line), clear of the black and the intake
   if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
-  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
+  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and the one number on top: on the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
   const byMat = new Map();
@@ -2468,6 +2470,9 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, 
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
+  // the plate on top of the nose: white (the accent already is, on most cars),
+  // dark on the cream car, black on the secret livery
+  K.noseBand = lightCar && colorIdx !== 8 ? L(0xf6f2e8) : K.accent;
   K.add = (geo, mat, x, y, z, shadow = true) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z); m.castShadow = shadow; g.add(m); return m;
@@ -2527,6 +2532,8 @@ function buildOpenBody(K) {
   add(taperBox(0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null), body, 0, 0.5, 0.85);
   add(taperBox(0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null), body, 0, 0.45, 2.62);
   add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), K.livery ? dark : K.stripe, 0, 0.35, 3.36); // nose tip, in the stripe colour
+  // a plate on top of the nose, tapering with it between the two pinstripes
+  add(taperBox(0.28, 0.02, 0.6, [0.7, 1, 0], null), K.noseBand, 0, 0.552, 2.45, false).rotation.x = 0.156;
   // front wing
   box(2.0, 0.045, 0.5, carbon, 0, 0.15, 3.15);
   for (const sx of [-1, 1]) {
