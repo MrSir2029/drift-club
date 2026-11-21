@@ -144,6 +144,10 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     const n = cleanName(raw);
     return nameAllowed(n) ? n : 'Racer';
   }
+  // the car number a player asked for: a whole number 0 to 99, or null for a random one
+  function cleanNum(raw) {
+    return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 && raw <= 99 ? raw : null;
+  }
   function cleanColor(raw) {
     const n = Number(raw);
     return Number.isInteger(n) && n >= 0 && n < 13 ? n : Math.floor(Math.random() * 12); // 12: the secret livery
@@ -199,12 +203,14 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     return room;
   }
   function addPlayer(room, p) {
-    // a random race number for the livery, 2 to 99, not one already in the room
+    // the race number on the car: the one they asked for if nobody here has
+    // it, or else a random one from 2 to 99 that nobody here has
     const used = new Set([...room.players.values()].map(o => o.num));
-    do p.num = 2 + Math.floor(Math.random() * 98); while (used.has(p.num) && used.size < 98);
+    if (p.wantNum != null && !used.has(p.wantNum)) p.num = p.wantNum;
+    else do p.num = 2 + Math.floor(Math.random() * 98); while (used.has(p.num) && used.size < 98);
     room.players.set(p.id, p);
     p.room = room;
-    send(p, { t: 'joined', id: p.id, code: room.code, pair: pairStates, name: p.name });
+    send(p, { t: 'joined', id: p.id, code: room.code, pair: pairStates, name: p.name, num: p.num });
     broadcast(room, roomSnapshot(room));
   }
   function removePlayer(p) {
@@ -278,6 +284,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         if (room) removePlayer(player);
         player.name = safeName(msg.name);
         player.color = cleanColor(msg.color);
+        player.wantNum = cleanNum(msg.num);
         const newRoom = createRoom(player);
         if (!newRoom) return send(player, { t: 'error', msg: 'Server is full, try again later.' });
         addPlayer(newRoom, player);
@@ -291,6 +298,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         if (target.players.size >= MAX_PLAYERS) return send(player, { t: 'error', msg: 'That room is full (20 racers max).' });
         player.name = safeName(msg.name);
         player.color = cleanColor(msg.color);
+        player.wantNum = cleanNum(msg.num);
         player.best = null;
         player.lapAt = Math.max(Date.now(), target.startAt); // their first lap runs from now, not from the start of the session
         player.finished = target.mode !== 'quali' && (target.phase === 'racing' || target.phase === 'countdown'); // late joiners spectate a race, but can join qualifying

@@ -117,7 +117,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
   const secret = K.livery;
   const stripe = K.stripe;
   const ink = K.lightCar ? '#1d2230' : '#f2f5f0'; // lettering on the car's own colour
-  const num = secret ? '18' : String(raceNum ?? raceNumber(name));
+  const num = String(raceNum ?? (secret ? 18 : raceNumber(name)));
   const patches = [], lettering = (m) => patches.push(m);
   for (const sx of [-1, 1]) {
     if (secret) {
@@ -3523,6 +3523,8 @@ function handle(msg) {
         app.name = msg.name; $('#name').value = msg.name;
         try { localStorage.setItem('dc-name', msg.name); } catch {}
         toast(`That name isn't allowed, so you're racing as ${msg.name}.`);
+      } else if (app.numTyped != null && msg.num != null && msg.num !== app.numTyped) {
+        toast(`Someone here already has number ${app.numTyped}, so you're number ${msg.num}.`);
       }
       app.pairStates = !!msg.pair; // the server wants positions two at a time (Cloudflare)
       history.replaceState(null, '', `/?room=${msg.code}`);
@@ -4102,6 +4104,14 @@ function buildSwatches() {
   });
 }
 
+// the car number typed on the home screen (0 to 99), or null for a random one
+function readNum() {
+  const d = $('#num').value.replace(/\D/g, '').slice(0, 2), t = d && String(Number(d)); // 07 is 7
+  $('#num').value = t;
+  try { localStorage.setItem('dc-num', t); } catch {}
+  return t ? Number(t) : null;
+}
+
 function readName() {
   const n = $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer';
   try { localStorage.setItem('dc-name', n); } catch {}
@@ -4115,6 +4125,7 @@ app.liveryOn = (() => { try { return localStorage.getItem('dc-livery') === '1'; 
 function wireUI() {
   try {
     const n = localStorage.getItem('dc-name'); if (n) $('#name').value = n;
+    const k = localStorage.getItem('dc-num'); if (k) $('#num').value = k.replace(/\D/g, '').slice(0, 2);
     const c = localStorage.getItem('dc-color'); if (c != null && CAR_COLORS[+c] && (+c !== LIVERY || app.liveryOn)) app.color = +c;
   } catch {}
   buildSwatches();
@@ -4124,19 +4135,23 @@ function wireUI() {
   const codeFromUrl = (params.get('room') || location.pathname.slice(1)).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
   if (codeFromUrl.length === 4) { $('#code').value = codeFromUrl; $('#code').focus(); }
 
+  // the number asked for: the one typed, or with the secret livery, its 18
+  const wantNum = () => { app.numTyped = readNum(); return app.numTyped ?? (app.color === LIVERY ? 18 : undefined); };
   $('#btn-create').addEventListener('click', () => {
     app.name = readName();
-    send({ t: 'create', name: app.name, color: app.color });
+    send({ t: 'create', name: app.name, color: app.color, num: wantNum() });
   });
   const join = () => {
     const code = $('#code').value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
     if (code.length !== 4) return toast('Room codes are 4 letters.');
     app.name = readName();
-    send({ t: 'join', code, name: app.name, color: app.color });
+    send({ t: 'join', code, name: app.name, color: app.color, num: wantNum() });
   };
   $('#btn-join').addEventListener('click', join);
   $('#code').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
   $('#name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-create').click(); });
+  $('#num').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-create').click(); });
+  $('#num').addEventListener('input', (e) => { const t = e.target.value.replace(/\D/g, '').slice(0, 2); if (t !== e.target.value) e.target.value = t; });
 
   $('#btn-copy').addEventListener('click', async () => {
     const url = `${location.origin}/?room=${app.room.code}`;
