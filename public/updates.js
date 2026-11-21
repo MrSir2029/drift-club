@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.16', date: '21 Nov 2026', title: 'See for miles',
+    items: [
+      'Things in the distance look much better on High: the haze starts about three times further away, so the far side of the track, the scenery and the hills stay clear.',
+      'The ground now carries on to the horizon, with big hills far off in every direction.',
+      'New Max graphics (Settings): no limits. Drawn at twice your screen\'s resolution or more, almost no haze, sharper shadows over a wider area, and crowds however far away they are. For computers that can take it.',
+    ],
+  },
+  {
     v: '2.15', date: '21 Nov 2026', title: 'Smoother again',
     items: [
       'Fixed: with Graphics on Auto, a slow moment made the game lower its detail, and it never came back up, so everything stayed blurry. It now goes back to full detail once the game runs smoothly.',
