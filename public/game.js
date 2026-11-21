@@ -31,7 +31,7 @@ const RALLY_CODE = 'RALLY';
 const LIVERY_CODE = 'LANCESTROLL';
 const LIVERY = 12;
 // The sponsor lettering on that livery. Made-up names: no real brands.
-const SPONSORS = { pods: 'DRIFT CLUB', cover: 'HOMEWORK', wing: '9LAT2' };
+const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
 // white lettering on a see-through plane, for the livery's sponsor decals
 function decal(text, w, h) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
