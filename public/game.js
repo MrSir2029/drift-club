@@ -94,9 +94,8 @@ function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
 // Every open seater wears a livery painted onto its panels (these specs are
 // buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
 // the car's colour on top, black underneath, a pinstripe in a colour that
-// stands out against it, DRIFT CLUB on the sidepods, and a race number on the
-// nose and the engine cover, worked out from the driver's name so it's the
-// same on every screen. The secret livery adds its sponsors and lime trim.
+// stands out against it, DRIFT CLUB on the sidepods, and the driver's race
+// number (random, handed out by the server) on the nose and engine cover. The secret livery adds its sponsors and lime trim.
 const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
 const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
@@ -106,12 +105,13 @@ const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
 const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
 // the pinstripe for each car colour (CAR_COLORS order)
 const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xff8a3d, 0xf3e3c3, 0xe6453a];
+// only if the server didn't give one (an older server): one from the name
 function raceNumber(name) { let h = 7; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 2 + (h % 98); }
-function paintLivery(K, g, colorIdx, name) {
+function paintLivery(K, g, colorIdx, name, raceNum) {
   const secret = K.livery;
   const stripe = secret ? K.lime : new THREE.MeshLambertMaterial({ color: STRIPES[colorIdx] ?? 0xffffff, flatShading: true });
   const ink = K.lightCar ? '#1d2230' : '#f2f5f0'; // lettering on the car's own colour
-  const num = secret ? '18' : String(raceNumber(name));
+  const num = secret ? '18' : String(raceNum ?? raceNumber(name));
   const patches = [], lettering = (m) => patches.push(m);
   for (const sx of [-1, 1]) {
     onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
@@ -1015,7 +1015,7 @@ function updateGhost(now) {
   app.ghostOn = false; // set below once the ghost has a place on the lap (the minimap shows it then)
   if (!on) { if (app.ghost) app.ghost.group.visible = false; app.ghostDelta = null; return; }
   if (!app.ghost) {
-    app.ghost = makeCarMesh(app.color, '', true);
+    app.ghost = makeCarMesh(app.color, '', true, app.carClass, false, raceNumberOf(app.myId));
     app.ghost.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.45; m.material.color?.setHex(0xbfe4ff); m.material.depthWrite = false; m.castShadow = false; } });
     carsGroup.add(app.ghost.group);
   }
@@ -2430,7 +2430,9 @@ function faceLamp(K, mat, x, hw, y0, z0, y1, z1, dir, out = 0.015, inn = 0.04) {
     [x - hw, tf[0], tf[1]], [x + hw, tf[0], tf[1]], [x + hw, tr[0], tr[1]], [x - hw, tr[0], tr[1]]]), mat, 0, 0, 0, false);
 }
 
-function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) {
+// num: the race number the server gave the driver (see addPlayer in server/core.js)
+const raceNumberOf = (id) => app.room?.players.find(p => p.id === id)?.num;
+function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, num = null) {
   const g = new THREE.Group();
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
   const lightCar = colorIdx === 8 || colorIdx === 2 || colorIdx === 11;
@@ -2452,7 +2454,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   K.rod = (a, b, th, mat) => { const m = strut(V(...a), V(...b), th, th, mat); g.add(m); return m; };
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
-  if (cls !== 'rally' && cls !== 'camry') paintLivery(K, g, colorIdx, name);
+  if (cls !== 'rally' && cls !== 'camry') paintLivery(K, g, colorIdx, name, num);
   mergeStatic(g, new Set([K.brake, ...(K.decals || [])])); // ~70 parts into one; the brake lights (and any lettering) stay apart
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
   // The body leans on its springs about a point at hub height; the wheels and
@@ -2749,7 +2751,7 @@ function clearCars() {
 
 function spawnLocal(slot) {
   const { pos, heading, idx } = startSlot(app.track, slot);
-  const mesh = makeCarMesh(app.color, app.name, true, app.carClass, true);
+  const mesh = makeCarMesh(app.color, app.name, true, app.carClass, true, raceNumberOf(app.myId));
   const car = {
     pos, h: heading, speed: 0, vx: 0, vz: 0, yawRate: 0, steerAngle: 0, ax: 0, slip: 0, vy: 0, airborne: false,
     idx, lastIdx: idx, onTrack: true, nextCp: 1, lap: 1, lastCpIdx: 0, fellTimer: 0,
@@ -2764,7 +2766,7 @@ function spawnLocal(slot) {
 function ensureRemote(p) {
   let c = app.cars.get(p.id);
   if (c) return c;
-  const mesh = makeCarMesh(p.color, p.name, false);
+  const mesh = makeCarMesh(p.color, p.name, false, app.carClass, false, p.num);
   // spec: joined a race part-way through and is only driving around until the
   // next one, so their car is see-through and nobody can hit it
   const spec = !!p.spec && app.mode !== 'quali';
@@ -3767,7 +3769,7 @@ function startPodium(top, dash, done) {
     const num = plate(String(i + 1), Math.min(1.25, h * 0.9)); num.position.set(x, h / 2, 2.81); g.add(num);
     const r = top[i];
     if (!r) return; // fewer than three finishers: an empty step
-    const car = makeCarMesh(r.color, r.name, false, app.carClass);
+    const car = makeCarMesh(r.color, r.name, false, app.carClass, false, raceNumberOf(r.id));
     car.group.position.set(x, h + 30, -0.2); car.group.visible = false; g.add(car.group);
     cars[i] = { group: car.group, h, r };
   });

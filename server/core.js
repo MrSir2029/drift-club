@@ -175,7 +175,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       maxPlayers: MAX_PLAYERS, grid: room.grid,
       times: room.gridTimes, // best qualifying lap per player id, for the lobby
       // spec: joined a race part-way through, so watching it, not racing
-      players: [...room.players.values()].map(p => (p.spec ? { id: p.id, name: p.name, color: p.color, spec: 1 } : { id: p.id, name: p.name, color: p.color })),
+      players: [...room.players.values()].map(p => (p.spec ? { id: p.id, name: p.name, color: p.color, num: p.num, spec: 1 } : { id: p.id, name: p.name, color: p.color, num: p.num })),
     };
   }
 
@@ -199,6 +199,9 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     return room;
   }
   function addPlayer(room, p) {
+    // a random race number for the livery, 2 to 99, not one already in the room
+    const used = new Set([...room.players.values()].map(o => o.num));
+    do p.num = 2 + Math.floor(Math.random() * 98); while (used.has(p.num) && used.size < 98);
     room.players.set(p.id, p);
     p.room = room;
     send(p, { t: 'joined', id: p.id, code: room.code, pair: pairStates, name: p.name });
