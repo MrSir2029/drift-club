@@ -124,8 +124,8 @@
     <div id="lights" class="lights hidden"><span></span><span></span><span></span><span></span><span></span></div>
     <div id="countdown" class="countdown hidden"></div>
     <div id="toast-race" class="toast-race hidden"></div>
-    <div id="gate-nav" class="dash-nav gate-nav hidden"><span id="gate-arrow">&#9650;</span><b>Missed a gate!</b><span>Go back through it, or press <b>R</b></span><span id="gate-dist"></span></div>
-    <div id="dash-nav" class="dash-nav hidden"><span id="dash-arrow">&#9650;</span><b>9LAT2</b><span id="dash-dist"></span></div>
+    <div id="gate-nav" class="dash-nav gate-nav hidden"><svg id="gate-arrow" class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21.5 11.5h-6v11h-7v-11h-6z"/></svg><b>Missed a gate!</b><span>Go back through it, or press <b>R</b></span><span id="gate-dist"></span></div>
+    <div id="dash-nav" class="dash-nav hidden"><svg id="dash-arrow" class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21.5 11.5h-6v11h-7v-11h-6z"/></svg><b>9LAT2</b><span id="dash-dist"></span></div>
     <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or press <b>R</b> to reset</div>
     <button id="btn-endq" class="btn small endq hidden">End Polytrack mode</button>
     <div id="podium-ui" class="podium-ui hidden"><div id="podium-title" class="podium-title"></div><div class="podium-skip">Click or press any key to skip</div></div>
@@ -178,6 +178,7 @@
       <div class="label">Settings</div>
       <div class="setrow"><b>Graphics</b><div id="seg-gfx" class="seg"><button data-v="auto">Auto</button><button data-v="max">Max</button><button data-v="high">High</button><button data-v="medium">Medium</button><button data-v="low">Low</button></div></div>
       <div class="setrow"><b>Sound</b><div id="seg-sound" class="seg"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+      <div class="setrow"><b>Volume</b><div class="volrow"><input id="vol" type="range" min="0" max="100" step="5" aria-label="Volume"><span id="vol-val">100%</span></div></div>
       <div class="setrow"><b>Expanded map &amp; Easter eggs</b><div id="seg-map" class="seg"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
       <div class="warn">&#9888; Adds a lake, castle, fairground, village and more to explore, with hidden stars to find. It can make the game run slower, especially on school laptops and older computers.</div>
       <div id="map-note" class="hint"></div>
