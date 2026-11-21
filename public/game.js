@@ -136,6 +136,8 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
     }
   }
   lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose, for everyone in front
+  // the driver's name down each side of the tub, between the front wheel and the sidepod
+  if (name) for (const sx of [-1, 1]) lettering(onPanel(g, TUB, sx, 0.36, 0.88, 0.385, 0.515, null, name.toUpperCase(), ink));
   lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
@@ -2505,7 +2507,6 @@ function buildOpenBody(K) {
   add(taperBox(0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null), body, 0, 0.5, 0.85);
   add(taperBox(0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null), body, 0, 0.45, 2.62);
   add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), dark, 0, 0.35, 3.36);
-  box(0.3, 0.02, 0.6, accent, 0, 0.552, 2.45, false).rotation.x = 0.156;   // nose band
   // front wing
   box(2.0, 0.045, 0.5, carbon, 0, 0.15, 3.15);
   for (const sx of [-1, 1]) {
