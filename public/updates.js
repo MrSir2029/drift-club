@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.20', date: '21 Nov 2026', title: 'A proper podium',
+    items: [
+      'The podium is a real ceremony now: cinema bars and a drumroll, then third and second crash down onto their steps one at a time, and the winner slams onto the top step with a flash, a fanfare, a confetti cannon, fireworks and spotlights. Any key or click still skips it.',
+    ],
+  },
+  {
     v: '2.19', date: '21 Nov 2026', title: 'Volume and clearer arrows',
     items: [
       'A volume slider in Settings, under Sound.',
