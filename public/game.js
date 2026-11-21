@@ -109,7 +109,7 @@ function paintLivery(K, g, colorIdx, name) {
   const stripe = secret ? K.lime : new THREE.MeshLambertMaterial({ color: STRIPES[colorIdx] ?? 0xffffff, flatShading: true });
   const ink = K.lightCar ? '#1d2230' : '#f2f5f0'; // lettering on the car's own colour
   const num = secret ? '18' : String(raceNumber(name));
-  const lettering = (m) => (K.decals ??= []).push(m.material);
+  const patches = [], lettering = (m) => patches.push(m);
   for (const sx of [-1, 1]) {
     onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
     onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
@@ -130,6 +130,23 @@ function paintLivery(K, g, colorIdx, name) {
     }
   }
   lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose
+  // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
+  // mesh, so a car costs as few draw calls as possible.
+  const byMat = new Map();
+  for (const m of patches) { if (!byMat.has(m.material)) byMat.set(m.material, []); byMat.get(m.material).push(m); }
+  K.decalMeshes = [];
+  for (const [mat, list] of byMat) {
+    let mesh = list[0];
+    if (list.length > 1) {
+      const pos = [], uv = [];
+      for (const m of list) { pos.push(...m.geometry.attributes.position.array); uv.push(...m.geometry.attributes.uv.array); g.remove(m); m.geometry.dispose(); }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.computeVertexNormals();
+      mesh = new THREE.Mesh(geo, mat); mesh.castShadow = false; g.add(mesh);
+    }
+    (K.decals ??= []).push(mat); K.decalMeshes.push(mesh);
+  }
 }
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
@@ -2463,7 +2480,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
     label.position.y = cls === 'rally' ? 2.8 : cls === 'camry' ? 2.7 : 2.5;
     g.add(label);
   }
-  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer, lean };
+  return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer, lean, decals: K.decalMeshes || null };
 }
 
 // Open-wheel single seater: stepped floor, slim monocoque running into a
@@ -3297,6 +3314,9 @@ function pushRemoteState(c, s, recv) {
 function stepRemotes(now, dt) {
   const dtms = dt * 1000;
   for (const c of app.cars.values()) {
+    // lettering on a car more than 60 m away can't be read: don't draw it
+    const dec = c.mesh.decals;
+    if (dec) { const far = c.mesh.group.position.distanceToSquared(camera.position) > 3600; if (far !== c.decalsFar) { c.decalsFar = far; for (const d of dec) d.visible = !far; } }
     const buf = c.buf;
     if (!buf.length) continue;
     c.jit *= Math.exp(-dt / 5);
