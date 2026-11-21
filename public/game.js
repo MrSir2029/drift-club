@@ -34,16 +34,39 @@ const hashCode = (s) => { let h = 5381; for (const ch of s) h = ((h << 5) + h + 
 const LIVERY = 12;
 // The sponsor lettering on that livery. Made-up names: no real brands.
 const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
-// white lettering on a see-through plane, for the livery's sponsor decals
-function decal(text, w, h) {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
-  const x = c.getContext('2d');
-  let size = 92;
-  do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > 496 && size > 20);
-  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#f2f5f0'; x.fillText(text, 256, 68);
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false }));
+// Paint laid flat on the outside face (the +x or -x side) of one of the car's
+// tapered blocks. spec = [w, h, d, front, rear, x, y, z]: the block as built
+// by taperBox and placed by K.add (x measured out from the middle). a runs
+// from the back (0) to the front (1) of the block; b from its bottom (0) to
+// its top (1), or for lettering, actual heights. It sits 3 mm off the panel
+// and follows its taper, so it can't poke out of the bodywork or sink into it.
+function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text) {
+  const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
+  const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
+  const pt = (a, b) => new THREE.Vector3(sx * (px + (w / 2) * s(0, a)), text ? b : py + (b - 0.5) * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
+  const q = [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)]; // back-bottom, front-bottom, front-top, back-top
+  const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize().multiplyScalar(-sx);
+  for (const p of q) p.addScaledVector(n, 0.003);
+  const order = sx > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]; // facing outwards
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(order.flatMap(i => q[i].toArray()), 3));
+  if (text) {
+    // lettering reads front to back on the right-hand side, back to front on the left
+    const uv = [[sx > 0 ? 1 : 0, 0], [sx > 0 ? 0 : 1, 0], [sx > 0 ? 0 : 1, 1], [sx > 0 ? 1 : 0, 1]];
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(order.flatMap(i => uv[i]), 2));
+    const aspect = q[0].distanceTo(q[1]) / q[0].distanceTo(q[3]);
+    const c = document.createElement('canvas'); c.height = 128; c.width = Math.min(2048, Math.max(128, Math.round(128 * aspect)));
+    const x = c.getContext('2d');
+    let size = 104;
+    do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 20);
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#f2f5f0'; x.fillText(text, c.width / 2, 70);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+    mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
+  }
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat);
   m.castShadow = false;
+  g.add(m);
   return m;
 }
 // Feedback: the link to a Google Form (or any page) where players can send
@@ -2344,19 +2367,23 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
   if (livery && cls !== 'rally' && cls !== 'camry') {
-    // the detailed livery (from photos of the real thing): teal green on
-    // top, black underneath, one thin lime pinstripe down each side
+    // The detailed livery, from photos of the real thing: teal green on top,
+    // black underneath, a thin lime pinstripe down each side and white
+    // sponsor lettering, all painted onto the panels of buildOpenBody (these
+    // specs are its sidepods, tub, nose, engine cover and rear endplates).
+    const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
+    const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
+    const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
+    const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
+    const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
     for (const sx of [-1, 1]) {
-      K.add(taperBox(0.64, 0.2, 1.47, null, [0.35, 0.5, -0.028]), K.carbon, sx * 0.7, 0.33, -0.375);       // black lower sidepods
-      K.box(0.025, 0.028, 1.42, K.lime, sx * 0.915, 0.53, -0.36, false).rotation.y = sx * 0.137;          // lime pinstripe along each sidepod
-      K.box(0.025, 0.02, 1.2, K.lime, sx * 0.4, 0.66, 1.0, false);                                         // and on down the chassis
-      K.box(0.03, 0.018, 1.1, K.lime, sx * 0.16, 0.588, 2.5, false).rotation.x = 0.156;                    // and the nose
-      K.box(0.26, 0.16, 0.05, K.carbon, sx * 0.72, 0.4, 0.37, false);                                       // black under the intakes
-      // sponsor lettering: big on the sidepods, smaller on the engine cover and the rear wing endplates
-      const add = (m, x, y, z, ry) => { m.position.set(x, y, z); m.rotation.y = ry; g.add(m); (K.decals ??= []).push(m.material); };
-      add(decal(SPONSORS.pods, 0.82, 0.2), sx * 0.945, 0.37, -0.25, sx * (Math.PI / 2 + 0.14));
-      add(decal(SPONSORS.cover, 0.5, 0.13), sx * 0.268, 0.8, -0.42, sx * (Math.PI / 2 + 0.096));
-      add(decal(SPONSORS.wing, 0.72, 0.18), sx * 0.632, 1.35, -2.25, sx * Math.PI / 2);
+      onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);          // black lower sidepods
+      onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, K.lime);   // the lime pinstripe along each sidepod
+      onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, K.lime);       // on down the tub
+      onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, K.lime);       // and along the nose
+      for (const [spec, a0, a1, y0, y1, text] of [[POD, 0.34, 0.92, 0.287, 0.418, SPONSORS.pods], [COVER, 0.58, 0.85, 0.748, 0.875, SPONSORS.cover], [PLATE, 0.06, 0.94, 1.27, 1.43, SPONSORS.wing]]) {
+        (K.decals ??= []).push(onPanel(g, spec, sx, a0, a1, y0, y1, null, text).material);
+      }
     }
   }
   mergeStatic(g, new Set([K.brake, ...(K.decals || [])])); // ~70 parts into one; the brake lights (and any lettering) stay apart
