@@ -3595,7 +3595,7 @@ function plate(text, size) {
 }
 // The podium, staged: third and second crash down onto their steps in turn,
 // a drumroll builds, then the winner slams onto the top step: a flash, a
-// fanfare, a confetti cannon, fireworks and spotlights while the camera
+// fanfare, a confetti cannon and fireworks while the camera
 // circles. Any key or click skips to the results.
 function podiumDrumroll(dur) {
   if (!audio.ctx || !audio.on || !audio.nodes) return null;
@@ -3658,15 +3658,6 @@ function startPodium(top, dash, done) {
     pts.frustumCulled = false; pts.visible = false; g.add(pts);
     fireworks.push({ pts, fp, dirs, m, next: winAt + 0.25 + k * 0.45, start: -1, cx: 0, cy: 0, cz: 0, sp: 8 });
   }
-  // two spotlights crossing on the winner
-  const spots = [];
-  for (const sx of [-1, 1]) {
-    const from = new THREE.Vector3(sx * 10, 22, 7), to = new THREE.Vector3(0, 1.4, 0), dir = to.clone().sub(from), len = dir.length();
-    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 3.2, len, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1c4, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    cone.position.copy(from).addScaledVector(dir, 0.5);
-    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.normalize());
-    cone.visible = false; g.add(cone); spots.push(cone);
-  }
   scene.add(g);
   carsGroup.visible = false;
   if (app.ghost) app.ghost.group.visible = false;
@@ -3682,7 +3673,7 @@ function startPodium(top, dash, done) {
   window.addEventListener('pointerdown', skip, true);
   const dur = (winAt + 6.5) * 1000;
   podium = { g, head, x: s.p.x, y: s.p.y, z: s.p.z, t0: performance.now(), done, skip, cars, blocks, beats, keys, winAt, dash, top,
-    cg, P, V, ph, n, confetti, fireworks, spots, night, shake: 0, drum: podiumDrumroll(winAt), timer: setTimeout(() => endPodium(true), dur) };
+    cg, P, V, ph, n, confetti, fireworks, night, shake: 0, drum: podiumDrumroll(winAt), timer: setTimeout(() => endPodium(true), dur) };
 }
 function podiumTitle(text) {
   const el = $('#podium-title');
@@ -3711,7 +3702,6 @@ function podiumLand(b) {
     V.set([(Math.random() - 0.5) * 10, 5 + Math.random() * 6, (Math.random() - 0.5) * 10], i * 3);
   }
   p.confetti.visible = true;
-  p.spots.forEach(s => { s.visible = true; });
   const gold = p.blocks[0].material; gold.emissive.setHex(0xffc23a);
 }
 function endPodium(showDone) {
@@ -3752,9 +3742,8 @@ function updatePodium(dt, now) {
       if (P[k + 1] < 0.1) { P[k] = (Math.random() - 0.5) * 16; P[k + 1] = 8 + Math.random() * 3; P[k + 2] = (Math.random() - 0.5) * 12; V[k] = V[k + 2] = 0; V[k + 1] = -2; }
     }
     p.cg.attributes.position.needsUpdate = true;
-    // spotlights fade up; the gold step glows
+    // the gold step glows
     const f = clamp((t - p.winAt) / 0.6, 0, 1);
-    p.spots.forEach(s => { s.material.opacity = f * (p.night ? 0.32 : 0.2); });
     p.blocks[0].material.emissiveIntensity = 0.35 + 0.25 * Math.sin(t * 5) * f;
   }
   // fireworks

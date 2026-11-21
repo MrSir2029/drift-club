@@ -135,7 +135,7 @@ for a race. A race's results show the order, the gaps, and every lap you set.
 After a race (or a Race to 9LAT2) there's a podium ceremony just past the
 finish line before the results: cinema bars and a drumroll, third and second
 crash down onto their steps, then the winner lands on the top step with a
-flash and a fanfare, a confetti cannon, fireworks and spotlights while the
+flash and a fanfare, a confetti cannon and fireworks while the
 camera circles. Any key or click skips it. In qualifying your ghost (your best lap so far) also
 shows on the minimap.
 
