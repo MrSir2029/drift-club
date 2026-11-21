@@ -19,16 +19,13 @@
       <p class="tag">Race your friends. No downloads, no sign-ups.</p>
       <div class="phone-warn"><b>Not for phones</b>Drift Club needs a keyboard. Play it on a computer.</div>
 
-      <div class="namerow">
-        <label class="field">
-          <span>Your name</span>
+      <label class="field">
+        <span>Your name</span>
+        <div class="namebox">
           <input id="name" maxlength="12" placeholder="Racer" autocomplete="off" spellcheck="false">
-        </label>
-        <label class="field" title="The number on your car, 0 to 99. Leave it empty for a random one.">
-          <span>Car number</span>
-          <input id="num" maxlength="2" inputmode="numeric" placeholder="Any" autocomplete="off" spellcheck="false">
-        </label>
-      </div>
+          <input id="num" maxlength="2" inputmode="numeric" placeholder="#" autocomplete="off" spellcheck="false" aria-label="Car number" title="Your car number, 0 to 99. Leave it empty for a random one.">
+        </div>
+      </label>
 
       <div class="field">
         <span>Car colour</span>

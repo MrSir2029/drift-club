@@ -54,8 +54,12 @@ input {
 }
 input:focus { border-color: var(--blue); }
 #code { text-transform: uppercase; letter-spacing: .3em; font-weight: 900; text-align: center; }
-.namerow { display: grid; grid-template-columns: 1fr 112px; gap: 10px; }
-#num { font-weight: 900; text-align: center; }
+/* the name and, tucked into the end of the same box, the car number */
+.namebox { display: flex; border: 3px solid var(--ink); border-radius: 12px; background: #fff; overflow: hidden; }
+.namebox:focus-within { border-color: var(--blue); }
+.namebox input { border: 0; border-radius: 0; }
+#name { flex: 1; min-width: 0; }
+#num { flex: none; width: 58px; padding-left: 4px; padding-right: 4px; border-left: 2px solid #e4ded0; font-weight: 900; text-align: center; }
 
 .swatches { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
 .swatch { aspect-ratio: 1; border-radius: 8px; border: 3px solid transparent; cursor: pointer; transition: transform .1s; }
