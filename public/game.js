@@ -74,7 +74,9 @@ function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
 function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text, ink) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
-  const pt = (a, b) => new THREE.Vector3(sx * (px + (w / 2) * s(0, a)), text ? b : py + (b - 0.5) * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
+  // b0 or b1 can be [at a0, at a1], for a line that sweeps up or down along the panel
+  const bAt = (b, a) => (Array.isArray(b) ? b[0] + (b[1] - b[0]) * (a - a0) / (a1 - a0) : b);
+  const pt = (a, b) => { b = bAt(b, a); return new THREE.Vector3(sx * (px + (w / 2) * s(0, a)), text ? b : py + (b - 0.5) * h * s(1, a) + s(2, a), pz - d / 2 + d * a); };
   // seen from the right-hand side the front is on the left; from the left-hand side, on the right
   const q = sx > 0 ? [pt(a1, b0), pt(a0, b0), pt(a0, b1), pt(a1, b1)] : [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)];
   return paintQuad(g, q, mat, text, ink);
@@ -104,40 +106,56 @@ const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
 const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
 const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
 // the pinstripe for each car colour (CAR_COLORS order)
-const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xff8a3d, 0xf3e3c3, 0xe6453a];
+const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xd9b44a, 0xf3e3c3, 0xe6453a];
 // only if the server didn't give one (an older server): one from the name
 function raceNumber(name) { let h = 7; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 2 + (h % 98); }
 function paintLivery(K, g, colorIdx, name, raceNum) {
   const secret = K.livery;
-  const stripe = secret ? K.lime : new THREE.MeshLambertMaterial({ color: STRIPES[colorIdx] ?? 0xffffff, flatShading: true });
+  const stripe = K.stripe;
   const ink = K.lightCar ? '#1d2230' : '#f2f5f0'; // lettering on the car's own colour
   const num = secret ? '18' : String(raceNum ?? raceNumber(name));
   const patches = [], lettering = (m) => patches.push(m);
   for (const sx of [-1, 1]) {
-    onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
-    onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
-    onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, stripe);     // the pinstripe along each sidepod,
-    onPanel(g, COVER, sx, 0, 0.56, 0.42, 0.47, stripe);      // on back along the engine cover,
-    onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, stripe);         // forward down the tub
-    onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, stripe);         // and along the nose
+    if (secret) {
+      // green on top, black underneath, a level lime line (like the real car)
+      onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
+      onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
+      onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, stripe);     // the pinstripe along each sidepod,
+      onPanel(g, COVER, sx, 0, 0.56, 0.42, 0.47, stripe);      // on back along the engine cover,
+      onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, stripe);         // forward down the tub
+      onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, stripe);         // and along the nose
+    } else {
+      // Like a modern F1 car: the colour sweeps back from the nose and black
+      // takes over towards the back, with one pinstripe riding the split from
+      // the nose tip, low along the tub, up the sidepods and the engine cover.
+      onPanel(g, NOSE, sx, 0, 0.9, 0.3, 0.365, stripe);
+      onPanel(g, TUB, sx, 0.29, 1, 0.3, 0.365, stripe);
+      onPanel(g, POD, sx, 0, 1, 0, [0.88, 0.36], K.carbon);
+      onPanel(g, POD, sx, 0, 1, [0.88, 0.36], [0.95, 0.43], stripe);
+      onPanel(g, COVER, sx, 0, 0.524, 0, [0.88, 0.21], K.carbon);
+      onPanel(g, COVER, sx, 0, 0.524, [0.88, 0.21], [0.95, 0.28], stripe);
+      onPanel(g, PLATE, sx, 0, 1, 0, 1, K.carbon);              // black rear wing endplates
+    }
     onPanel(g, FRONT_PLATE, sx, 0, 1, 0.82, 0.93, stripe);   // the same colour on the front wing endplates
     K.box(0.48, 0.022, 0.06, stripe, sx * 0.72, 0.631, 0.36, false); // and on each sidepod intake
     // what you see from the cockpit: pinstripes down both top edges of the tub and nose
     onTop(g, TUB, 0.4, 1, sx * 0.72, sx * 0.86, stripe);
     onTop(g, NOSE, 0, 0.96, sx * 0.62, sx * 0.8, stripe);
-    lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods)); // white on the black
     if (secret) {
+      lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods)); // white on the black
       onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);          // black airbox sides
       lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
       lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
       lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
     } else {
+      lettering(onPanel(g, POD, sx, 0.25, 0.72, 0.3, 0.42, null, SPONSORS.pods));  // DRIFT CLUB on the black
+      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.pods)); // and big on the rear wing endplates
       lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
     }
   }
   lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose, for everyone in front
   // the driver's name down each side of the tub, between the front wheel and the sidepod
-  if (name) for (const sx of [-1, 1]) lettering(onPanel(g, TUB, sx, 0.36, 0.88, 0.385, 0.515, null, name.toUpperCase(), ink));
+  if (name) for (const sx of [-1, 1]) lettering(onPanel(g, TUB, sx, 0.36, 0.88, secret ? 0.385 : 0.43, secret ? 0.515 : 0.55, null, name.toUpperCase(), ink));
   lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
@@ -2444,7 +2462,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, 
     g, lightCar, livery,
     body: L(color), accent: L(livery ? 0x16191f : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
     tyre: L(0x15181f), rim: L(livery ? 0x1d2230 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
-    helmet: L(livery ? 0xd8e81c : lightCar ? 0xff8a3d : 0xffd23f), lime: livery ? L(0xc6f432) : null,
+    helmet: L(livery ? 0xd8e81c : lightCar ? 0xff8a3d : 0xffd23f), stripe: L(livery ? 0xc6f432 : STRIPES[colorIdx] ?? 0xffffff),
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
@@ -2506,7 +2524,7 @@ function buildOpenBody(K) {
   // monocoque into the nose
   add(taperBox(0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null), body, 0, 0.5, 0.85);
   add(taperBox(0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null), body, 0, 0.45, 2.62);
-  add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), dark, 0, 0.35, 3.36);
+  add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), K.livery ? dark : K.stripe, 0, 0.35, 3.36); // nose tip, in the stripe colour
   // front wing
   box(2.0, 0.045, 0.5, carbon, 0, 0.15, 3.15);
   for (const sx of [-1, 1]) {
@@ -2529,7 +2547,7 @@ function buildOpenBody(K) {
   add(taperBox(0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18]), body, 0, 0.72, -1.15);
   add(taperBox(0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06]), body, 0, 1.2, -0.45);
   box(0.24, 0.2, 0.04, dark, 0, 1.22, -0.07, false);
-  box(0.08, 0.07, 0.24, K.lime || dark, 0, 1.4, -0.3, false);            // camera (lime on the secret livery)
+  box(0.08, 0.07, 0.24, K.stripe, 0, 1.4, -0.3, false);                    // camera, in the stripe colour
   add(taperBox(0.035, 0.46, 1.25, null, [1, 0.3, -0.16]), body, 0, 1.06, -1.45);
   box(0.2, 0.02, 0.9, accent, 0, 1.0, -1.2, false).rotation.x = -0.2;
   // cockpit: opening, helmet, visor
