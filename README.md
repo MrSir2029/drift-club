@@ -168,8 +168,10 @@ building is always there, hidden as far from the roads as the map allows,
 down in low ground, with a sign you only make out up close. A TV
 helicopter follows the race leader.
 
-Pinewood (the second track) is a forest gravel stage: thick with dark pines,
-ferns and mossy rocks, with a stone arch over the road and two jumps. Frost Pass (the
+Pinewood (the second track) runs through a forest: thick with dark pines,
+ferns and mossy rocks, with a stone arch over the road. In the open seater (or
+the Camry) it's a tarmac road; in the rally car it turns back into a gravel
+stage with two jumps (`trackDef` in `game.js`). Frost Pass (the
 third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
 drive off it). Switchback (the fourth) is raced at night, under floodlights,

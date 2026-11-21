@@ -3,6 +3,12 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.17', date: '21 Nov 2026', title: 'Pinewood on tarmac',
+    items: [
+      'In the open seater, Pinewood is now tarmac with no jumps, so the road is the quick way round again (on gravel it was faster across the grass).',
+    ],
+  },
+  {
     v: '2.16', date: '21 Nov 2026', title: 'See for miles',
     items: [
       'Things in the distance look much better on High: the haze starts about three times further away, so the far side of the track, the scenery and the hills stay clear.',
