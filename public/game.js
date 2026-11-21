@@ -3584,7 +3584,6 @@ function showResults(results, quali, dash) {
 // finish line, confetti falling and the camera swinging round them. Any key
 // or click skips to the results. ----
 let podium = null;
-const PODIUM_MS = 7000;
 function plate(text, size) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const ctx = c.getContext('2d');
@@ -3593,41 +3592,86 @@ function plate(text, size) {
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
 }
+// The podium, staged: third and second crash down onto their steps in turn,
+// a drumroll builds, then the winner slams onto the top step: a flash, a
+// fanfare, a confetti cannon, fireworks and spotlights while the camera
+// circles. Any key or click skips to the results.
+function podiumDrumroll(dur) {
+  if (!audio.ctx || !audio.on || !audio.nodes) return null;
+  const c = audio.ctx, t = c.currentTime;
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 380; bp.Q.value = 0.8;
+  const trem = c.createGain(); trem.gain.value = 0.5;
+  const lfo = c.createOscillator(); lfo.type = 'square'; lfo.frequency.setValueAtTime(12, t); lfo.frequency.linearRampToValueAtTime(24, t + dur);
+  const lfoG = c.createGain(); lfoG.gain.value = 0.5; lfo.connect(lfoG).connect(trem.gain);
+  const g = c.createGain(); g.gain.setValueAtTime(0.02, t); g.gain.exponentialRampToValueAtTime(0.4, t + dur);
+  src.connect(bp).connect(trem).connect(g).connect(audio.nodes.master);
+  src.start(t); lfo.start(t);
+  let stopped = false;
+  const stop = () => { if (stopped) return; stopped = true; try { g.gain.cancelScheduledValues(c.currentTime); g.gain.setTargetAtTime(0, c.currentTime, 0.03); src.stop(c.currentTime + 0.2); lfo.stop(c.currentTime + 0.2); } catch {} };
+  return { stop };
+}
 function startPodium(top, dash, done) {
   endPodium(false);
   const T = app.track, step = T.length / T.N, s = T.samples[Math.round(20 / step) % T.N];
   const head = Math.atan2(s.th.x, s.th.z);
   const g = new THREE.Group(); g.position.copy(s.p); g.rotation.y = head;
   const night = !!T.look?.night;
-  [[0, 1.4, 0xffd23f], [3.8, 1.0, 0xcfd6e0], [-3.8, 0.65, 0xd08a4a]].forEach(([x, h, col], i) => {
-    const r = top[i];
+  const STEPS = [[0, 1.4, 0xffd23f], [3.8, 1.0, 0xcfd6e0], [-3.8, 0.65, 0xd08a4a]];
+  const cars = [], blocks = [];
+  STEPS.forEach(([x, h, col], i) => {
     const block = new THREE.Mesh(new THREE.BoxGeometry(3.6, h, 5.6), new THREE.MeshLambertMaterial({ color: col, emissive: night ? col : 0, emissiveIntensity: 0.35, flatShading: true }));
-    block.position.set(x, h / 2, 0); block.castShadow = block.receiveShadow = true; g.add(block);
+    block.position.set(x, h / 2, 0); block.castShadow = block.receiveShadow = true; g.add(block); blocks[i] = block;
     const num = plate(String(i + 1), Math.min(1.25, h * 0.9)); num.position.set(x, h / 2, 2.81); g.add(num);
+    const r = top[i];
     if (!r) return; // fewer than three finishers: an empty step
     const car = makeCarMesh(r.color, r.name, false, app.carClass);
-    car.group.position.set(x, h, -0.2); g.add(car.group);
+    car.group.position.set(x, h + 30, -0.2); car.group.visible = false; g.add(car.group);
+    cars[i] = { group: car.group, h, r };
   });
-  // confetti: squares in the team colours, drifting down and starting again at the top
-  const n = 420, P = new Float32Array(n * 3), C = new Float32Array(n * 3), fall = [];
+  // the running order: third, second (whoever there is), then the winner
+  const beats = []; let at = 1.2;
+  for (const i of [2, 1]) if (cars[i]) { beats.push({ i, at }); at += 1.5; }
+  const winAt = at + 0.9;
+  beats.push({ i: 0, at: winAt, win: true });
+  // camera keyframes: [time, look-at x on the podium, distance, height, angle round the front]
+  const keys = [[0, 0, 26, 7, -0.9]];
+  for (const b of beats) if (!b.win) keys.push([b.at - 0.3, STEPS[b.i][0], 8.5, 2.2, STEPS[b.i][0] < 0 ? -0.4 : 0.4]);
+  keys.push([winAt - 0.7, 0, 14, 7.5, 0], [winAt + 0.2, 0, 8.5, 2.4, -0.18], [winAt + 6.5, 0, 13, 4.5, 0.95]);
+  // confetti cannon from the top step (hidden until the winner lands)
+  const n = 520, P = new Float32Array(n * 3), C = new Float32Array(n * 3), V = new Float32Array(n * 3), ph = new Float32Array(n);
   const pal = [0xff8a3d, 0x3d8bff, 0xffd23f, 0x7ed957, 0xff6bcb, 0xffffff].map(c => new THREE.Color(c));
-  for (let i = 0; i < n; i++) {
-    P.set([(Math.random() - 0.5) * 16, 1 + Math.random() * 15, (Math.random() - 0.5) * 12], i * 3);
-    const c = pal[i % pal.length]; C.set([c.r, c.g, c.b], i * 3);
-    fall.push([0.9 + Math.random() * 1.6, Math.random() * 6.28]);
-  }
+  for (let i = 0; i < n; i++) { const c = pal[i % pal.length]; C.set([c.r, c.g, c.b], i * 3); ph[i] = Math.random() * 6.28; P[i * 3 + 1] = -50; }
   const cg = new THREE.BufferGeometry();
   cg.setAttribute('position', new THREE.BufferAttribute(P, 3)); cg.setAttribute('color', new THREE.BufferAttribute(C, 3));
-  const confetti = new THREE.Points(cg, new THREE.PointsMaterial({ size: 0.3, vertexColors: true }));
-  confetti.frustumCulled = false; g.add(confetti);
+  const confetti = new THREE.Points(cg, new THREE.PointsMaterial({ size: 0.42, vertexColors: true }));
+  confetti.frustumCulled = false; confetti.visible = false; g.add(confetti);
+  // fireworks: three bursts, launched again and again behind the podium
+  const fireworks = [];
+  for (let k = 0; k < 3; k++) {
+    const m = 90, fp = new Float32Array(m * 3), dirs = new Float32Array(m * 3);
+    const fgeo = new THREE.BufferGeometry(); fgeo.setAttribute('position', new THREE.BufferAttribute(fp, 3));
+    const pts = new THREE.Points(fgeo, new THREE.PointsMaterial({ size: 0.9, transparent: true, opacity: 0, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pts.frustumCulled = false; pts.visible = false; g.add(pts);
+    fireworks.push({ pts, fp, dirs, m, next: winAt + 0.25 + k * 0.45, start: -1, cx: 0, cy: 0, cz: 0, sp: 8 });
+  }
+  // two spotlights crossing on the winner
+  const spots = [];
+  for (const sx of [-1, 1]) {
+    const from = new THREE.Vector3(sx * 10, 22, 7), to = new THREE.Vector3(0, 1.4, 0), dir = to.clone().sub(from), len = dir.length();
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 3.2, len, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff1c4, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    cone.position.copy(from).addScaledVector(dir, 0.5);
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.normalize());
+    cone.visible = false; g.add(cone); spots.push(cone);
+  }
   scene.add(g);
   carsGroup.visible = false;
   if (app.ghost) app.ghost.group.visible = false;
-  const winner = top[0];
-  $('#podium-title').textContent = winner.id === app.myId ? (dash ? 'You got to 9LAT2 first!' : 'You win!') : `${winner.name} ${dash ? 'got to 9LAT2 first!' : 'wins!'}`;
+  $('#podium-title').textContent = '';
   $('#podium-ui').classList.remove('hidden');
   $('#screen-race').classList.add('podium-on');
-  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, i === 3 ? 0.5 : 0.16, 0.18), i * 170)); // ta-da
   const skip = (e) => {
     if (performance.now() - podium.t0 < 800 || e.repeat) return; // not a key still held from driving
     e.stopImmediatePropagation(); e.preventDefault();
@@ -3635,37 +3679,110 @@ function startPodium(top, dash, done) {
   };
   window.addEventListener('keydown', skip, true);
   window.addEventListener('pointerdown', skip, true);
-  podium = { g, cg, fall, head, x: s.p.x, y: s.p.y, z: s.p.z, t0: performance.now(), done, skip, timer: setTimeout(() => endPodium(true), PODIUM_MS) };
+  const dur = (winAt + 6.5) * 1000;
+  podium = { g, head, x: s.p.x, y: s.p.y, z: s.p.z, t0: performance.now(), done, skip, cars, blocks, beats, keys, winAt, dash, top,
+    cg, P, V, ph, n, confetti, fireworks, spots, night, shake: 0, drum: podiumDrumroll(winAt), timer: setTimeout(() => endPodium(true), dur) };
+}
+function podiumTitle(text) {
+  const el = $('#podium-title');
+  el.textContent = text;
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); // play the pop again
+}
+function podiumLand(b) {
+  const p = podium, r = p.cars[b.i]?.r;
+  if (!b.win) {
+    beep(85, 0.22, 0.3); // thud
+    if (r) podiumTitle(`${ordinal(b.i + 1)}  ${r.name}`);
+    return;
+  }
+  // the winner
+  p.drum?.stop();
+  beep(60, 0.4, 0.4);
+  [523, 659, 784].forEach((f) => beep(f, 0.9, 0.09));
+  setTimeout(() => beep(1047, 1.3, 0.13), 320);
+  p.shake = 1;
+  const fl = $('#podium-flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
+  podiumTitle(r.id === app.myId ? (p.dash ? 'You got to 9LAT2 first!' : 'You win!') : `${r.name} ${p.dash ? 'got to 9LAT2 first!' : 'wins!'}`);
+  // the confetti cannon goes off
+  const { P, V, n } = p;
+  for (let i = 0; i < n; i++) {
+    P.set([(Math.random() - 0.5) * 2, 2.6, (Math.random() - 0.5) * 2], i * 3);
+    V.set([(Math.random() - 0.5) * 10, 5 + Math.random() * 6, (Math.random() - 0.5) * 10], i * 3);
+  }
+  p.confetti.visible = true;
+  p.spots.forEach(s => { s.visible = true; });
+  const gold = p.blocks[0].material; gold.emissive.setHex(0xffc23a);
 }
 function endPodium(showDone) {
   if (!podium) return;
   const p = podium; podium = null;
   clearTimeout(p.timer);
+  p.drum?.stop();
   window.removeEventListener('keydown', p.skip, true);
   window.removeEventListener('pointerdown', p.skip, true);
   scene.remove(p.g); disposeTree(p.g);
   carsGroup.visible = true;
   $('#podium-ui').classList.add('hidden');
+  $('#podium-flash').classList.remove('go');
   $('#screen-race').classList.remove('podium-on');
   camInit = false;
   if (showDone) p.done();
 }
 function updatePodium(dt, now) {
-  const P = podium.cg.attributes.position.array, t = now / 1000;
-  podium.fall.forEach(([v, ph], i) => {
-    P[i * 3 + 1] -= v * dt;
-    P[i * 3] += Math.sin(t * 2.2 + ph) * 0.7 * dt;
-    if (P[i * 3 + 1] < 0.1) P[i * 3 + 1] = 14 + Math.random() * 2;
-  });
-  podium.cg.attributes.position.needsUpdate = true;
-  // the camera swings round in front of the podium and closes in
-  const k = clamp((now - podium.t0) / PODIUM_MS, 0, 1), e = k * k * (3 - 2 * k);
-  const a = lerp(-1.05, 0.8, e), r = lerp(17, 10.5, e), lx = Math.sin(a) * r, lz = Math.cos(a) * r;
-  const c = Math.cos(podium.head), sn = Math.sin(podium.head);
-  camera.position.set(podium.x + lx * c + lz * sn, podium.y + lerp(5.5, 3.1, e), podium.z - lx * sn + lz * c);
-  camera.lookAt(podium.x, podium.y + 1.9, podium.z);
-  camera.near = 0.5; camera.fov = 50; camera.updateProjectionMatrix();
-  sun.position.set(podium.x + 80, podium.y + 140, podium.z + 60); sun.target.position.set(podium.x, podium.y, podium.z);
+  const p = podium, t = (now - p.t0) / 1000, ease = (k) => k * k * (3 - 2 * k);
+  // the cars drop onto their steps, bounce, and the winner turns
+  for (const b of p.beats) {
+    const car = p.cars[b.i]; if (!car) continue;
+    const u = t - (b.at - 0.45); // each one falls for 0.45 s and lands on its beat
+    if (u < 0) { car.group.visible = false; continue; }
+    car.group.visible = true;
+    car.group.position.y = u < 0.45 ? car.h + 10 * (1 - (u / 0.45) ** 2) : car.h + Math.abs(Math.sin((u - 0.45) * 9)) * 0.8 * Math.exp(-(u - 0.45) * 5);
+    if (b.win && u > 0.45) car.group.rotation.y = (u - 0.45) * 0.6;
+    if (!b.landed && u >= 0.45) { b.landed = true; podiumLand(b); }
+  }
+  const won = t >= p.winAt;
+  // confetti: shot up, then fluttering down and starting again at the top
+  if (won) {
+    const { P, V, ph, n } = p;
+    for (let i = 0; i < n; i++) {
+      const k = i * 3;
+      V[k + 1] -= 9.8 * 0.55 * dt; V[k] *= 1 - 1.1 * dt; V[k + 2] *= 1 - 1.1 * dt; if (V[k + 1] < -2.6) V[k + 1] = -2.6;
+      P[k] += (V[k] + Math.sin(t * 2.2 + ph[i]) * 0.7) * dt; P[k + 1] += V[k + 1] * dt; P[k + 2] += V[k + 2] * dt;
+      if (P[k + 1] < 0.1) { P[k] = (Math.random() - 0.5) * 16; P[k + 1] = 8 + Math.random() * 3; P[k + 2] = (Math.random() - 0.5) * 12; V[k] = V[k + 2] = 0; V[k + 1] = -2; }
+    }
+    p.cg.attributes.position.needsUpdate = true;
+    // spotlights fade up; the gold step glows
+    const f = clamp((t - p.winAt) / 0.6, 0, 1);
+    p.spots.forEach(s => { s.material.opacity = f * (p.night ? 0.32 : 0.2); });
+    p.blocks[0].material.emissiveIntensity = 0.35 + 0.25 * Math.sin(t * 5) * f;
+  }
+  // fireworks
+  for (const fw of p.fireworks) {
+    if (t >= fw.next) {
+      fw.start = t; fw.next = t + 1.35;
+      fw.cx = (Math.random() - 0.5) * 26; fw.cy = 16 + Math.random() * 9; fw.cz = -8 - Math.random() * 12; fw.sp = 7 + Math.random() * 4;
+      for (let i = 0; i < fw.m; i++) { const u = Math.random() * 2 - 1, a = Math.random() * 6.283, q = Math.sqrt(1 - u * u); fw.dirs.set([q * Math.cos(a), u, q * Math.sin(a)], i * 3); }
+      fw.pts.material.color.setHex([0xffd23f, 0xff6bcb, 0x3d8bff, 0x7ed957, 0xff8a3d][Math.floor(Math.random() * 5)]);
+      fw.pts.visible = true;
+      beep(120 + Math.random() * 60, 0.12, 0.08);
+    }
+    if (fw.start < 0) continue;
+    const a = t - fw.start, out = fw.sp * (1 - Math.exp(-a * 2.2)) / 2.2 * 2.2;
+    for (let i = 0; i < fw.m; i++) { const k = i * 3; fw.fp[k] = fw.cx + fw.dirs[k] * out; fw.fp[k + 1] = fw.cy + fw.dirs[k + 1] * out - 1.6 * a * a; fw.fp[k + 2] = fw.cz + fw.dirs[k + 2] * out; }
+    fw.pts.geometry.attributes.position.needsUpdate = true;
+    fw.pts.material.opacity = clamp(1 - a / 1.3, 0, 1);
+  }
+  // the camera: from one step to the next, up for the build-up, in close for the winner, then round
+  const K = p.keys; let j = 0;
+  while (j < K.length - 2 && t > K[j + 1][0]) j++;
+  const k = ease(clamp((t - K[j][0]) / Math.max(0.01, K[j + 1][0] - K[j][0]), 0, 1));
+  const [fx, r, h, ang] = [1, 2, 3, 4].map(n => lerp(K[j][n], K[j + 1][n], k));
+  const c = Math.cos(p.head), sn = Math.sin(p.head), lx = fx + Math.sin(ang) * r, lz = Math.cos(ang) * r;
+  const sh = p.shake; p.shake = Math.max(0, p.shake - dt * 1.6);
+  camera.position.set(p.x + lx * c + lz * sn + (Math.random() - 0.5) * sh * 0.6, p.y + h + (Math.random() - 0.5) * sh * 0.6, p.z - lx * sn + lz * c);
+  camera.lookAt(p.x + fx * c, p.y + 1.6, p.z - fx * sn);
+  camera.near = 0.5; camera.fov = won ? lerp(42, 50, clamp((t - p.winAt) / 2, 0, 1)) : 50; camera.updateProjectionMatrix();
+  sun.position.set(p.x + 80, p.y + 140, p.z + 60); sun.target.position.set(p.x, p.y, p.z);
   app.inCockpit = false;
 }
 // whoever is host gets the button (the host can change if someone leaves)

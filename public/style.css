@@ -368,8 +368,16 @@ input:focus { border-color: var(--blue); }
 #screen-race.podium-on .hud-left, #screen-race.podium-on .hud-right, #screen-race.podium-on .hud-speed,
 #screen-race.podium-on #lights, #screen-race.podium-on #countdown, #screen-race.podium-on #toast-race,
 #screen-race.podium-on #respawn-tip, #screen-race.podium-on #dash-nav, #screen-race.podium-on #gate-nav, #screen-race.podium-on #btn-endq { display: none !important; }
-.podium-ui { position: absolute; left: 50%; top: 8%; transform: translateX(-50%); text-align: center; pointer-events: none; width: 92%; }
-.podium-title { font-size: 46px; font-weight: 900; line-height: 1.05; color: #ffd23f; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; animation: pop .5s ease-out; }
+.podium-ui { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); text-align: center; pointer-events: none; width: 92%; }
+.podium-title { font-size: 46px; font-weight: 900; line-height: 1.05; color: #ffd23f; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; min-height: 1.05em; }
+.podium-title.pop { animation: pop .5s ease-out; }
+/* cinema bars and the white flash when the winner lands */
+.podium-bars i { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .6s ease; pointer-events: none; z-index: 2; }
+.podium-bars i:first-child { top: 0; } .podium-bars i:last-child { bottom: 0; }
+#screen-race.podium-on .podium-bars i { height: 10vh; }
+.podium-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
+.podium-flash.go { animation: podium-flash .7s ease-out; }
+@keyframes podium-flash { from { opacity: .9; } to { opacity: 0; } }
 .podium-skip { margin-top: 10px; display: inline-block; background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; }
 
 
