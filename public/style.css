@@ -47,7 +47,11 @@ body {
 .tag { margin: 0 0 20px; font-weight: 600; color: var(--muted); }
 
 .field { display: block; margin-bottom: 14px; }
-.field > span { display: block; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; color: var(--muted); }
+.field > span, .labelrow { display: block; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; color: var(--muted); }
+/* "Your name" on the left and "Number" over the number slot, on one line */
+.labelrow { display: flex; justify-content: space-between; }
+.labelrow label { cursor: pointer; }
+.labelrow label[for=num] { width: 64px; text-align: center; margin-right: 3px; }
 input {
   width: 100%; font: inherit; font-weight: 700; font-size: 18px; padding: 10px 12px;
   border: 3px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink); outline: none;
@@ -59,7 +63,7 @@ input:focus { border-color: var(--blue); }
 .namebox:focus-within { border-color: var(--blue); }
 .namebox input { border: 0; border-radius: 0; }
 #name { flex: 1; min-width: 0; }
-#num { flex: none; width: 58px; padding-left: 4px; padding-right: 4px; border-left: 2px solid #e4ded0; font-weight: 900; text-align: center; }
+#num { flex: none; width: 64px; padding-left: 4px; padding-right: 4px; border-left: 2px solid #e4ded0; font-weight: 900; text-align: center; }
 
 .swatches { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
 .swatch { aspect-ratio: 1; border-radius: 8px; border: 3px solid transparent; cursor: pointer; transition: transform .1s; }
