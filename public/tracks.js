@@ -15,7 +15,7 @@ export const TRACKS = [
   },
   {
     name: 'Pinewood',
-    blurb: 'Forest gravel stage: two jumps, tall pines and a rock arch.',
+    blurb: 'A fast road through tall pines, under a rock arch.',
     width: 15,
     surface: 'gravel',
     theme: 'forest',

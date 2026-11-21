@@ -525,12 +525,24 @@ function buildRibbon(track, offA, offB, colorFn, yLift = 0) {
 
 let menuOrbit = 0;
 
-function buildWorld(trackId) {
+// Pinewood is a gravel rally stage with two jumps, made for the rally car. In
+// any other car (the open seater, the Camry) it's tarmac and the jumps are
+// smoothed out: on gravel the open seater was quicker across the grass.
+function trackDef(trackId, car) {
+  const def = TRACKS[trackId];
+  return def.surface === 'gravel' && car !== 'rally' ? { ...def, surface: 'tarmac', jumps: [] } : def;
+}
+const trackVariant = (trackId, car) => (TRACKS[trackId].surface === 'gravel' && car === 'rally' ? 'rally' : 'road');
+// does the world need building again for this track and car?
+const worldStale = (trackId, car) => app.trackId !== trackId || !app.track || app.track.expanded !== app.expanded || app.track.variant !== trackVariant(trackId, car || 'open');
+function buildWorld(trackId, car = app.worldCar || 'open') {
   // clear old
   while (worldGroup.children.length) disposeTree(worldGroup.children.pop());
   occupied.length = 0; anim.length = 0;
   gfx.hold = performance.now() + 3000;
-  const track = buildTrack(TRACKS[trackId]);
+  app.worldCar = car;
+  const track = buildTrack(trackDef(trackId, car));
+  track.variant = trackVariant(trackId, car);
   app.track = track;
   app.trackId = trackId;
   track.expanded = app.expanded;
@@ -3330,7 +3342,7 @@ function handle(msg) {
       if ((msg.car || 'open') !== app.carClass && app.phase !== 'countdown' && app.phase !== 'racing') setCarClass(msg.car);
       if (app.phase === 'home' || app.phase === 'results' || app.phase === 'lobby') {
         if (msg.phase === 'lobby') {
-          if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
+          if (worldStale(msg.trackId, msg.car)) buildWorld(msg.trackId, msg.car || 'open');
           showLobby();
           layoutLobbyCars();
         }
@@ -3403,7 +3415,7 @@ function beginRace(msg) {
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = 'Time';
-  if (app.trackId !== msg.trackId || !app.track || app.track.expanded !== app.expanded) buildWorld(msg.trackId);
+  if (worldStale(msg.trackId, msg.car)) buildWorld(msg.trackId, msg.car || 'open');
   setCarClass(msg.car);
   clearCars();
   // A new race: everyone in the room is in it. (Only someone joining part-way
