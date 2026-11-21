@@ -5,7 +5,7 @@ import { UPDATES } from '/updates.js';
 // ---------------------------------------------------------------------------
 // constants
 // ---------------------------------------------------------------------------
-const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a]; // the last one is the secret racing green livery (LIVERY_CODE)
+const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a]; // the last one is the secret racing green livery (LIVERY_HASH)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30; // positions a second (sent two at a time when the server asks: see 'joined')
 // Each track's look. The meadow is the default; the desert turns the grass to
@@ -26,9 +26,11 @@ const SECRET_CODE = '9LAT2';
 // The rally car is hidden too: a host types this in the lobby to show it (and
 // again to hide it). This browser remembers.
 const RALLY_CODE = 'RALLY';
-// Typed on the home screen, this shows a secret colour: a detailed racing
-// green livery with lime trim (colour 12). Again to hide it. This browser remembers.
-const LIVERY_CODE = 'LANCESTROLL';
+// A code typed on the home screen shows a secret colour: a detailed racing
+// green livery (colour 12). Again to hide it. Only a hash of the code is kept
+// here, so it can't be read out of the page. This browser remembers.
+const LIVERY_HASH = 1676705160, LIVERY_LEN = 11;
+const hashCode = (s) => { let h = 5381; for (const ch of s) h = ((h << 5) + h + ch.charCodeAt(0)) >>> 0; return h; };
 const LIVERY = 12;
 // The sponsor lettering on that livery. Made-up names: no real brands.
 const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
@@ -4068,7 +4070,7 @@ function wireUI() {
     if (e.code === 'Escape' && !$('#board').classList.contains('hidden')) { $('#board').classList.add('hidden'); return; }
     if (e.key && e.key.length === 1) {
       secretTyped = (secretTyped + e.key.toUpperCase()).slice(-12);
-      if (secretTyped.endsWith(LIVERY_CODE) && app.phase === 'home') {
+      if (hashCode(secretTyped.slice(-LIVERY_LEN)) === LIVERY_HASH && app.phase === 'home') {
         secretTyped = '';
         app.liveryOn = !app.liveryOn;
         try { localStorage.setItem('dc-livery', app.liveryOn ? '1' : '0'); } catch {}
