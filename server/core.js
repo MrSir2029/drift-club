@@ -139,6 +139,11 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     const s = String(raw || '').replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12);
     return s || 'Racer';
   }
+  // a name with a bad word in it (the same list the leaderboard uses) becomes Racer
+  function safeName(raw) {
+    const n = cleanName(raw);
+    return nameAllowed(n) ? n : 'Racer';
+  }
   function cleanColor(raw) {
     const n = Number(raw);
     return Number.isInteger(n) && n >= 0 && n < 13 ? n : Math.floor(Math.random() * 12); // 12: the secret livery
@@ -196,7 +201,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   function addPlayer(room, p) {
     room.players.set(p.id, p);
     p.room = room;
-    send(p, { t: 'joined', id: p.id, code: room.code, pair: pairStates });
+    send(p, { t: 'joined', id: p.id, code: room.code, pair: pairStates, name: p.name });
     broadcast(room, roomSnapshot(room));
   }
   function removePlayer(p) {
@@ -268,7 +273,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     switch (msg.t) {
       case 'create': {
         if (room) removePlayer(player);
-        player.name = cleanName(msg.name);
+        player.name = safeName(msg.name);
         player.color = cleanColor(msg.color);
         const newRoom = createRoom(player);
         if (!newRoom) return send(player, { t: 'error', msg: 'Server is full, try again later.' });
@@ -281,7 +286,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         const target = rooms.get(code);
         if (!target) return send(player, { t: 'error', msg: `No room called ${code || '?'}. Check the code and try again.` });
         if (target.players.size >= MAX_PLAYERS) return send(player, { t: 'error', msg: 'That room is full (20 racers max).' });
-        player.name = cleanName(msg.name);
+        player.name = safeName(msg.name);
         player.color = cleanColor(msg.color);
         player.best = null;
         player.lapAt = Math.max(Date.now(), target.startAt); // their first lap runs from now, not from the start of the session
