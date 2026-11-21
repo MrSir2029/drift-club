@@ -7,7 +7,7 @@ export const UPDATES = [
     v: '3.1', date: '22 Nov 2026', title: 'Liveries',
     items: [
       'Every car colour has its own livery now: black underneath, a pinstripe that stands out, DRIFT CLUB and your name on the sidepods, and a race number you can see from the cockpit.',
-      'Pick your car number next to your name on the home screen, or leave it empty for a random one.',
+      'Type your car number in the # at the end of the name box, or leave it empty for a random one.',
     ],
   },
   {
