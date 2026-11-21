@@ -34,32 +34,23 @@ const hashCode = (s) => { let h = 5381; for (const ch of s) h = ((h << 5) + h + 
 const LIVERY = 12;
 // The sponsor lettering on that livery. Made-up names: no real brands.
 const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
-// Paint laid flat on the outside face (the +x or -x side) of one of the car's
-// tapered blocks. spec = [w, h, d, front, rear, x, y, z]: the block as built
-// by taperBox and placed by K.add (x measured out from the middle). a runs
-// from the back (0) to the front (1) of the block; b from its bottom (0) to
-// its top (1), or for lettering, actual heights. It sits 3 mm off the panel
-// and follows its taper, so it can't poke out of the bodywork or sink into it.
-function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text) {
-  const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
-  const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
-  const pt = (a, b) => new THREE.Vector3(sx * (px + (w / 2) * s(0, a)), text ? b : py + (b - 0.5) * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
-  const q = [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)]; // back-bottom, front-bottom, front-top, back-top
-  const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize().multiplyScalar(-sx);
-  for (const p of q) p.addScaledVector(n, 0.003);
-  const order = sx > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]; // facing outwards
+// Paint and lettering laid flat on the car's blocks, so nothing pokes out of
+// the bodywork or sinks into it. q = four corners as someone looking at it
+// sees them: bottom-left, bottom-right, top-right, top-left. It sits 3 mm off
+// the surface; lettering gets a canvas the shape of its patch.
+function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
+  const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize();
+  const p = q.map(v => v.clone().addScaledVector(n, 0.003)), order = [0, 1, 2, 0, 2, 3];
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(order.flatMap(i => q[i].toArray()), 3));
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(order.flatMap(i => p[i].toArray()), 3));
   if (text) {
-    // lettering reads front to back on the right-hand side, back to front on the left
-    const uv = [[sx > 0 ? 1 : 0, 0], [sx > 0 ? 0 : 1, 0], [sx > 0 ? 0 : 1, 1], [sx > 0 ? 1 : 0, 1]];
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(order.flatMap(i => uv[i]), 2));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(order.flatMap(i => [[0, 0], [1, 0], [1, 1], [0, 1]][i]), 2));
     const aspect = q[0].distanceTo(q[1]) / q[0].distanceTo(q[3]);
-    const c = document.createElement('canvas'); c.height = 128; c.width = Math.min(2048, Math.max(128, Math.round(128 * aspect)));
+    const c = document.createElement('canvas'); c.height = 128; c.width = Math.min(2048, Math.max(64, Math.round(128 * aspect)));
     const x = c.getContext('2d');
-    let size = 104;
-    do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 20);
-    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#f2f5f0'; x.fillText(text, c.width / 2, 70);
+    let size = 108;
+    do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 16);
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ink; x.fillText(text, c.width / 2, 70);
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
     mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
   }
@@ -68,6 +59,26 @@ function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text) {
   m.castShadow = false;
   g.add(m);
   return m;
+}
+// On the outside face (the +x or -x side) of a tapered block. spec = [w, h, d,
+// front, rear, x, y, z]: the block as built by taperBox and placed by K.add (x
+// measured out from the middle). a runs from the back (0) to the front (1); b
+// from the bottom (0) to the top (1), or for lettering, actual heights.
+function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text) {
+  const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
+  const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
+  const pt = (a, b) => new THREE.Vector3(sx * (px + (w / 2) * s(0, a)), text ? b : py + (b - 0.5) * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
+  // seen from the right-hand side the front is on the left; from the left-hand side, on the right
+  const q = sx > 0 ? [pt(a1, b0), pt(a0, b0), pt(a0, b1), pt(a1, b1)] : [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)];
+  return paintQuad(g, q, mat, text);
+}
+// On the top face of a block, read from in front of the car (like a nose
+// number): a from back to front, c from the left edge (-1) to the right (+1).
+function onTop(g, spec, a0, a1, c0, c1, mat, text) {
+  const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
+  const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
+  const pt = (a, c) => new THREE.Vector3(px + c * (w / 2) * s(0, a), py + 0.5 * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
+  return paintQuad(g, [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)], mat, text);
 }
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
@@ -2376,15 +2387,25 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
     const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
     const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
     const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
+    const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
+    const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
+    const lettering = (m) => (K.decals ??= []).push(m.material);
     for (const sx of [-1, 1]) {
-      onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);          // black lower sidepods
-      onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, K.lime);   // the lime pinstripe along each sidepod
-      onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, K.lime);       // on down the tub
-      onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, K.lime);       // and along the nose
-      for (const [spec, a0, a1, y0, y1, text] of [[POD, 0.34, 0.92, 0.287, 0.418, SPONSORS.pods], [COVER, 0.58, 0.85, 0.748, 0.875, SPONSORS.cover], [PLATE, 0.06, 0.94, 1.27, 1.43, SPONSORS.wing]]) {
-        (K.decals ??= []).push(onPanel(g, spec, sx, a0, a1, y0, y1, null, text).material);
-      }
+      onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
+      onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
+      onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);            // black airbox sides
+      onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, K.lime);     // the lime pinstripe along each sidepod,
+      onPanel(g, COVER, sx, 0, 0.56, 0.42, 0.47, K.lime);      // on back along the engine cover,
+      onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, K.lime);         // forward down the tub
+      onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, K.lime);         // and along the nose
+      onPanel(g, FRONT_PLATE, sx, 0, 1, 0.82, 0.93, K.lime);   // lime tops on the front wing endplates
+      K.box(0.48, 0.022, 0.06, K.lime, sx * 0.72, 0.631, 0.36, false); // and a lime lip on each sidepod intake
+      lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods));
+      lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
+      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
+      lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
     }
+    lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, '18'));  // the race number on the nose
   }
   mergeStatic(g, new Set([K.brake, ...(K.decals || [])])); // ~70 parts into one; the brake lights (and any lettering) stay apart
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
