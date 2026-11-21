@@ -3,6 +3,14 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.15', date: '21 Nov 2026', title: 'Smoother again',
+    items: [
+      'Fixed: with Graphics on Auto, a slow moment made the game lower its detail, and it never came back up, so everything stayed blurry. It now goes back to full detail once the game runs smoothly.',
+      'Pinewood runs much faster: about half as many trees. And on every track, trees, bushes and rocks no longer poke into each other.',
+      'Leaderboard times are safer: your browser keeps its own copy that a server restart can\'t wipe, and hands it back to fill the boards in again.',
+    ],
+  },
+  {
     v: '2.14', date: '21 Nov 2026', title: 'Pinewood',
     items: [
       'Red Canyon is now Pinewood: the desert is gone, and the same gravel stage runs through a thick pine forest with ferns and mossy rocks. The jumps and the rock arch are still there, and so are your lap times on the leaderboard.',

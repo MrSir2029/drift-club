@@ -347,9 +347,16 @@ function watchFrameRate(ms, now) {
   }
   if (avg > 24) {
     gfx.fast = 0;
-    if (++gfx.slow >= 2 && gfx.level < gfx.floor) { gfx.trial = { avg, from: gfx.level }; applyGfx(gfx.level + 1); gfx.hold = now + 1500; gfx.slow = 0; }
-  } else if (avg < 12) { gfx.slow = 0; if (++gfx.fast >= 8 && gfx.level > 0) { applyGfx(gfx.level - 1); gfx.fast = 0; gfx.hold = now + 4000; } }
-  else gfx.slow = gfx.fast = 0;
+    if (++gfx.slow >= 2 && gfx.level < gfx.floor) {
+      if (now - (gfx.upAt || -1e9) < 15000) gfx.noUpUntil = now + 120000; // the last step up was too much: stay down a while
+      gfx.trial = { avg, from: gfx.level }; applyGfx(gfx.level + 1); gfx.hold = now + 1500; gfx.slow = 0;
+    }
+  } else if (avg < 18.5) {
+    // running smoothly (55+ fps): step the detail back up. (It used to wait for
+    // 83 fps, which a 60 Hz screen never shows, so the game stayed blurry.)
+    gfx.slow = 0;
+    if (++gfx.fast >= 6 && gfx.level > 0 && now > (gfx.noUpUntil || 0)) { applyGfx(gfx.level - 1); gfx.fast = 0; gfx.upAt = now; gfx.hold = now + 4000; }
+  } else gfx.slow = gfx.fast = 0;
 }
 
 const worldGroup = new THREE.Group(); // everything that belongs to the current track
@@ -1971,7 +1978,7 @@ function buildScenery(track) {
   // trees: conifers and round broadleaf ones
   const areaK = clamp((lim.r / 360) ** 2, 1, 2.5); // a bigger map gets more trees, so it isn't bare
   // only pines in the snow; the forest is thick with them, a few broadleaf trees among them
-  const TREES = Math.round((snow ? 520 : forest ? 1000 : 380) * areaK), ROUND = snow ? 0 : Math.round((forest ? 120 : 170) * areaK);
+  const TREES = Math.round((snow || forest ? 520 : 380) * areaK), ROUND = snow ? 0 : Math.round((forest ? 60 : 170) * areaK);
   const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 3, 5);
   const trunkMat = lam(0x7a4a2a);
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREES + ROUND);
@@ -1985,8 +1992,9 @@ function buildScenery(track) {
   let placed = 0, nc = 0, nr = 0, tries = 0;
   while (placed < TREES + ROUND && tries++ < 6000 * areaK) {
     const [x, z] = randIn(5);
-    if (!isFree(track, x, z, 2.5, hw + 9)) continue;
     const sc = 0.7 + rnd() * 0.9;
+    if (!isFree(track, x, z, 2.2 * sc, hw + 9)) continue;
+    claim(x, z, 2.2 * sc); // trees keep clear of each other, and bushes and rocks keep clear of them
     const gy = terrainHeight(x, z);
     solids.push({ x, z, r: 0.65 * sc, y: gy }); // the trunk is solid, the leaves aren't
     m.makeScale(sc, sc, sc); m.setPosition(x, gy + 1.5 * sc, z);
@@ -2026,8 +2034,9 @@ function buildScenery(track) {
     let put = 0, t2 = 0;
     while (put < count && t2++ < count * 20) {
       const [x, z] = randIn(3);
-      if (!isFree(track, x, z, 1.5, hw + 7)) continue;
       const sc = smin + rnd() * (smax - smin);
+      if (!isFree(track, x, z, sc, hw + 7)) continue;
+      claim(x, z, sc);
       if (hard && sc > 1.2) solids.push({ x, z, r: sc * 0.7, y: terrainHeight(x, z) }); // big rocks are solid, pebbles aren't
       E.set(rnd() * 3, rnd() * 3, rnd() * 3); Q.setFromEuler(E);
       M.compose(V(x, terrainHeight(x, z) + sc * sink, z), Q, V(sc * (0.8 + rnd() * 0.6), sc * 0.7, sc));
@@ -3229,7 +3238,7 @@ function connect() {
   ws.onopen = () => {
     $('#btn-create').disabled = false; $('#btn-join').disabled = false;
     // our copy of the leaderboard: fills it back in if the server has restarted
-    const seed = JSON.stringify({ t: 'lbseed', boards: app.boards });
+    const seed = JSON.stringify({ t: 'lbseed', boards: app.lbKeep });
     if (seed.length > 30 && seed.length < 12000) ws.send(seed);
   };
   ws.onclose = () => {
@@ -3317,8 +3326,8 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
-    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; boardsChanged(); break;
-    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; boardsChanged(msg.k); } break;
+    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); break;
+    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); } break;
     case 'record': {
       const where = TRACKS[msg.track]?.name || 'this track';
       if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
@@ -3382,6 +3391,24 @@ app.boards = {};
 app.pbs = {};
 try { const b = JSON.parse(localStorage.getItem('dc-lb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.boards = b; } catch {}
 try { const b = JSON.parse(localStorage.getItem('dc-pb') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.pbs = b; } catch {}
+// Everything this browser has seen on the boards, kept apart from what's on
+// show: it's what gets handed back on connecting, and a server that has just
+// restarted with empty boards can't wipe it.
+app.lbKeep = {};
+try { const b = JSON.parse(localStorage.getItem('dc-lb-keep') || 'null'); app.lbKeep = b && typeof b === 'object' && !Array.isArray(b) ? b : { ...app.boards }; } catch {}
+function keepBoards(boards) {
+  for (const [k, list] of Object.entries(boards || {})) {
+    if (!Array.isArray(list)) continue;
+    const best = new Map();
+    for (const e of [...(app.lbKeep[k] || []), ...list]) {
+      if (!e || typeof e.n !== 'string' || !(e.ms > 0) || typeof e.s !== 'string') continue;
+      const low = e.n.toLowerCase(), had = best.get(low);
+      if (!had || e.ms < had.ms) best.set(low, e);
+    }
+    app.lbKeep[k] = [...best.values()].sort((a, b) => a.ms - b.ms).slice(0, 10);
+  }
+  try { localStorage.setItem('dc-lb-keep', JSON.stringify(app.lbKeep)); } catch {}
+}
 // personal bests from v2.5 were kept per car ('track:car'): keep the best one for each track
 for (const [k, ms] of Object.entries(app.pbs)) {
   const m = /^(\d+):/.exec(k);
