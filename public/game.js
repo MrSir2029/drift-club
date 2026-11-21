@@ -30,6 +30,23 @@ const RALLY_CODE = 'RALLY';
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
 const FEEDBACK_URL = '';
+// Tips for guests in the lobby while they wait for the host: a random one
+// each time, and clicking it shows another.
+const TIPS = [
+  'Do your homework first!',
+  'Thank Darren for the driving physics.',
+  'Accelerating while throttling is a bad idea',
+  'H.I.N.T is an acronym',
+  'The hand-break (space bar) and break (s) are different things!',
+  'The adjective agrees with the verb it describes in gender, number, and case',
+];
+let lastTip = -1;
+function showTip() {
+  let i;
+  do i = Math.floor(Math.random() * TIPS.length); while (i === lastTip && TIPS.length > 1);
+  lastTip = i;
+  $('#tip-text').textContent = TIPS[i];
+}
 const LIGHTS_MS = 4000; // the start lights take the 4 s countdown
 
 const $ = (s) => document.querySelector(s);
@@ -3706,6 +3723,7 @@ function goHome() {
 function showLobby() {
   endPodium(false);
   setMenu(false);
+  if (app.phase !== 'lobby') showTip(); // a new tip each time you come into the lobby
   app.phase = 'lobby';
   showScreen('lobby');
   $('#results').classList.add('hidden');
@@ -3858,6 +3876,7 @@ function wireUI() {
   $('#btn-updates-close').addEventListener('click', () => $('#updates').classList.add('hidden'));
   $('#updates').addEventListener('click', (e) => { if (e.target.id === 'updates') $('#updates').classList.add('hidden'); });
   $('#btn-endq').addEventListener('click', (e) => { e.currentTarget.blur(); send({ t: 'endquali' }); });
+  $('#lobby-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
   $('#btn-leave').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
   $('#btn-resume').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); });
   $('#btn-quit').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });

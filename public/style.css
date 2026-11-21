@@ -119,6 +119,10 @@ input:focus { border-color: var(--blue); }
 .trackcards.locked .trackcard:hover { transform: none; }
 .lobby-actions { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 .waiting { font-weight: 800; text-align: center; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 12px; }
+/* a tip for guests, under "Waiting for the host" */
+.lobby-tip { display: flex; gap: 8px; align-items: flex-start; width: 100%; margin-top: 10px; padding: 8px 10px; text-align: left; font: inherit; font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 10px; cursor: pointer; }
+.lobby-tip:hover { background: var(--paper-2); }
+.tip-tag { flex: none; margin-top: 1px; background: var(--orange); border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }
 
 /* ---------- race hud ---------- */
 #screen-race { justify-content: flex-start; align-items: stretch; padding: 0; }
