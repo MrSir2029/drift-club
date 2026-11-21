@@ -5,7 +5,7 @@ import { UPDATES } from '/updates.js';
 // ---------------------------------------------------------------------------
 // constants
 // ---------------------------------------------------------------------------
-const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x0b4f3c]; // the last one is the secret racing green livery (LIVERY_CODE)
+const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a]; // the last one is the secret racing green livery (LIVERY_CODE)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30; // positions a second (sent two at a time when the server asks: see 'joined')
 // Each track's look. The meadow is the default; the desert turns the grass to
@@ -2313,9 +2313,9 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   const L = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const K = {
     g, lightCar, livery,
-    body: L(color), accent: L(livery ? 0xc6f432 : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
-    tyre: L(0x15181f), rim: L(livery ? 0xc6f432 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
-    helmet: L(livery ? 0xc6f432 : lightCar ? 0xff8a3d : 0xffd23f),
+    body: L(color), accent: L(livery ? 0x16191f : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
+    tyre: L(0x15181f), rim: L(livery ? 0x1d2230 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
+    helmet: L(livery ? 0xd8e81c : lightCar ? 0xff8a3d : 0xffd23f), lime: livery ? L(0xc6f432) : null,
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
@@ -2328,14 +2328,15 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
   if (livery && cls !== 'rally' && cls !== 'camry') {
-    // the detailed livery: lime pinstripes down the nose, round the cockpit and along the fin
+    // the detailed livery (from photos of the real thing): teal green on
+    // top, black underneath, one thin lime pinstripe down each side
     for (const sx of [-1, 1]) {
-      K.box(0.035, 0.02, 1.15, K.accent, sx * 0.15, 0.588, 2.48, false).rotation.x = 0.156;
-      K.box(0.03, 0.03, 0.72, K.accent, sx * 0.37, 0.92, -0.02, false);
-      K.box(0.03, 0.02, 1.3, K.accent, sx * 0.29, 0.79, 0.95, false);
+      K.add(taperBox(0.64, 0.2, 1.47, null, [0.35, 0.5, -0.028]), K.carbon, sx * 0.7, 0.33, -0.375);       // black lower sidepods
+      K.box(0.025, 0.028, 1.42, K.lime, sx * 0.915, 0.53, -0.36, false).rotation.y = sx * 0.137;          // lime pinstripe along each sidepod
+      K.box(0.025, 0.02, 1.2, K.lime, sx * 0.4, 0.66, 1.0, false);                                         // and on down the chassis
+      K.box(0.03, 0.018, 1.1, K.lime, sx * 0.16, 0.588, 2.5, false).rotation.x = 0.156;                    // and the nose
+      K.box(0.26, 0.16, 0.05, K.carbon, sx * 0.72, 0.4, 0.37, false);                                       // black under the intakes
     }
-    K.box(0.7, 0.03, 0.03, K.accent, 0, 0.92, 0.34, false);
-    K.box(0.05, 0.05, 1.0, K.accent, 0, 1.3, -1.5, false).rotation.x = -0.28;
   }
   mergeStatic(g, new Set([K.brake])); // ~70 parts into one; the brake lights stay apart because they light up
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
@@ -2391,7 +2392,7 @@ function buildOpenBody(K) {
   // front wing
   box(2.0, 0.045, 0.5, carbon, 0, 0.15, 3.15);
   for (const sx of [-1, 1]) {
-    box(0.78, 0.04, 0.3, body, sx * 0.6, 0.24, 3.02).rotation.x = -0.3;
+    box(0.78, 0.04, 0.3, K.livery ? carbon : body, sx * 0.6, 0.24, 3.02).rotation.x = -0.3;
     box(0.78, 0.035, 0.22, accent, sx * 0.6, 0.33, 2.9).rotation.x = -0.45;
     add(taperBox(0.05, 0.3, 0.62, [1, 0.6, -0.05], null), body, sx * 1.0, 0.27, 3.12);
     box(0.05, 0.16, 0.2, dark, sx * 0.09, 0.25, 3.18, false);              // wing pylons under the nose
@@ -2410,7 +2411,7 @@ function buildOpenBody(K) {
   add(taperBox(0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18]), body, 0, 0.72, -1.15);
   add(taperBox(0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06]), body, 0, 1.2, -0.45);
   box(0.24, 0.2, 0.04, dark, 0, 1.22, -0.07, false);
-  box(0.08, 0.07, 0.24, dark, 0, 1.4, -0.3, false);
+  box(0.08, 0.07, 0.24, K.lime || dark, 0, 1.4, -0.3, false);            // camera (lime on the secret livery)
   add(taperBox(0.035, 0.46, 1.25, null, [1, 0.3, -0.16]), body, 0, 1.06, -1.45);
   box(0.2, 0.02, 0.9, accent, 0, 1.0, -1.2, false).rotation.x = -0.2;
   // cockpit: opening, helmet, visor
@@ -2423,7 +2424,7 @@ function buildOpenBody(K) {
   // and each is two stacked blocks of colour rather than a stripe laid over
   // the plate, which flickered)
   box(1.16, 0.05, 0.5, carbon, 0, 1.2, -2.25);
-  box(1.16, 0.045, 0.3, body, 0, 1.36, -2.4).rotation.x = 0.4;
+  box(1.16, 0.045, 0.3, K.livery ? carbon : body, 0, 1.36, -2.4).rotation.x = 0.4;
   box(1.16, 0.04, 0.28, carbon, 0, 0.72, -2.2);
   for (const sx of [-1, 1]) {
     box(0.045, 0.62, 0.85, body, sx * 0.6, 0.93, -2.25);
@@ -2443,7 +2444,7 @@ function buildOpenBody(K) {
     }
     rod([ix, front ? 0.62 : 0.5, z + (front ? 0.12 : 0)], [hx, r - (front ? 0.14 : 0), z], 0.04, carbon);
   }
-  return { wheels, rim: K.rim, hub: body, band: K.helmet };
+  return { wheels, rim: K.rim, hub: K.livery ? dark : body, band: K.helmet };
 }
 
 // Rally hatchback: tall ride height, sloping bonnet with a lamp pod, raked
@@ -3937,7 +3938,7 @@ function buildSwatches() {
     if (i === LIVERY && !app.liveryOn) return; // the secret livery
     const s = document.createElement('div');
     s.className = 'swatch' + (i === app.color ? ' on' : '') + (i === LIVERY ? ' livery' : '');
-    s.style.background = i === LIVERY ? 'linear-gradient(135deg, #0b4f3c 58%, #c6f432 58%)' : css;
+    s.style.background = i === LIVERY ? 'linear-gradient(135deg, #13806a 56%, #c6f432 56% 64%, #16191f 64%)' : css;
     s.title = i === LIVERY ? 'Racing green livery' : `Colour ${i + 1}`;
     s.addEventListener('click', () => {
       app.color = i;
