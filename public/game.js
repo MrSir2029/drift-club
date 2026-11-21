@@ -378,6 +378,8 @@ function renderSettings() {
   document.querySelectorAll('#seg-gfx button').forEach(b => b.classList.toggle('on', b.dataset.v === gfx.mode));
   document.querySelectorAll('#seg-map button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.expanded));
   document.querySelectorAll('#seg-sound button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === audio.on));
+  const pct = Math.round(audio.vol * 100);
+  $('#vol').value = pct; $('#vol-val').textContent = pct + '%';
 }
 function setExpanded(on) {
   if (on !== app.expanded) {
@@ -3907,6 +3909,7 @@ function wireUI() {
   }
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
   document.querySelectorAll('#seg-sound button').forEach(b => b.addEventListener('click', () => { initAudio(); setSound(b.dataset.v === 'on'); }));
+  $('#vol').addEventListener('input', (e) => { initAudio(); setVolume(+e.target.value); });
   for (const id of ['#btn-create', '#btn-join']) $(id).addEventListener('click', initAudio);
 
   window.addEventListener('keydown', (e) => {
@@ -4131,7 +4134,9 @@ function drawMinimap() {
 // pitched by simulated gears), tyre screech and gravel rumble from filtered
 // noise, and start-light beeps. Nothing is loaded from anywhere.
 // ---------------------------------------------------------------------------
-const audio = { ctx: null, nodes: null, on: true, gear: 0, rpm: 0 };
+const audio = { ctx: null, nodes: null, on: true, vol: 1, gear: 0, rpm: 0 };
+try { const v = localStorage.getItem('dc-vol'); if (v !== null && +v >= 0 && +v <= 100) audio.vol = +v / 100; } catch {}
+const masterLevel = () => (audio.on ? 0.6 * audio.vol : 0);
 try { audio.on = localStorage.getItem('dc-sound') !== 'off'; } catch {}
 
 function initAudio() {
@@ -4139,7 +4144,7 @@ function initAudio() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   const c = new AC();
-  const master = c.createGain(); master.gain.value = audio.on ? 0.6 : 0; master.connect(c.destination);
+  const master = c.createGain(); master.gain.value = masterLevel(); master.connect(c.destination);
   const eng = c.createGain(); eng.gain.value = 0;
   const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 800; lp.Q.value = 2;
   eng.connect(lp).connect(master);
@@ -4165,7 +4170,15 @@ function initAudio() {
 function setSound(on) {
   audio.on = on;
   try { localStorage.setItem('dc-sound', on ? 'on' : 'off'); } catch {}
-  if (audio.nodes) audio.nodes.master.gain.setTargetAtTime(on ? 0.6 : 0, audio.ctx.currentTime, 0.05);
+  if (audio.nodes) audio.nodes.master.gain.setTargetAtTime(masterLevel(), audio.ctx.currentTime, 0.05);
+  renderSettings();
+}
+// the volume slider (0-100): turning it up also turns the sound on
+function setVolume(pct) {
+  audio.vol = clamp(pct, 0, 100) / 100;
+  try { localStorage.setItem('dc-vol', String(Math.round(audio.vol * 100))); } catch {}
+  if (audio.vol > 0 && !audio.on) { setSound(true); return; }
+  if (audio.nodes) audio.nodes.master.gain.setTargetAtTime(masterLevel(), audio.ctx.currentTime, 0.05);
   renderSettings();
 }
 function beep(freq, dur, vol = 0.25) {

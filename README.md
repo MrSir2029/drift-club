@@ -189,8 +189,8 @@ draws at twice the screen's resolution or more, with almost no haze, sharper
 shadows over a wider area and crowds at any distance. On **auto** the game
 watches its own frame rate, lowers the detail until it runs smoothly, and
 raises it again once it can. The Settings button (home screen, lobby,
-or the Esc menu) sets graphics (auto, high, medium or low), sound, and
-the expanded map.
+or the Esc menu) sets graphics (auto, max, high, medium or low), sound, the
+volume (a slider; turning it up also turns the sound on), and the expanded map.
 
 Still scenery and each car's body are merged into a few big meshes when a
 track loads (`mergeStatic` in `game.js`), because the number of separate

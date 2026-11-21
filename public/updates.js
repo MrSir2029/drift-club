@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.19', date: '21 Nov 2026', title: 'Volume and clearer arrows',
+    items: [
+      'A volume slider in Settings, under Sound.',
+      'The arrows to 9LAT2 and back to a missed gate are proper arrows now, with a point at the front, so it\'s clear which way they point.',
+    ],
+  },
+  {
     v: '2.18', date: '21 Nov 2026', title: 'Tips are back',
     items: [
       'While you wait in the lobby for the host to start, there\'s a tip under the waiting message. Click it for another.',
