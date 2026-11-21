@@ -3,6 +3,13 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
+    v: '2.21', date: '21 Nov 2026', title: 'House music',
+    items: [
+      'House music: turn it on in Settings for a beat while you race. It follows the volume slider.',
+      'The podium just says "Click to skip".',
+    ],
+  },
+  {
     v: '2.20', date: '21 Nov 2026', title: 'A proper podium',
     items: [
       'The podium is a real ceremony now: cinema bars and a drumroll, then third and second crash down onto their steps one at a time, and the winner slams onto the top step with a flash, a fanfare, a confetti cannon, fireworks and spotlights. Any key or click still skips it.',
