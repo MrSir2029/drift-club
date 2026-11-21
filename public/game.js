@@ -244,6 +244,17 @@ function buildTerrain(track) {
     }
   }
 
+  // The ground carries on past the edge of this square, out to the horizon:
+  // the outer 60 m eases to one level, and flat ground of the same colour
+  // carries on from there (see below).
+  let edgeSum = 0, edgeN = 0;
+  for (let i = 0; i <= T.seg; i++) for (const j of [0, T.seg]) { edgeSum += H[j * n1 + i] + H[i * n1 + j]; edgeN += 2; }
+  const edgeY = edgeSum / edgeN, band = Math.round(60 / T.cell);
+  for (let j = 0; j < n1; j++) for (let i = 0; i < n1; i++) {
+    const e = Math.min(i, j, T.seg - i, T.seg - j);
+    if (e < band) { const k = j * n1 + i, f = smooth(e / band); H[k] = edgeY + (H[k] - edgeY) * f; }
+  }
+  T.edgeY = edgeY;
   const geo = new THREE.PlaneGeometry(T.size, T.size, T.seg, T.seg);
   geo.rotateX(-Math.PI / 2);
   geo.translate(center.x, 0, center.z);
@@ -270,6 +281,18 @@ function buildTerrain(track) {
   T.mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
   T.mesh.receiveShadow = true;
   scene.add(T.mesh);
+  // flat ground from the edge of the square out to the horizon: four strips round it
+  if (T.far) { scene.remove(T.far); T.far.geometry.dispose(); T.far.material.dispose(); }
+  const W = 12000, h = T.size / 2, strips = [[-W, -W, W, -h], [-W, h, W, W], [-W, -h, -h, h], [h, -h, W, h]];
+  const fp = [];
+  for (const [x0, z0, x1, z1] of strips) fp.push(x0, 0, z0, x0, 0, z1, x1, 0, z1, x0, 0, z0, x1, 0, z1, x1, 0, z0);
+  const fg = new THREE.BufferGeometry();
+  fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+  fg.computeVertexNormals();
+  fg.translate(center.x, edgeY, center.z);
+  T.far = new THREE.Mesh(fg, new THREE.MeshLambertMaterial({ color: new THREE.Color(look.lo).lerp(new THREE.Color(look.hi), clamp((edgeY + 2) / 16, 0, 1)).multiplyScalar(0.96) }));
+  T.far.receiveShadow = true;
+  scene.add(T.far);
 }
 
 // is there a lower piece of road passing under this sample? (bridge crossings)
@@ -290,29 +313,44 @@ function roadBelow(track, s) {
 // so anything under 1.25 draws fewer pixels than the screen has and the
 // browser stretches it, which turns distant detail to mush.
 const GFX_LEVELS = [
-  { px: 2, shadows: true, far: 620 },      // high
-  { px: 1.5, shadows: true, far: 620 },
+  { px: 2, shadows: true, far: 1500, near: 600 }, // high: clear to the far side of the map, hazy hills on the horizon
+  { px: 1.5, shadows: true, far: 1100, near: 380 },
   { px: 1.25, shadows: false, far: 560 },  // medium: sharp, but no shadows
   { px: 1, shadows: false, far: 460 },     // low
   { px: 0.8, shadows: false, far: 380 },   // auto's last resort
 ];
-const GFX_FIXED = { high: 0, medium: 2, low: 3 }; // which detail level each fixed setting uses
+// Max: no limits. Drawn at twice the screen's resolution or more (smooth edges
+// however far away), almost no haze, sharper shadows over a wider area, and
+// crowds drawn however far away they are. Level -1.
+const GFX_MAX = { px: 'max', shadows: true, far: 4200, near: 2200, big: true };
+const GFX_FIXED = { max: -1, high: 0, medium: 2, low: 3 }; // which detail level each fixed setting uses
 const gfx = { mode: 'high', level: 0, acc: 0, frames: 0, slow: 0, fast: 0, hold: 0, trial: null, floor: 4 };
-try { const m = localStorage.getItem('dc-gfx'); if (m === 'auto' || m === 'high' || m === 'medium' || m === 'low') gfx.mode = m; } catch {}
+try { const m = localStorage.getItem('dc-gfx'); if (m === 'max' || m === 'auto' || m === 'high' || m === 'medium' || m === 'low') gfx.mode = m; } catch {}
 function applyGfx(level) {
   gfx.level = level;
-  const L = GFX_LEVELS[level];
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, L.px));
+  const L = level < 0 ? GFX_MAX : GFX_LEVELS[level];
+  const dpr = window.devicePixelRatio || 1;
+  renderer.setPixelRatio(L.px === 'max' ? Math.max(2, dpr) : Math.min(dpr, L.px));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   sun.castShadow = L.shadows;
-  scene.fog.far = L.far; scene.fog.near = L.far * 0.3; // haze from about 190 m: far detail fades instead of shimmering
+  // max: a bigger, sharper shadow map over a wider area round the car
+  const S = L.big ? 190 : 110, size = L.big ? 4096 : 2048;
+  if (sun.shadow.mapSize.x !== size) {
+    sun.shadow.mapSize.set(size, size);
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -S; sun.shadow.camera.right = sun.shadow.camera.top = S;
+    sun.shadow.camera.updateProjectionMatrix();
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  scene.fog.far = L.far; scene.fog.near = L.near ?? L.far * 0.3; // far detail fades into the haze instead of ending
+  camera.far = Math.max(1200, L.far + 300); camera.updateProjectionMatrix();
+  gfx.crowdFar2 = L.big ? Infinity : level === 0 ? 450 * 450 : 220 * 220; // past this a spectator is a pixel or two
 }
 function setGfxMode(mode) {
   gfx.mode = mode;
   try { localStorage.setItem('dc-gfx', mode); } catch {}
   gfx.slow = gfx.fast = gfx.acc = gfx.frames = 0;
   gfx.trial = null; gfx.floor = GFX_LEVELS.length - 1;
-  applyGfx(mode in GFX_FIXED ? GFX_FIXED[mode] : Math.min(gfx.level, 1));
+  applyGfx(mode in GFX_FIXED ? GFX_FIXED[mode] : Math.max(0, Math.min(gfx.level, 1)));
   renderSettings();
 }
 function renderSettings() {
@@ -865,7 +903,7 @@ function makePeople(max, rnd) {
         const car = app.local, cam = camera.position;
         for (let i = 0; i < list.length; i++) {
           const p = list[i];
-          if ((cam.x - p.x) ** 2 + (cam.z - p.z) ** 2 > 48400) { // past 220 m a spectator is a pixel or two and only sparkles
+          if ((cam.x - p.x) ** 2 + (cam.z - p.z) ** 2 > (gfx.crowdFar2 ?? 48400)) { // far off a spectator is a pixel or two and only sparkles (max draws them anyway)
             M.makeScale(0, 0, 0); bodies.setMatrixAt(i, M); heads.setMatrixAt(i, M); continue;
           }
           let amp = p.keen ? 0.2 : 0.03;
@@ -2069,6 +2107,17 @@ function buildScenery(track) {
     const hill = new THREE.Mesh(hillGeo, hillMat);
     hill.scale.set(w, h, w);
     hill.position.set(center.x + Math.cos(ang) * r, h / 2 - 2, center.z + Math.sin(ang) * r);
+    hill.rotation.y = rnd() * Math.PI;
+    worldGroup.add(hill);
+  }
+  // and bigger ones far off on the horizon: hazy on high, clear on max
+  for (let i = 0; i < 22; i++) {
+    const ang = (i / 22) * Math.PI * 2 + rnd() * 0.25;
+    const r = 1300 + rnd() * 900;
+    const h = (130 + rnd() * 190) * (snow ? 1.4 : 1), w = 320 + rnd() * 320;
+    const hill = new THREE.Mesh(hillGeo, hillMat);
+    hill.scale.set(w, h, w);
+    hill.position.set(center.x + Math.cos(ang) * r, (TERRAIN.edgeY || 0) + h / 2 - 4, center.z + Math.sin(ang) * r);
     hill.rotation.y = rnd() * Math.PI;
     worldGroup.add(hill);
   }

@@ -181,8 +181,12 @@ track in `tracks.js`.
 
 ## Graphics
 
-Graphics start on **high**. On **auto** the game watches its own frame rate and lowers
-the detail until it runs smoothly. The Settings button (home screen, lobby,
+Graphics start on **high**, which keeps the haze far off so the whole track
+and the hills on the horizon stay clear. **Max** takes every limit off: it
+draws at twice the screen's resolution or more, with almost no haze, sharper
+shadows over a wider area and crowds at any distance. On **auto** the game
+watches its own frame rate, lowers the detail until it runs smoothly, and
+raises it again once it can. The Settings button (home screen, lobby,
 or the Esc menu) sets graphics (auto, high, medium or low), sound, and
 the expanded map.
 
