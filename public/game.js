@@ -38,6 +38,7 @@ const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
 // the bodywork or sinks into it. q = four corners as someone looking at it
 // sees them: bottom-left, bottom-right, top-right, top-left. It sits 3 mm off
 // the surface; lettering gets a canvas the shape of its patch.
+const textMats = new Map(); // lettering, shared between cars with the same words
 function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
   const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize();
   const p = q.map(v => v.clone().addScaledVector(n, 0.003)), order = [0, 1, 2, 0, 2, 3];
@@ -45,14 +46,20 @@ function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(order.flatMap(i => p[i].toArray()), 3));
   if (text) {
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(order.flatMap(i => [[0, 0], [1, 0], [1, 1], [0, 1]][i]), 2));
-    const aspect = q[0].distanceTo(q[1]) / q[0].distanceTo(q[3]);
-    const c = document.createElement('canvas'); c.height = 128; c.width = Math.min(2048, Math.max(64, Math.round(128 * aspect)));
-    const x = c.getContext('2d');
-    let size = 108;
-    do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 16);
-    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ink; x.fillText(text, c.width / 2, 70);
-    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-    mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
+    const aspect = q[0].distanceTo(q[1]) / q[0].distanceTo(q[3]), cw = Math.min(2048, Math.max(64, Math.round(128 * aspect)));
+    const key = `${text}|${ink}|${cw}`;
+    mat = textMats.get(key);
+    if (!mat) {
+      const c = document.createElement('canvas'); c.height = 128; c.width = cw;
+      const x = c.getContext('2d');
+      let size = 108;
+      do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 16);
+      x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ink; x.fillText(text, c.width / 2, 70);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+      mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
+      mat.userData.keep = true;
+      textMats.set(key, mat);
+    }
   }
   geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, mat);
@@ -64,21 +71,65 @@ function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
 // front, rear, x, y, z]: the block as built by taperBox and placed by K.add (x
 // measured out from the middle). a runs from the back (0) to the front (1); b
 // from the bottom (0) to the top (1), or for lettering, actual heights.
-function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text) {
+function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text, ink) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
   const pt = (a, b) => new THREE.Vector3(sx * (px + (w / 2) * s(0, a)), text ? b : py + (b - 0.5) * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
   // seen from the right-hand side the front is on the left; from the left-hand side, on the right
   const q = sx > 0 ? [pt(a1, b0), pt(a0, b0), pt(a0, b1), pt(a1, b1)] : [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)];
-  return paintQuad(g, q, mat, text);
+  return paintQuad(g, q, mat, text, ink);
 }
 // On the top face of a block, read from in front of the car (like a nose
 // number): a from back to front, c from the left edge (-1) to the right (+1).
-function onTop(g, spec, a0, a1, c0, c1, mat, text) {
+function onTop(g, spec, a0, a1, c0, c1, mat, text, ink) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
   const pt = (a, c) => new THREE.Vector3(px + c * (w / 2) * s(0, a), py + 0.5 * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
-  return paintQuad(g, [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)], mat, text);
+  return paintQuad(g, [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)], mat, text, ink);
+}
+
+// Every open seater wears a livery painted onto its panels (these specs are
+// buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
+// the car's colour on top, black underneath, a pinstripe in a colour that
+// stands out against it, DRIFT CLUB on the sidepods, and a race number on the
+// nose and the engine cover, worked out from the driver's name so it's the
+// same on every screen. The secret livery adds its sponsors and lime trim.
+const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
+const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
+const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
+const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
+const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
+const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
+const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
+// the pinstripe for each car colour (CAR_COLORS order)
+const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xff8a3d, 0xf3e3c3, 0xe6453a];
+function raceNumber(name) { let h = 7; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 2 + (h % 98); }
+function paintLivery(K, g, colorIdx, name) {
+  const secret = K.livery;
+  const stripe = secret ? K.lime : new THREE.MeshLambertMaterial({ color: STRIPES[colorIdx] ?? 0xffffff, flatShading: true });
+  const ink = K.lightCar ? '#1d2230' : '#f2f5f0'; // lettering on the car's own colour
+  const num = secret ? '18' : String(raceNumber(name));
+  const lettering = (m) => (K.decals ??= []).push(m.material);
+  for (const sx of [-1, 1]) {
+    onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
+    onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
+    onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, stripe);     // the pinstripe along each sidepod,
+    onPanel(g, COVER, sx, 0, 0.56, 0.42, 0.47, stripe);      // on back along the engine cover,
+    onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, stripe);         // forward down the tub
+    onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, stripe);         // and along the nose
+    onPanel(g, FRONT_PLATE, sx, 0, 1, 0.82, 0.93, stripe);   // the same colour on the front wing endplates
+    K.box(0.48, 0.022, 0.06, stripe, sx * 0.72, 0.631, 0.36, false); // and on each sidepod intake
+    lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods)); // white on the black
+    if (secret) {
+      onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);          // black airbox sides
+      lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
+      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
+      lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
+    } else {
+      lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
+    }
+  }
+  lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, num, ink)); // and on the nose
 }
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
@@ -2377,36 +2428,7 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   K.rod = (a, b, th, mat) => { const m = strut(V(...a), V(...b), th, th, mat); g.add(m); return m; };
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
-  if (livery && cls !== 'rally' && cls !== 'camry') {
-    // The detailed livery, from photos of the real thing: teal green on top,
-    // black underneath, a thin lime pinstripe down each side and white
-    // sponsor lettering, all painted onto the panels of buildOpenBody (these
-    // specs are its sidepods, tub, nose, engine cover and rear endplates).
-    const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
-    const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
-    const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
-    const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
-    const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
-    const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
-    const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
-    const lettering = (m) => (K.decals ??= []).push(m.material);
-    for (const sx of [-1, 1]) {
-      onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
-      onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
-      onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);            // black airbox sides
-      onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, K.lime);     // the lime pinstripe along each sidepod,
-      onPanel(g, COVER, sx, 0, 0.56, 0.42, 0.47, K.lime);      // on back along the engine cover,
-      onPanel(g, TUB, sx, 0.29, 1, 0.7, 0.76, K.lime);         // forward down the tub
-      onPanel(g, NOSE, sx, 0, 0.9, 0.7, 0.77, K.lime);         // and along the nose
-      onPanel(g, FRONT_PLATE, sx, 0, 1, 0.82, 0.93, K.lime);   // lime tops on the front wing endplates
-      K.box(0.48, 0.022, 0.06, K.lime, sx * 0.72, 0.631, 0.36, false); // and a lime lip on each sidepod intake
-      lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods));
-      lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
-      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
-      lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
-    }
-    lettering(onTop(g, NOSE, 0.55, 0.75, -0.75, 0.75, null, '18'));  // the race number on the nose
-  }
+  if (cls !== 'rally' && cls !== 'camry') paintLivery(K, g, colorIdx, name);
   mergeStatic(g, new Set([K.brake, ...(K.decals || [])])); // ~70 parts into one; the brake lights (and any lettering) stay apart
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
   // The body leans on its springs about a point at hub height; the wheels and
@@ -4502,7 +4524,7 @@ function renderFrame() {
 // ---------------------------------------------------------------------------
 buildWorld(0);
 wireUI();
-window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; // handy for poking at the game from the console
+window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; // handy for poking at the game from the console
 $('#btn-create').disabled = true; $('#btn-join').disabled = true;
 connect();
 requestAnimationFrame(frame);
