@@ -378,7 +378,10 @@ input:focus { border-color: var(--blue); }
 .podium-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
 .podium-flash.go { animation: podium-flash .7s ease-out; }
 @keyframes podium-flash { from { opacity: .9; } to { opacity: 0; } }
-.podium-skip { margin-top: 10px; display: inline-block; background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; }
+/* the skip hint sits at the top, under the cinema bar (the title is at the bottom) */
+.podium-skip { display: none; position: absolute; top: calc(10vh + 14px); left: 50%; transform: translateX(-50%); z-index: 4; pointer-events: none; white-space: nowrap; }
+#screen-race.podium-on .podium-skip { display: inline-block; }
+.podium-skip { background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; }
 
 
 /* volume slider in Settings */

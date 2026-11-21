@@ -5,14 +5,14 @@ export const UPDATES = [
   {
     v: '2.21', date: '21 Nov 2026', title: 'Click to skip',
     items: [
-      'The podium just says "Click to skip".',
+      'The podium just says "Click to skip", back at the top of the screen, and the spotlights are gone.',
       'A new tip in the lobby.',
     ],
   },
   {
     v: '2.20', date: '21 Nov 2026', title: 'A proper podium',
     items: [
-      'The podium is a real ceremony now: cinema bars and a drumroll, then third and second crash down onto their steps one at a time, and the winner slams onto the top step with a flash, a fanfare, a confetti cannon, fireworks and spotlights. Any key or click still skips it.',
+      'The podium is a real ceremony now: cinema bars and a drumroll, then third and second crash down onto their steps one at a time, and the winner slams onto the top step with a flash, a fanfare, a confetti cannon and fireworks. Any key or click still skips it.',
     ],
   },
   {
