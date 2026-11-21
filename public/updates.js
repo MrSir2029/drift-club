@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.1', date: '22 Nov 2026', title: 'Liveries',
+    items: [
+      'Every car colour has its own livery now: black underneath, a pinstripe that stands out, DRIFT CLUB on the sidepods, and your own race number on the nose.',
+    ],
+  },
+  {
     v: '3.0', date: '21 Nov 2026', title: 'Drift Club 3.0',
     items: [
       'A live leaderboard: the ten fastest laps on every track, in any car. Every lap you drive counts. Find it on the home screen and in the lobby.',
