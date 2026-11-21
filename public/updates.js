@@ -3,10 +3,10 @@
 // and the button shows a dot until they've opened the latest one.
 export const UPDATES = [
   {
-    v: '2.21', date: '21 Nov 2026', title: 'House music',
+    v: '2.21', date: '21 Nov 2026', title: 'Click to skip',
     items: [
-      'House music: turn it on in Settings for a beat while you race. It follows the volume slider.',
       'The podium just says "Click to skip".',
+      'A new tip in the lobby.',
     ],
   },
   {
