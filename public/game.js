@@ -39,6 +39,10 @@ const TIPS = [
   'H.I.N.T is an acronym',
   'The handbrake (space bar) and brake (S) are different things!',
   'The adjective agrees with the verb it describes in gender, number, and case',
+  'Missed a gate? Follow the yellow banner back, or press R.',
+  'Brake in a straight line, then turn in.',
+  'Every lap counts for the leaderboard, even in Polytrack mode.',
+  'Computer can handle it? Try Settings → Graphics → Max.',
 ];
 let lastTip = -1;
 function showTip() {
