@@ -378,6 +378,7 @@ function renderSettings() {
   document.querySelectorAll('#seg-gfx button').forEach(b => b.classList.toggle('on', b.dataset.v === gfx.mode));
   document.querySelectorAll('#seg-map button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.expanded));
   document.querySelectorAll('#seg-sound button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === audio.on));
+  document.querySelectorAll('#seg-music button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === !!audio.music));
   const pct = Math.round(audio.vol * 100);
   $('#vol').value = pct; $('#vol-val').textContent = pct + '%';
 }
@@ -4027,6 +4028,7 @@ function wireUI() {
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
   document.querySelectorAll('#seg-sound button').forEach(b => b.addEventListener('click', () => { initAudio(); setSound(b.dataset.v === 'on'); }));
   $('#vol').addEventListener('input', (e) => { initAudio(); setVolume(+e.target.value); });
+  document.querySelectorAll('#seg-music button').forEach(b => b.addEventListener('click', () => setMusic(b.dataset.v === 'on')));
   for (const id of ['#btn-create', '#btn-join']) $(id).addEventListener('click', initAudio);
 
   window.addEventListener('keydown', (e) => {
@@ -4283,6 +4285,7 @@ function initAudio() {
   const lfoG = c.createGain(); lfoG.gain.value = 0.5; lfo.connect(lfoG).connect(chop.gain); lfo.start();
   const gH = c.createGain(); gH.gain.value = 0; nz.connect(lp3).connect(chop).connect(gH).connect(master);
   audio.ctx = c; audio.nodes = { master, eng, lp, o1, o2, gS, gG, gH };
+  if (audio.music) startMusic();
 }
 function setSound(on) {
   audio.on = on;
@@ -4307,6 +4310,69 @@ function beep(freq, dur, vol = 0.25) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.start(t); o.stop(t + dur);
 }
+// ---- house music: an original loop made right here, no files. Four-on-the-
+// floor kick, claps on 2 and 4, off-beat hats and bass, chord stabs; four
+// bars of Am7, Dm7, Fmaj7, Em7 at 124 BPM. Plays through the master volume.
+const HOUSE = { bpm: 124, chords: [[57, 60, 64, 67], [50, 53, 57, 60], [53, 57, 60, 64], [52, 55, 59, 62]] };
+try { audio.music = localStorage.getItem('dc-music') === 'on'; } catch { audio.music = false; }
+let music = null;
+const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
+function startMusic() {
+  if (music || !audio.ctx || !audio.nodes) return;
+  const c = audio.ctx, out = c.createGain();
+  out.gain.setValueAtTime(0, c.currentTime); out.gain.linearRampToValueAtTime(0.34, c.currentTime + 0.4);
+  out.connect(audio.nodes.master);
+  const nb = c.createBuffer(1, c.sampleRate, c.sampleRate), nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const step = 60 / HOUSE.bpm / 4;
+  const env = (g, t, peak, dur, attack = 0.003) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); };
+  const noise = (t, dur, type, freq, q, peak) => {
+    const src = c.createBufferSource(); src.buffer = nb;
+    const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = c.createGain(); env(g, t, peak, dur);
+    src.connect(f).connect(g).connect(out); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.02);
+  };
+  const tone = (t, freq, dur, type, peak, cutoff, q = 1) => {
+    const o = c.createOscillator(); o.type = type; o.frequency.value = freq;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff * 2.2, t); f.frequency.exponentialRampToValueAtTime(cutoff, t + dur * 0.6); f.Q.value = q;
+    const g = c.createGain(); env(g, t, peak, dur, 0.006);
+    o.connect(f).connect(g).connect(out); o.start(t); o.stop(t + dur + 0.02);
+  };
+  const kick = (t) => {
+    const o = c.createOscillator(), g = c.createGain();
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13);
+    env(g, t, 0.95, 0.3, 0.002); o.connect(g).connect(out); o.start(t); o.stop(t + 0.32);
+  };
+  const play = (s, t) => {
+    const q = s % 16, chord = HOUSE.chords[Math.floor(s / 16) % 4];
+    if (q % 4 === 0) kick(t);
+    if (q === 4 || q === 12) { noise(t, 0.16, 'bandpass', 1500, 0.9, 0.42); noise(t + 0.012, 0.12, 'bandpass', 1900, 0.9, 0.3); } // clap
+    if (q % 4 === 2) noise(t, 0.09, 'highpass', 7500, 0.7, 0.2);   // open hat on the off-beat
+    else if (q % 2 === 1) noise(t, 0.03, 'highpass', 9000, 0.7, 0.07); // closed hats in between
+    if (q % 4 === 2) tone(t, mtof(chord[0] - 12), step * 1.7, 'sawtooth', 0.3, 260, 6); // off-beat bass
+    if (q === 3 || q === 6 || q === 11 || q === 14) for (const n of chord) tone(t, mtof(n + 12) * (1 + (Math.random() - 0.5) * 0.004), step * 1.3, 'sawtooth', 0.05, 1600, 2); // stabs
+  };
+  music = { out, s: 0, next: c.currentTime + 0.12 };
+  music.timer = setInterval(() => {
+    if (!music) return;
+    while (music.next < c.currentTime + 0.15) { play(music.s, music.next); music.next += step; music.s = (music.s + 1) % 64; }
+  }, 25);
+}
+function stopMusic() {
+  if (!music) return;
+  const m = music; music = null;
+  clearInterval(m.timer);
+  const t = audio.ctx.currentTime;
+  m.out.gain.cancelScheduledValues(t); m.out.gain.setValueAtTime(m.out.gain.value, t); m.out.gain.linearRampToValueAtTime(0, t + 0.3);
+  setTimeout(() => m.out.disconnect(), 400);
+}
+function setMusic(on) {
+  audio.music = on;
+  try { localStorage.setItem('dc-music', on ? 'on' : 'off'); } catch {}
+  if (on) { initAudio(); if (!audio.on) setSound(true); startMusic(); } else stopMusic();
+  renderSettings();
+}
+
 function updateAudio(car, dt) {
   if (!audio.nodes) return;
   const n = audio.nodes, t = audio.ctx.currentTime;
