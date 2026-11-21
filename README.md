@@ -210,12 +210,6 @@ is `SECRET_CODE` at the top of `public/game.js`. Inside: **Race to 9LAT2**
 arrow and the beam of light) and **Toyota Camry**, a car class where
 everyone drives the same family saloon.
 
-On the home screen, typing `LANCESTROLL` (`LIVERY_CODE`) adds a secret
-colour to the car colours: a detailed racing green livery, teal green on top
-and black underneath with a thin lime pinstripe down each side, and made-up
-sponsor lettering (`SPONSORS` in `game.js`; no real brands or logos).
-Typing it again hides it. Everyone in the race sees it.
-
 The rally car is hidden the same way: the host types `RALLY` in the lobby
 (`RALLY_CODE` in `public/game.js`) and a Cars row appears with the open seater
 and the rally car. Typing it again hides it and switches back to the open
