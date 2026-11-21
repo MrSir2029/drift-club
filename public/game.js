@@ -5,7 +5,7 @@ import { UPDATES } from '/updates.js';
 // ---------------------------------------------------------------------------
 // constants
 // ---------------------------------------------------------------------------
-const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff];
+const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x0b4f3c]; // the last one is the secret racing green livery (LIVERY_CODE)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 const SEND_HZ = 30; // positions a second (sent two at a time when the server asks: see 'joined')
 // Each track's look. The meadow is the default; the desert turns the grass to
@@ -26,6 +26,10 @@ const SECRET_CODE = '9LAT2';
 // The rally car is hidden too: a host types this in the lobby to show it (and
 // again to hide it). This browser remembers.
 const RALLY_CODE = 'RALLY';
+// Typed on the home screen, this shows a secret colour: a detailed racing
+// green livery with lime trim (colour 12). Again to hide it. This browser remembers.
+const LIVERY_CODE = 'LANCESTROLL';
+const LIVERY = 12;
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
@@ -2305,12 +2309,13 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   const g = new THREE.Group();
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
   const lightCar = colorIdx === 8 || colorIdx === 2 || colorIdx === 11;
+  const livery = colorIdx === LIVERY; // racing green with lime trim
   const L = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const K = {
-    g, lightCar,
-    body: L(color), accent: L(lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
-    tyre: L(0x15181f), rim: L(0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
-    helmet: L(lightCar ? 0xff8a3d : 0xffd23f),
+    g, lightCar, livery,
+    body: L(color), accent: L(livery ? 0xc6f432 : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
+    tyre: L(0x15181f), rim: L(livery ? 0xc6f432 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
+    helmet: L(livery ? 0xc6f432 : lightCar ? 0xff8a3d : 0xffd23f),
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
@@ -2322,6 +2327,16 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false) 
   K.rod = (a, b, th, mat) => { const m = strut(V(...a), V(...b), th, th, mat); g.add(m); return m; };
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
+  if (livery && cls !== 'rally' && cls !== 'camry') {
+    // the detailed livery: lime pinstripes down the nose, round the cockpit and along the fin
+    for (const sx of [-1, 1]) {
+      K.box(0.035, 0.02, 1.15, K.accent, sx * 0.15, 0.588, 2.48, false).rotation.x = 0.156;
+      K.box(0.03, 0.03, 0.72, K.accent, sx * 0.37, 0.92, -0.02, false);
+      K.box(0.03, 0.02, 1.3, K.accent, sx * 0.29, 0.79, 0.95, false);
+    }
+    K.box(0.7, 0.03, 0.03, K.accent, 0, 0.92, 0.34, false);
+    K.box(0.05, 0.05, 1.0, K.accent, 0, 1.3, -1.5, false).rotation.x = -0.28;
+  }
   mergeStatic(g, new Set([K.brake])); // ~70 parts into one; the brake lights stay apart because they light up
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
   // The body leans on its springs about a point at hub height; the wheels and
@@ -3917,14 +3932,16 @@ function drawTrackPreview(cv, track) {
 
 function buildSwatches() {
   const el = $('#colors');
+  el.innerHTML = '';
   COLOR_CSS.forEach((css, i) => {
+    if (i === LIVERY && !app.liveryOn) return; // the secret livery
     const s = document.createElement('div');
-    s.className = 'swatch' + (i === app.color ? ' on' : '');
-    s.style.background = css;
-    s.title = `Colour ${i + 1}`;
+    s.className = 'swatch' + (i === app.color ? ' on' : '') + (i === LIVERY ? ' livery' : '');
+    s.style.background = i === LIVERY ? 'linear-gradient(135deg, #0b4f3c 58%, #c6f432 58%)' : css;
+    s.title = i === LIVERY ? 'Racing green livery' : `Colour ${i + 1}`;
     s.addEventListener('click', () => {
       app.color = i;
-      document.querySelectorAll('.swatch').forEach((x, j) => x.classList.toggle('on', j === i));
+      document.querySelectorAll('.swatch').forEach((x) => x.classList.toggle('on', x === s));
       try { localStorage.setItem('dc-color', String(i)); } catch {}
     });
     el.appendChild(s);
@@ -3939,11 +3956,12 @@ function readName() {
 
 let secretTyped = ''; // the last few keys pressed, checked against SECRET_CODE and RALLY_CODE
 app.rallyOn = (() => { try { return localStorage.getItem('dc-rally') === '1'; } catch { return false; } })();
+app.liveryOn = (() => { try { return localStorage.getItem('dc-livery') === '1'; } catch { return false; } })();
 
 function wireUI() {
   try {
     const n = localStorage.getItem('dc-name'); if (n) $('#name').value = n;
-    const c = localStorage.getItem('dc-color'); if (c != null && CAR_COLORS[+c]) app.color = +c;
+    const c = localStorage.getItem('dc-color'); if (c != null && CAR_COLORS[+c] && (+c !== LIVERY || app.liveryOn)) app.color = +c;
   } catch {}
   buildSwatches();
   buildTrackCards();
@@ -4025,6 +4043,14 @@ function wireUI() {
     if (e.code === 'Escape' && !$('#board').classList.contains('hidden')) { $('#board').classList.add('hidden'); return; }
     if (e.key && e.key.length === 1) {
       secretTyped = (secretTyped + e.key.toUpperCase()).slice(-12);
+      if (secretTyped.endsWith(LIVERY_CODE) && app.phase === 'home') {
+        secretTyped = '';
+        app.liveryOn = !app.liveryOn;
+        try { localStorage.setItem('dc-livery', app.liveryOn ? '1' : '0'); } catch {}
+        if (!app.liveryOn && app.color === LIVERY) { app.color = 0; try { localStorage.setItem('dc-color', '0'); } catch {} }
+        buildSwatches();
+        toast(app.liveryOn ? 'Racing green livery unlocked: pick it under Car colour' : 'Racing green livery hidden');
+      }
       if (secretTyped.endsWith(RALLY_CODE) && app.phase === 'lobby' && app.room?.hostId === app.myId) {
         secretTyped = '';
         app.rallyOn = !app.rallyOn;

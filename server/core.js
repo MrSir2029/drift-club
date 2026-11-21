@@ -141,7 +141,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   }
   function cleanColor(raw) {
     const n = Number(raw);
-    return Number.isInteger(n) && n >= 0 && n < 12 ? n : Math.floor(Math.random() * 12);
+    return Number.isInteger(n) && n >= 0 && n < 13 ? n : Math.floor(Math.random() * 12); // 12: the secret livery
   }
   // [t, x, y, z, heading, vx, vz, yawRate, groundPitch, groundRoll, lap, nextGate, progress, flags, bodyPitch, bodyRoll]
   // t is the sender's own clock: receivers use it to space the positions out
