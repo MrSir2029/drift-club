@@ -239,6 +239,12 @@ https://forms.google.com with a paragraph question, set it to not collect
 email addresses, and use its share link. Replies show up in the form's
 **Responses** tab. The buttons stay hidden while `FEEDBACK_URL` is empty.
 
+## Tips
+
+Guests waiting in the lobby for the host to start see a tip under the waiting
+message; clicking it shows another. The tips are `TIPS` near the top of
+`public/game.js`.
+
 ## Telling players what's new
 
 `public/updates.js` is the list behind the **What's new** button on the
