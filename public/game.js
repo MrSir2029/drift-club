@@ -37,7 +37,7 @@ const TIPS = [
   'Thank Darren for the driving physics.',
   'Accelerating while throttling is a bad idea',
   'H.I.N.T is an acronym',
-  'The hand-break (space bar) and break (s) are different things!',
+  'The handbrake (space bar) and brake (S) are different things!',
   'The adjective agrees with the verb it describes in gender, number, and case',
 ];
 let lastTip = -1;
