@@ -1,0 +1,40 @@
+// Saves the live leaderboard into server/boards.json, to commit with an
+// update: a redeploy restarts the server, and it loads that file at startup,
+// so the times are there straight away whoever visits first.
+//   DRIFT_CLUB_URL=https://your-game.onrender.com npm run save-boards
+// It merges with the file that's already there (each name keeps its best).
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import WebSocket from 'ws';
+
+const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'server', 'boards.json');
+const site = process.env.DRIFT_CLUB_URL || process.argv[2];
+if (!site) { console.error('Say which game: DRIFT_CLUB_URL=https://your-game.onrender.com npm run save-boards'); process.exit(1); }
+const url = site.replace(/^http/, 'ws').replace(/\/+$/, '') + '/ws';
+
+// behind a proxy (some cloud machines), use one if https-proxy-agent is installed
+let agent;
+const proxy = process.env.https_proxy || process.env.HTTPS_PROXY;
+if (proxy) try { const { HttpsProxyAgent } = await import('https-proxy-agent'); agent = new HttpsProxyAgent(proxy); } catch {}
+
+const live = await new Promise((resolve, reject) => {
+  const ws = new WebSocket(url, { agent });
+  const timer = setTimeout(() => reject(new Error('no answer in 60 s (is the game asleep? open it once and try again)')), 60000);
+  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'lbs') { clearTimeout(timer); ws.close(); resolve(m.boards || {}); } });
+  ws.on('error', (e) => { clearTimeout(timer); reject(e); });
+});
+
+const old = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : { season: 1, boards: {} };
+const merged = {};
+for (const k of new Set([...Object.keys(old.boards || {}), ...Object.keys(live)])) {
+  const best = new Map();
+  for (const e of [...(old.boards?.[k] || []), ...(live[k] || [])]) {
+    const name = e.n.toLowerCase();
+    if (!best.has(name) || best.get(name).ms > e.ms) best.set(name, e);
+  }
+  merged[k] = [...best.values()].sort((a, b) => a.ms - b.ms).slice(0, 10);
+}
+fs.writeFileSync(FILE, JSON.stringify({ season: old.season || 1, boards: merged }, null, 1) + '\n');
+const n = Object.values(merged).reduce((t, l) => t + l.length, 0);
+console.log(`Saved ${n} lap times on ${Object.keys(merged).length} tracks to server/boards.json (${Object.values(live).reduce((t, l) => t + l.length, 0)} from the live game).`);
