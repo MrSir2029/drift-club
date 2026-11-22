@@ -43,6 +43,66 @@ const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
 // the surface, and lettering 3 mm further out, so lettering on paint (DRIFT CLUB
 // on the black) is never half hidden by it; lettering gets a canvas the shape of its patch.
 const textMats = new Map(); // lettering, shared between cars with the same words
+// A 2D canvas drawing (lettering, the floodlight pools, name tags, podium
+// numbers) as a texture with clean edges. Handed over as a canvas, the browser
+// divides each pixel's colour by its alpha, and where the alpha is tiny that
+// turns rounding into bright random colours; Macs (Apple's graphics) then
+// showed coloured specks in the floodlight pools and holes in lettering. So
+// each pixel keeps its alpha but takes its colour from the solid pixels round
+// it (or the one colour given), and the smaller copies used further away are
+// made here rather than by the graphics chip.
+function cleanTexture(c, rgb, mips = true) {
+  const w = c.width, h = c.height, src = c.getContext('2d').getImageData(0, 0, w, h).data;
+  const d = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) d.set(src.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4); // bottom row first
+  if (rgb) for (let i = 0; i < d.length; i += 4) { d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; }
+  else bleedColours(d, w, h);
+  const tex = new THREE.DataTexture(d, w, h, THREE.RGBAFormat);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  if (mips) { tex.mipmaps = mipChain(d, w, h); tex.minFilter = THREE.LinearMipmapLinearFilter; } else tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+// Faint pixels (alpha under 64) take the colour of their most solid neighbour,
+// spreading out a few pixels from the drawing.
+function bleedColours(d, w, h) {
+  let ok = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) ok[i] = d[i * 4 + 3] >= 64 ? 1 : 0;
+  for (let pass = 0; pass < 6; pass++) {
+    const next = ok.slice();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (ok[i]) continue;
+      let best = -1, ba = -1;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+        const j = Y * w + X; if (ok[j] && d[j * 4 + 3] > ba) { ba = d[j * 4 + 3]; best = j; }
+      }
+      if (best >= 0) { d[i * 4] = d[best * 4]; d[i * 4 + 1] = d[best * 4 + 1]; d[i * 4 + 2] = d[best * 4 + 2]; next[i] = 1; }
+    }
+    ok = next;
+  }
+}
+// Every smaller copy down to 1x1: each pixel the average of four, colours
+// weighted by how solid they are, so faint pixels can't tint the result.
+function mipChain(d0, w0, h0) {
+  const levels = [{ data: d0, width: w0, height: h0 }];
+  let d = d0, w = w0, h = h0;
+  while (w > 1 || h > 1) {
+    const W = Math.max(1, w >> 1), H = Math.max(1, h >> 1), o = new Uint8Array(W * H * 4);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let r = 0, g = 0, b = 0, a = 0, r0 = 0, g0 = 0, b0 = 0;
+      for (let k = 0; k < 4; k++) {
+        const i = (Math.min(h - 1, y * 2 + (k >> 1)) * w + Math.min(w - 1, x * 2 + (k & 1))) * 4, al = d[i + 3];
+        r += d[i] * al; g += d[i + 1] * al; b += d[i + 2] * al; a += al; r0 += d[i]; g0 += d[i + 1]; b0 += d[i + 2];
+      }
+      const j = (y * W + x) * 4;
+      if (a) { o[j] = r / a; o[j + 1] = g / a; o[j + 2] = b / a; } else { o[j] = r0 / 4; o[j + 1] = g0 / 4; o[j + 2] = b0 / 4; }
+      o[j + 3] = (a + 2) / 4;
+    }
+    levels.push({ data: o, width: W, height: H }); d = o; w = W; h = H;
+  }
+  return levels;
+}
 function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
   const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize();
   const p = q.map(v => v.clone().addScaledVector(n, text ? 0.006 : 0.003)), order = [0, 1, 2, 0, 2, 3];
@@ -59,7 +119,7 @@ function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
       let size = 108;
       do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 16);
       x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ink; x.fillText(text, c.width / 2, 70);
-      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+      const tex = cleanTexture(c, [1, 3, 5].map(k => parseInt(ink.slice(k, k + 2), 16))); tex.anisotropy = 8;
       mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
       mat.userData.keep = true;
       textMats.set(key, mat);
@@ -86,13 +146,14 @@ function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text, ink) {
   return paintQuad(g, q, mat, text, ink);
 }
 // On the top face of a block: a from back to front, c across it from -1 (the
-// -x edge) to +1. Lettering would read from in front of the car.
-function onTop(g, spec, a0, a1, c0, c1, mat, text, ink) {
+// -x edge) to +1. Lettering reads from in front of the car, or with driver
+// set, from the cockpit.
+function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
   const pt = (a, c) => new THREE.Vector3(px + c * (w / 2) * s(0, a), py + 0.5 * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
   if (c0 > c1) [c0, c1] = [c1, c0]; // either way round: it always faces up
-  const q = [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)];
+  const q = driver ? [pt(a0, c1), pt(a0, c0), pt(a1, c0), pt(a1, c1)] : [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)];
   return paintQuad(g, q, mat, text, ink);
 }
 
@@ -100,8 +161,8 @@ function onTop(g, spec, a0, a1, c0, c1, mat, text, ink) {
 // buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
 // the car's colour on top, black underneath, a pinstripe in a colour that
 // stands out against it, the driver's name on the sidepods, their race number
-// (random, or the one they typed) on the engine cover, and DRIFT CLUB once, on
-// the rear wing endplates. The secret livery adds its sponsors and lime trim.
+// (random, or the one they typed) on the engine cover and on top of the tub
+// where the driver sees it, and DRIFT CLUB once, on the rear wing endplates. The secret livery adds its sponsors and lime trim.
 const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
 const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
@@ -160,6 +221,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
   // the driver's name on each sidepod, up at the front in the car's colour (on the
   // secret livery, above its level lime line), clear of the black and the intake
   if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
+  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
   const byMat = new Map();
@@ -1301,7 +1363,9 @@ function buildProps(track) {
     const lot = fit(mainStand.i, 40, 0, 17, hw + 26, [mainStand.side], 30, 5);
     if (lot) for (let row = 0; row < 3; row++) for (let c = 0; c < 13; c++) {
       if (rnd() < 0.22) continue;
-      parkCar(lateral(lot.s, lot.side, hw + 28.5 + row * 6, -18 + c * 3), heading(lot.s) + (rnd() < 0.5 ? Math.PI : 0));
+      // side by side, 3 m apart (they used to point along the row, 4.2 m long every
+      // 3 m, so each overlapped the next and their sides flickered)
+      parkCar(lateral(lot.s, lot.side, hw + 28.5 + row * 6, -18 + c * 3), heading(lot.s) + Math.PI / 2 + (rnd() < 0.5 ? Math.PI : 0));
     }
   }
 
@@ -1329,7 +1393,7 @@ function buildProps(track) {
       const roofP = new THREE.Mesh(new THREE.BoxGeometry(54, 0.5, 11), lam(0x1d2230)); roofP.position.set(0, 5.25, -6); pit.add(roofP);
       for (let k = 0; k < 8; k++) { const door = new THREE.Mesh(new THREE.BoxGeometry(4.6, 3.4, 0.2), lam(k % 2 ? 0x3b4250 : 0x5a6372)); door.position.set(-22.4 + k * 6.4, 1.7, -1.45); pit.add(door); }
       const pw = new THREE.Mesh(new THREE.BoxGeometry(52, 1, 0.4), lam(0xf6f2e8)); pw.position.set(0, 0.5, 2); pit.add(pw);
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(52.1, 0.3, 0.44), lam(0xe6453a)); stripe.position.set(0, 0.85, 2); pit.add(stripe);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(52.1, 0.32, 0.44), lam(0xe6453a)); stripe.position.set(0, 0.86, 2); pit.add(stripe); // top 2 cm above the wall's
       put(pit, spot, hw + 8);
       wallRect(pit, -26.5, 26.5, -10.6, 2.3);
       for (let k = 0; k < 8; k++) for (let j = 0; j < 2; j++) {
@@ -1925,8 +1989,7 @@ function glowTexture(w, h, cx, cy, r) {
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
   g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  return cleanTexture(c, [255, 255, 255], false);
 }
 const lightMat = (map, color, opacity) => new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
 
@@ -2748,10 +2811,11 @@ function makeLabel(text, color) {
   roundRect(ctx, 128 - w / 2, 8, w, 48, 14); ctx.fill();
   ctx.fillStyle = color;
   roundRect(ctx, 128 - w / 2 + 3, 11, w - 6, 42, 11); ctx.fill();
-  ctx.fillStyle = '#1d2230';
+  // dark writing, or light on a dark car colour (the black car's tag was unreadable)
+  const [r, g, b] = [1, 3, 5].map(k => parseInt(color.slice(k, k + 2), 16));
+  ctx.fillStyle = 0.2126 * r + 0.7152 * g + 0.0722 * b < 90 ? '#f6f2e8' : '#1d2230';
   ctx.fillText(text, 128, 33);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
+  const tex = cleanTexture(c);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
   sp.scale.set(6, 1.5, 1);
   sp.renderOrder = 5;
@@ -3755,7 +3819,7 @@ function plate(text, size) {
   const ctx = c.getContext('2d');
   ctx.font = '900 104px "Segoe UI", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineWidth = 12; ctx.strokeStyle = '#1d2230'; ctx.strokeText(text, 64, 70); ctx.fillStyle = '#fffaf0'; ctx.fillText(text, 64, 70);
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const tex = cleanTexture(c);
   return new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
 }
 // The podium, staged: third and second crash down onto their steps in turn,

@@ -159,6 +159,26 @@ names on a short blocklist stay off the board. To wipe the boards and start a
 new season, bump `BOARD_SEASON` in `server/core.js`. Set `LB_SECRET` on the
 host for a signing key of your own (changing it also wipes the boards).
 
+### Keeping the leaderboard for good (Upstash, free)
+
+Browser copies come back only when someone who has one visits, so a new
+device, or Safari (which clears a site's storage after a week away), can see an
+empty board for a while. To keep the boards for good, give the server a small
+free database:
+
+1. Sign up at https://upstash.com and create a **Redis** database (the free
+   plan is plenty; pick the region nearest your Render service).
+2. On the database's page, under **REST API**, copy the
+   `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` values.
+3. In Render, open the service, go to **Environment**, add both as variables
+   with exactly those names, and save. Render redeploys.
+
+The log then says `Leaderboard: kept in Upstash, N lap times loaded` at
+startup. The boards are saved 20 seconds after each new record, and straight
+away when the server shuts down. The token is a password: keep it in Render's
+settings, never in the code. Without the two variables the server works as
+before.
+
 ## The map
 
 Barriers, fences, buildings, trees, big rocks and posts are solid, and a
