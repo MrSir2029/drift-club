@@ -159,6 +159,12 @@ names on a short blocklist stay off the board. To wipe the boards and start a
 new season, bump `BOARD_SEASON` in `server/core.js`. Set `LB_SECRET` on the
 host for a signing key of your own (changing it also wipes the boards).
 
+Before deploying an update, save the live boards into the code so the
+restart doesn't start them empty:
+`DRIFT_CLUB_URL=https://your-game.onrender.com npm run save-boards` writes
+`server/boards.json` (merged with what's there, each name keeping its best);
+commit it with the update. The server loads it at startup.
+
 ### Keeping the leaderboard for good (Upstash, free)
 
 Browser copies come back only when someone who has one visits, so a new

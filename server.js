@@ -84,12 +84,23 @@ async function kv(command) {
   if (!res.ok) throw new Error(`Upstash answered ${res.status}`);
   return (await res.json()).result;
 }
+// The leaderboard as it was at the last update (npm run save-boards writes it
+// before a release): loaded at startup, so a redeploy doesn't start it empty.
 let savedBoards = null;
+try {
+  const snap = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'server', 'boards.json'), 'utf8'));
+  savedBoards = snap;
+  console.log(`Leaderboard: ${Object.values(snap.boards || {}).reduce((t, l) => t + l.length, 0)} lap times from server/boards.json`);
+} catch {}
 if (KV_URL && KV_TOKEN) {
   try {
     const text = await kv(['GET', KV_KEY]);
-    savedBoards = text ? JSON.parse(text) : null;
-    const n = savedBoards ? Object.values(savedBoards.boards || {}).reduce((t, l) => t + l.length, 0) : 0;
+    const kept = text ? JSON.parse(text) : null;
+    const n = kept ? Object.values(kept.boards || {}).reduce((t, l) => t + l.length, 0) : 0;
+    // both, if there are both: each name keeps its best (the game sorts that out)
+    if (kept && savedBoards && kept.season === savedBoards.season) {
+      for (const [k, list] of Object.entries(kept.boards || {})) savedBoards.boards[k] = [...(savedBoards.boards[k] || []), ...list];
+    } else if (kept) savedBoards = kept;
     console.log(`Leaderboard: kept in Upstash, ${n} lap times loaded`);
   } catch (e) { console.warn(`Leaderboard: couldn't load from Upstash (${e.message}); players' browsers will fill it back in`); }
 }
