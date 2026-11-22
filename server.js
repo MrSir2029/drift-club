@@ -71,9 +71,36 @@ function sendFile(req, res, f) {
 // edited. Set LB_SECRET on the host for a key of your own that isn't in the
 // code (changing it wipes the boards).
 const LB_KEY = process.env.LB_SECRET || 'drift-club-leaderboard';
+
+// The leaderboard for good: with an Upstash Redis database (free at
+// upstash.com), the boards are loaded when the server starts and saved soon
+// after every new record, so they survive restarts and redeploys whoever
+// visits first. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN on the
+// host (the database's REST API details). Without them it works as before.
+const KV_URL = process.env.UPSTASH_REDIS_REST_URL, KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const KV_KEY = process.env.UPSTASH_KEY || 'drift-club:boards';
+async function kv(command) {
+  const res = await fetch(KV_URL, { method: 'POST', headers: { Authorization: `Bearer ${KV_TOKEN}` }, body: JSON.stringify(command), signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`Upstash answered ${res.status}`);
+  return (await res.json()).result;
+}
+let savedBoards = null;
+if (KV_URL && KV_TOKEN) {
+  try {
+    const text = await kv(['GET', KV_KEY]);
+    savedBoards = text ? JSON.parse(text) : null;
+    const n = savedBoards ? Object.values(savedBoards.boards || {}).reduce((t, l) => t + l.length, 0) : 0;
+    console.log(`Leaderboard: kept in Upstash, ${n} lap times loaded`);
+  } catch (e) { console.warn(`Leaderboard: couldn't load from Upstash (${e.message}); players' browsers will fill it back in`); }
+}
+const saveBoards = KV_URL && KV_TOKEN
+  ? (b) => kv(['SET', KV_KEY, JSON.stringify(b)]).catch((e) => console.warn(`Leaderboard: couldn't save to Upstash (${e.message})`))
+  : null;
 const game = createGame({
   note: 'The totals start again from zero whenever the server restarts.',
   sign: (text) => crypto.createHmac('sha256', LB_KEY).update(text).digest('base64url').slice(0, 12),
+  boards: savedBoards,
+  saveBoards,
 });
 
 // ---------- static files, /stats ----------
@@ -134,3 +161,13 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`Drift Club running on http://localhost:${PORT}`);
 });
+
+// Shutting down (a redeploy, or the host putting it to sleep): save a
+// leaderboard change that's still waiting first, giving it a few seconds.
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.once(sig, async () => {
+    const pending = game.flushBoards();
+    if (pending) await Promise.race([pending, new Promise((r) => setTimeout(r, 4000))]);
+    process.exit(0);
+  });
+}

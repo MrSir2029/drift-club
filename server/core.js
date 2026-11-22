@@ -81,12 +81,12 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   const statsJson = () => ({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races });
 
   // ---------- leaderboard: the best laps on each track (any car), by name ----------
-  // No accounts: a name is a name, and anyone can race under any name. There's
-  // no database either. A host that can store things (Cloudflare) saves the
-  // boards. On one that forgets everything when it sleeps (Render's free
-  // plan), every player's browser keeps a copy and hands it back on connecting
-  // ('lbseed'); each entry carries the server's signature, so a copy can be
-  // returned but not edited.
+  // No accounts: a name is a name, and anyone can race under any name. A host
+  // that can store things saves the boards (Cloudflare's storage, or on Node an
+  // Upstash Redis database: see server.js). Without one, a host that forgets
+  // everything when it sleeps (Render's free plan) still has every player's
+  // browser keeping a copy to hand back on connecting ('lbseed'); each entry
+  // carries the server's signature, so a copy can be returned but not edited.
   const boards = new Map(); // 'track' -> [{ n: name, ms, c: car, s: signature }], fastest first
   const boardKey = (t) => String(t);
   const signature = (k, n, ms, c) => sign(`${BOARD_SEASON}|${k}|${n}|${ms}|${c}`);
@@ -114,10 +114,11 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     return list.indexOf(entry) + 1;
   }
   let boardsTimer = null;
+  const boardsNow = () => saveBoards({ season: BOARD_SEASON, boards: Object.fromEntries(boards) });
   function boardChanged(k) {
     const data = JSON.stringify({ t: 'lb', k, list: boards.get(k) });
     for (const p of conns) { try { p.sock.send(data); } catch {} }
-    if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; saveBoards({ season: BOARD_SEASON, boards: Object.fromEntries(boards) }); }, 20000);
+    if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; boardsNow(); }, 20000);
   }
   if (savedBoards && savedBoards.season === BOARD_SEASON) {
     for (const [k, list] of Object.entries(savedBoards.boards || {})) {
@@ -485,6 +486,12 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     },
     statsJson,
     statsPage: () => statsPage(liveCounts(), stats, note),
+    // save a leaderboard change that's still waiting (when the server is shutting down)
+    flushBoards() {
+      if (!boardsTimer) return null;
+      clearTimeout(boardsTimer); boardsTimer = null;
+      return boardsNow();
+    },
   };
 }
 
