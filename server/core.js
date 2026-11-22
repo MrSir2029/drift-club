@@ -150,7 +150,9 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   }
   function cleanColor(raw) {
     const n = Number(raw);
-    return Number.isInteger(n) && n >= 0 && n < 13 ? n : Math.floor(Math.random() * 12); // 12: the secret livery
+    // 12 is the secret livery; a random one is never that or brown (10), which
+    // isn't on the home screen any more
+    return Number.isInteger(n) && n >= 0 && n < 13 ? n : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11][Math.floor(Math.random() * 11)];
   }
   // [t, x, y, z, heading, vx, vz, yawRate, groundPitch, groundRoll, lap, nextGate, progress, flags, bodyPitch, bodyRoll]
   // t is the sender's own clock: receivers use it to space the positions out

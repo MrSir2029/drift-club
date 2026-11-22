@@ -7,6 +7,9 @@ import { UPDATES } from '/updates.js';
 // ---------------------------------------------------------------------------
 const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a]; // the last one is the secret racing green livery (LIVERY_HASH)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
+// the colours on the home screen: all but brown (10), which was taken out so the
+// secret livery fits on the same row; the numbers don't change
+const PICKER_COLORS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11];
 const SEND_HZ = 30; // positions a second (sent two at a time when the server asks: see 'joined')
 // Each track's look. The meadow is the default; the desert turns the grass to
 // sand and red rock, the trees to cacti and the green hills to mesas; snow
@@ -57,7 +60,7 @@ function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
       do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 16);
       x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ink; x.fillText(text, c.width / 2, 70);
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-      mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
+      mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
       mat.userData.keep = true;
       textMats.set(key, mat);
     }
@@ -83,29 +86,28 @@ function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text, ink) {
   return paintQuad(g, q, mat, text, ink);
 }
 // On the top face of a block: a from back to front, c across it from -1 (the
-// -x edge) to +1. Lettering reads from in front of the car (like a nose
-// number), or with driver set, from the cockpit.
-function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
+// -x edge) to +1. Lettering would read from in front of the car.
+function onTop(g, spec, a0, a1, c0, c1, mat, text, ink) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
   const pt = (a, c) => new THREE.Vector3(px + c * (w / 2) * s(0, a), py + 0.5 * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
   if (c0 > c1) [c0, c1] = [c1, c0]; // either way round: it always faces up
-  const q = driver ? [pt(a0, c1), pt(a0, c0), pt(a1, c0), pt(a1, c1)] : [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)];
+  const q = [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)];
   return paintQuad(g, q, mat, text, ink);
 }
 
 // Every open seater wears a livery painted onto its panels (these specs are
 // buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
 // the car's colour on top, black underneath, a pinstripe in a colour that
-// stands out against it, DRIFT CLUB on the sidepods, and the driver's race
-// number (random, handed out by the server) on the engine cover and once on top,
-// facing the driver. The secret livery adds its sponsors and lime trim.
+// stands out against it, the driver's name on the sidepods, their race number
+// (random, or the one they typed) on the engine cover, and DRIFT CLUB once, on
+// the rear wing endplates. The secret livery adds its sponsors and lime trim.
 const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
 const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
 const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
 const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
-const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06], 0, 1.2, -0.45];
+const AIRBOX = [0.34, 0.32, 2.0, null, [0.1, 0.469, -0.475], 0, 1.2, -1.075]; // the airbox running back into the fin
 const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
 // the pinstripe for each car colour (CAR_COLORS order)
 // (pairs real teams have raced: red and white, papaya and navy, black and gold,
@@ -146,21 +148,18 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
     onTop(g, TUB, 0.4, 1, sx * 0.72, sx * 0.86, stripe);
     onTop(g, NOSE, 0, 0.96, sx * 0.72, sx * 0.86, stripe); // (meeting the tub's without a step)
     if (secret) {
-      lettering(onPanel(g, POD, sx, 0.34, 0.92, 0.287, 0.418, null, SPONSORS.pods)); // white on the black
-      onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);          // black airbox sides
+      onPanel(g, AIRBOX, sx, 0.62, 1, 0, 1, K.carbon);       // black airbox sides (the front of the spine)
       lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
       lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
       lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
     } else {
-      lettering(onPanel(g, POD, sx, 0.25, 0.72, 0.3, 0.42, null, SPONSORS.pods));  // DRIFT CLUB on the black
-      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.pods)); // and big on the rear wing endplates
+      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.pods)); // DRIFT CLUB, big on the rear wing endplates
       lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
     }
   }
   // the driver's name on each sidepod, up at the front in the car's colour (on the
   // secret livery, above its level lime line), clear of the black and the intake
   if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
-  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and the one number on top: on the tub, facing the driver
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
   const byMat = new Map();
@@ -228,7 +227,7 @@ const app = {
   ws: null,
   myId: 0,
   name: 'Racer',
-  color: Math.floor(Math.random() * 12),
+  color: PICKER_COLORS[Math.floor(Math.random() * PICKER_COLORS.length)],
   room: null,          // latest room snapshot
   phase: 'home',       // home | lobby | countdown | racing | results
   trackId: 0,
@@ -2470,9 +2469,6 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, 
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
-  // the plate on top of the nose: white (the accent already is, on most cars),
-  // dark on the cream car, black on the secret livery
-  K.noseBand = lightCar && colorIdx !== 8 ? L(0xf6f2e8) : K.accent;
   K.add = (geo, mat, x, y, z, shadow = true) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z); m.castShadow = shadow; g.add(m); return m;
@@ -2532,8 +2528,6 @@ function buildOpenBody(K) {
   add(taperBox(0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null), body, 0, 0.5, 0.85);
   add(taperBox(0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null), body, 0, 0.45, 2.62);
   add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), K.livery ? dark : K.stripe, 0, 0.35, 3.36); // nose tip, in the stripe colour
-  // a plate on top of the nose, tapering with it between the two pinstripes
-  add(taperBox(0.28, 0.02, 0.6, [0.7, 1, 0], null), K.noseBand, 0, 0.552, 2.45, false).rotation.x = 0.156;
   // front wing
   box(2.0, 0.045, 0.5, carbon, 0, 0.15, 3.15);
   for (const sx of [-1, 1]) {
@@ -2546,19 +2540,19 @@ function buildOpenBody(K) {
   for (const sx of [-1, 1]) {
     add(taperBox(0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028]), body, sx * 0.7, 0.45, -0.375);
     box(0.46, 0.24, 0.05, dark, sx * 0.72, 0.5, 0.36, false);
-    box(0.22, 0.02, 1.1, accent, sx * 0.7, 0.632, -0.25, false).rotation.x = -0.095;
     box(0.04, 0.26, 0.55, carbon, sx * 0.62, 0.33, 0.8, false);
-    box(0.12, 0.2, 0.7, body, sx * 0.3, 0.84, -0.02, false);               // cockpit sides
+    box(0.12, 0.2, 0.43, body, sx * 0.3, 0.84, 0.115, false);              // cockpit sides, up to the engine cover
     box(0.16, 0.09, 0.06, accent, sx * 0.56, 0.92, 0.7, false);            // mirror
     rod([sx * 0.3, 0.72, 0.7], [sx * 0.52, 0.9, 0.7], 0.035, dark);
   }
-  // engine cover, airbox, fin, camera
+  // engine cover, and on it one spine: the airbox over the driver's head running
+  // back into the fin, narrowing and dropping as it goes, sitting on the cover
+  // all the way (the cover's top falls from 1.05 m to 0.66 m), with the intake
+  // and the camera on it
   add(taperBox(0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18]), body, 0, 0.72, -1.15);
-  add(taperBox(0.34, 0.32, 0.75, null, [0.6, 0.5, -0.06]), body, 0, 1.2, -0.45);
+  add(taperBox(0.34, 0.32, 2.0, null, [0.1, 0.469, -0.475]), body, 0, 1.2, -1.075);
   box(0.24, 0.2, 0.04, dark, 0, 1.22, -0.07, false);
-  box(0.08, 0.07, 0.24, K.stripe, 0, 1.4, -0.3, false);                    // camera, in the stripe colour
-  add(taperBox(0.035, 0.46, 1.25, null, [1, 0.3, -0.16]), body, 0, 1.06, -1.45);
-  box(0.2, 0.02, 0.9, accent, 0, 1.0, -1.2, false).rotation.x = -0.2;
+  box(0.08, 0.07, 0.24, K.stripe, 0, 1.327, -0.3, false).rotation.x = -0.273; // camera, in the stripe colour
   // cockpit: opening, helmet, visor
   box(0.5, 0.05, 0.8, dark, 0, 0.765, 0.2, false);
   const helmet = add(new THREE.IcosahedronGeometry(0.21, 1), K.helmet, 0, 0.98, 0.1);
@@ -4089,8 +4083,10 @@ function drawTrackPreview(cv, track) {
 function buildSwatches() {
   const el = $('#colors');
   el.innerHTML = '';
-  COLOR_CSS.forEach((css, i) => {
-    if (i === LIVERY && !app.liveryOn) return; // the secret livery
+  const shown = app.liveryOn ? [...PICKER_COLORS, LIVERY] : PICKER_COLORS; // the secret livery
+  el.style.gridTemplateColumns = `repeat(${shown.length}, 1fr)`; // always one row
+  shown.forEach((i) => {
+    const css = COLOR_CSS[i];
     const s = document.createElement('div');
     s.className = 'swatch' + (i === app.color ? ' on' : '') + (i === LIVERY ? ' livery' : '');
     s.style.background = i === LIVERY ? 'linear-gradient(135deg, #13806a 56%, #c6f432 56% 64%, #16191f 64%)' : css;
@@ -4126,7 +4122,7 @@ function wireUI() {
   try {
     const n = localStorage.getItem('dc-name'); if (n) $('#name').value = n;
     const k = localStorage.getItem('dc-num'); if (k) $('#num').value = k.replace(/\D/g, '').slice(0, 2);
-    const c = localStorage.getItem('dc-color'); if (c != null && CAR_COLORS[+c] && (+c !== LIVERY || app.liveryOn)) app.color = +c;
+    const c = localStorage.getItem('dc-color'); if (c != null && (PICKER_COLORS.includes(+c) || (+c === LIVERY && app.liveryOn))) app.color = +c;
   } catch {}
   buildSwatches();
   buildTrackCards();

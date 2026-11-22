@@ -6,7 +6,7 @@ export const UPDATES = [
   {
     v: '3.1', date: '22 Nov 2026', title: 'Liveries',
     items: [
-      'Every car colour has its own livery now: black underneath, a pinstripe that stands out, DRIFT CLUB and your name on the sidepods, and a race number you can see from the cockpit.',
+      'Every car colour has its own livery now: black underneath, a pinstripe that stands out, your name on the sidepods, your race number on the engine cover and DRIFT CLUB on the rear wing.',
       'Type your car number in the Number box next to your name, or leave it empty for a random one.',
     ],
   },
