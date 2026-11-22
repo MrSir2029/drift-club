@@ -103,7 +103,7 @@ function mipChain(d0, w0, h0) {
   }
   return levels;
 }
-function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
+function paintQuad(g, q, mat, text, ink = '#f2f5f0', tall = false) {
   const n = new THREE.Vector3().subVectors(q[1], q[0]).cross(new THREE.Vector3().subVectors(q[3], q[0])).normalize();
   const p = q.map(v => v.clone().addScaledVector(n, text ? 0.006 : 0.003)), order = [0, 1, 2, 0, 2, 3];
   const geo = new THREE.BufferGeometry();
@@ -111,14 +111,21 @@ function paintQuad(g, q, mat, text, ink = '#f2f5f0') {
   if (text) {
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(order.flatMap(i => [[0, 0], [1, 0], [1, 1], [0, 1]][i]), 2));
     const aspect = q[0].distanceTo(q[1]) / q[0].distanceTo(q[3]), cw = Math.min(2048, Math.max(64, Math.round(128 * aspect)));
-    const key = `${text}|${ink}|${cw}`;
+    const key = `${text}|${ink}|${cw}|${tall ? 't' : ''}`;
     mat = textMats.get(key);
     if (!mat) {
       const c = document.createElement('canvas'); c.height = 128; c.width = cw;
       const x = c.getContext('2d');
       let size = 108;
       do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > c.width * 0.94 && size > 16);
-      x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ink; x.fillText(text, c.width / 2, 70);
+      x.textAlign = 'center'; x.fillStyle = ink;
+      if (tall) {
+        // stretched along its length, like words painted on a road, so it
+        // reads in proportion from a low angle (the number on the nose)
+        const m = x.measureText(text), asc = m.actualBoundingBoxAscent || size * 0.72, desc = m.actualBoundingBoxDescent || 0;
+        const k = Math.min(3, (c.height * 0.88) / (asc + desc));
+        x.setTransform(1, 0, 0, k, 0, 0); x.textBaseline = 'alphabetic'; x.fillText(text, c.width / 2, c.height / 2 / k + (asc - desc) / 2);
+      } else { x.textBaseline = 'middle'; x.fillText(text, c.width / 2, 70); }
       const tex = cleanTexture(c, [1, 3, 5].map(k => parseInt(ink.slice(k, k + 2), 16))); tex.anisotropy = 8;
       mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
       mat.userData.keep = true;
@@ -148,21 +155,21 @@ function onPanel(g, spec, sx, a0, a1, b0, b1, mat, text, ink) {
 // On the top face of a block: a from back to front, c across it from -1 (the
 // -x edge) to +1. Lettering reads from in front of the car, or with driver
 // set, from the cockpit.
-function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
+function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver, tall) {
   const [w, h, d, front, rear, px, py, pz] = spec, F = front || [1, 1, 0], R = rear || [1, 1, 0];
   const s = (k, a) => (R[k] || 0) + ((F[k] || 0) - (R[k] || 0)) * a;
   const pt = (a, c) => new THREE.Vector3(px + c * (w / 2) * s(0, a), py + 0.5 * h * s(1, a) + s(2, a), pz - d / 2 + d * a);
   if (c0 > c1) [c0, c1] = [c1, c0]; // either way round: it always faces up
   const q = driver ? [pt(a0, c1), pt(a0, c0), pt(a1, c0), pt(a1, c1)] : [pt(a1, c0), pt(a1, c1), pt(a0, c1), pt(a0, c0)];
-  return paintQuad(g, q, mat, text, ink);
+  return paintQuad(g, q, mat, text, ink, tall);
 }
 
 // Every open seater wears a livery painted onto its panels (these specs are
 // buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
 // the car's colour on top, black underneath, a pinstripe in a colour that
 // stands out against it, the driver's name on the sidepods, their race number
-// (random, or the one they typed) on the engine cover and on top of the tub
-// where the driver sees it, and DRIFT CLUB once, on the rear wing endplates. The secret livery adds its sponsors and lime trim.
+// (random, or the one they typed) on the engine cover and on the nose, the
+// right way up for the driver, and DRIFT CLUB once, on the rear wing endplates. The secret livery adds its sponsors and lime trim.
 const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
 const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
@@ -221,7 +228,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
   // the driver's name on each sidepod, up at the front in the car's colour (on the
   // secret livery, above its level lime line), clear of the black and the intake
   if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
-  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
+  lettering(onTop(g, NOSE, 0.03, 0.5, -0.68, 0.68, null, num, ink, true, true)); // and on the nose, facing the driver (one number in view, not two)
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
   const byMat = new Map();
