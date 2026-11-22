@@ -107,7 +107,7 @@ const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
 const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
 const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
-const AIRBOX = [0.34, 0.32, 0.75, null, [0.6, 1.03, -0.145], 0, 1.2, -0.45];
+const AIRBOX = [0.34, 0.32, 2.0, null, [0.1, 0.469, -0.475], 0, 1.2, -1.075]; // the airbox running back into the fin
 const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
 // the pinstripe for each car colour (CAR_COLORS order)
 // (pairs real teams have raced: red and white, papaya and navy, black and gold,
@@ -148,7 +148,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
     onTop(g, TUB, 0.4, 1, sx * 0.72, sx * 0.86, stripe);
     onTop(g, NOSE, 0, 0.96, sx * 0.72, sx * 0.86, stripe); // (meeting the tub's without a step)
     if (secret) {
-      onPanel(g, AIRBOX, sx, 0, 1, 0, 1, K.carbon);          // black airbox sides
+      onPanel(g, AIRBOX, sx, 0.62, 1, 0, 1, K.carbon);       // black airbox sides (the front of the spine)
       lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
       lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
       lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
@@ -2540,20 +2540,19 @@ function buildOpenBody(K) {
   for (const sx of [-1, 1]) {
     add(taperBox(0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028]), body, sx * 0.7, 0.45, -0.375);
     box(0.46, 0.24, 0.05, dark, sx * 0.72, 0.5, 0.36, false);
-    box(0.22, 0.02, 1.1, accent, sx * 0.7, 0.62, -0.25, false).rotation.x = -0.095;
     box(0.04, 0.26, 0.55, carbon, sx * 0.62, 0.33, 0.8, false);
-    box(0.12, 0.2, 0.7, body, sx * 0.3, 0.84, -0.02, false);               // cockpit sides
+    box(0.12, 0.2, 0.43, body, sx * 0.3, 0.84, 0.115, false);              // cockpit sides, up to the engine cover
     box(0.16, 0.09, 0.06, accent, sx * 0.56, 0.92, 0.7, false);            // mirror
     rod([sx * 0.3, 0.72, 0.7], [sx * 0.52, 0.9, 0.7], 0.035, dark);
   }
-  // engine cover, airbox, fin, camera. The airbox and the fin come down onto
-  // the cover all along (its top falls from 1.05 m at the front to 0.66 m at
-  // the back), so there's no daylight under them.
+  // engine cover, and on it one spine: the airbox over the driver's head running
+  // back into the fin, narrowing and dropping as it goes, sitting on the cover
+  // all the way (the cover's top falls from 1.05 m to 0.66 m), with the intake
+  // and the camera on it
   add(taperBox(0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18]), body, 0, 0.72, -1.15);
-  add(taperBox(0.34, 0.32, 0.75, null, [0.6, 1.03, -0.145]), body, 0, 1.2, -0.45);
+  add(taperBox(0.34, 0.32, 2.0, null, [0.1, 0.469, -0.475]), body, 0, 1.2, -1.075);
   box(0.24, 0.2, 0.04, dark, 0, 1.22, -0.07, false);
-  box(0.08, 0.07, 0.24, K.stripe, 0, 1.348, -0.3, false).rotation.x = -0.185; // camera on the airbox, in the stripe colour
-  add(taperBox(0.035, 0.43, 1.25, null, [1, 0.349, -0.35]), body, 0, 1.075, -1.45);
+  box(0.08, 0.07, 0.24, K.stripe, 0, 1.327, -0.3, false).rotation.x = -0.273; // camera, in the stripe colour
   // cockpit: opening, helmet, visor
   box(0.5, 0.05, 0.8, dark, 0, 0.765, 0.2, false);
   const helmet = add(new THREE.IcosahedronGeometry(0.21, 1), K.helmet, 0, 0.98, 0.1);
