@@ -6,7 +6,7 @@
 const MAX_PLAYERS = 20;
 const TOTAL_LAPS = 3; // default; the host can pick 1 to MAX_LAPS
 const MAX_LAPS = 10;
-const TRACK_COUNT = 4;
+const TRACK_COUNT = 6;
 const RESULTS_GRACE_MS = 45000; // after the first finisher, wait this long for the rest
 const COUNTDOWN_MS = 4000; // the start lights
 const BROADCAST_HZ = 30;
@@ -23,7 +23,7 @@ const BOARD_SEASON = 1;
 // top speed the whole way round (with 10% in hand for cutting the corners).
 // Lengths in metres, one per track in tracks.js; top speeds in m/s, as in
 // CAR_CLASSES in game.js.
-const TRACK_LENGTH = [1510, 1867, 1715, 1488];
+const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1571, 1475];
 const TOP_SPEED = { open: 60, rally: 52, camry: 46 };
 const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // Names with these in them stay off the leaderboard (everyone sees it, not

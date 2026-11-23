@@ -255,7 +255,6 @@ input:focus { border-color: var(--blue); }
 .mylaps span.lap { border: 2px solid var(--ink); border-radius: 8px; padding: 2px 8px; background: #fff; font-variant-numeric: tabular-nums; }
 .mylaps span.lap.best { background: #ffd23f; }
 .chip .gridtime { font-size: 11px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
-.found { background: rgba(255,250,240,.9); border: 2px solid var(--ink); border-radius: 8px; padding: 3px 8px; font-weight: 800; font-size: 13px; }
 
 .whatsnew { margin-top: 14px; width: 100%; position: relative; }
 .dot-new { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e6453a; border: 2px solid var(--ink); margin-left: 6px; vertical-align: middle; }

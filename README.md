@@ -2,7 +2,7 @@
 
 A tiny multiplayer racing game you play in the browser with friends. One person
 hosts, gets a 4-letter room code, and everyone else joins with the code or the
-invite link. Up to 20 racers per room, 1 to 10 laps, four tracks, two car
+invite link. Up to 20 racers per room, 1 to 10 laps, six tracks, two car
 classes (open seater, plus a hidden rally car), Polytrack mode, low-poly 3D.
 
 No accounts, no chat, no ads, no cookies, no downloads. Everything the game
@@ -189,10 +189,9 @@ before.
 
 Barriers, fences, buildings, trees, big rocks and posts are solid, and a
 stone wall rings the edge of the map. Away from the circuit there are
-places to find: a lake you can wade through, a castle, a fairground, a
-village, a stone circle, a campsite, a windmill and a radio mast. Each
-hides a gold star; the counter under the standings shows how many you've
-found on that map. These are the **expanded map**, which is on by default;
+places to explore: a lake you can wade through, a castle, a fairground, a
+village, a stone circle, a campsite, a windmill and a radio mast. These
+are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
 building is always there, hidden as far from the roads as the map allows,
 down in low ground, with a sign you only make out up close. A TV
@@ -206,7 +205,16 @@ third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
 drive off it). Switchback (the fourth) is raced at night, under floodlights,
 with fireworks overhead, searchlights sweeping the sky and glowing studs
-along the track edges.
+along the track edges. Palm Bay (the fifth) is an island: sand, palms, beach
+huts and umbrellas, a lighthouse on the headland and boats out at sea. The
+track's `sea` in `tracks.js` sets where the sea starts; you can drive into it
+(slowly), and buoys mark the edge of the map out on the water. It has no lake.
+Neon City (the sixth) is a street circuit at night: concrete walls down both
+sides (`walls` in `tracks.js`), office blocks with lit windows, neon signs and
+a skyline. A few side streets, always on the outside of the circuit, lead out
+into the city and to 9LAT2; the middle of the circuit is closed off, so
+there's no short cut. Its only landmarks are 9LAT2, the fairground and the
+radio mast.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.
@@ -299,7 +307,9 @@ get a red dot on the button until they've read it.
   network delivers the packets. The delay adapts to the connection.
 - `public/game.js`: Three.js scene, car physics, camera, HUD and networking.
 - `public/tracks.js`: tracks are a list of control points. Add a new one by
-  adding an entry to `TRACKS` and bumping `TRACK_COUNT` in `server/core.js`.
+  adding an entry to `TRACKS`, bumping `TRACK_COUNT` in `server/core.js` and
+  adding its length to `TRACK_LENGTH` there (the leaderboard's check for
+  impossible laps).
 - `public/vendor/`: Three.js r187, copied from npm so nothing loads from a CDN.
 
 Physics runs on each player's own computer (there are no car-to-car

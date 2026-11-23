@@ -4,6 +4,14 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.2', date: '23 Nov 2026', title: 'Two new tracks',
+    items: [
+      'Palm Bay: along the seafront, out round the lighthouse and back through the palms. Beach huts, umbrellas and boats, and you can drive into the sea (it\'s slow going).',
+      'Neon City: a street circuit at night between walls, with square corners, a chicane, lit-up office blocks and neon signs. Side streets lead out into the city.',
+      'The landmarks are still there to explore, but the stars to find are gone.',
+    ],
+  },
+  {
     v: '3.1', date: '22 Nov 2026', title: 'Liveries',
     items: [
       'Every car colour has its own livery now: black underneath, a pinstripe that stands out, your name on the sidepods, your race number on the engine cover and in front of you in the cockpit, and DRIFT CLUB on the rear wing.',
