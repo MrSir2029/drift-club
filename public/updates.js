@@ -9,6 +9,7 @@ export const UPDATES = [
       'Change your keys: Settings, then Change keys. Pick any key for accelerating, braking, steering, the handbrake, reset and more, two keys each if you like.',
       'Polytrack mode: restart your run with Backspace (or Restart your run in the Esc menu). You go back to the grid and your lap clock starts again at the line.',
       'In Polytrack mode the clock now shows the lap you\'re on.',
+      'Both ideas from TheBearKing, who holds most of the lap records. Thanks!',
     ],
   },
   {
