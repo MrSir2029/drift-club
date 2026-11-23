@@ -30,12 +30,20 @@ const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // just the room). The lists are rot13'd so the code isn't full of swear words:
 // the first matches anywhere in a name, the second only as a whole word.
 const rot13 = (s) => s.replace(/[a-z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 84) % 26 + 97));
-const BLOCKED_ANYWHERE = rot13('shpx fuvg ovgpu phag avtt sntt jnax fyhg juber encvfg anmv uvgyre cbea cravf intva qvyqb obbo chffl ergneq qvpx cvff onfgneq crqbcu cnrqb nffubyr nefrubyr wvmm genaal puvax xvxr').split(' ');
-const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb').split(' '));
-const unleet = (s) => s.toLowerCase().replace(/0/g, 'o').replace(/[1!]/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't');
+const BLOCKED_ANYWHERE = rot13('shpx fuvg ovgpu phag avtt sntt jnax fyhg juber encvfg anmv uvgyre cbea cravf intva qvyqb obbo chffl ergneq qvpx cvff onfgneq crqbcu cnrqb nffubyr nefrubyr wvmm genaal puvax xvxr spx fulg').split(' ');
+const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb qvx nmm ubr').split(' '));
+const unleet = (s) => s.toLowerCase().replace(/0/g, 'o').replace(/[1!]/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/8/g, 'b').replace(/9/g, 'g');
+// Misspellings made to slip past (Fuker, Phuck, Fvck, Fuuuck): the name squashed
+// down, letters that sound alike made the same (ph is f; ck, q and a c that isn't
+// ch are k; v is u) and doubled letters made single, then checked for these, squashed the same
+// way. Only words that can't turn up inside ordinary names once squashed: piss,
+// say, would squash to pis and catch Episode.
+const squash = (s) => unleet(s).replace(/[^a-z]/g, '').replace(/ph/g, 'f').replace(/ck|c(?!h)|q/g, 'k').replace(/v/g, 'u').replace(/(.)\1+/g, '$1');
+const BLOCKED_SQUASHED = rot13('shpx phag ovngpu chffl sphx').split(' ').map(squash);
 function nameAllowed(name) {
-  const words = unleet(name).split(/[^a-z]+/).filter(Boolean), joined = words.join('');
-  return !BLOCKED_ANYWHERE.some(w => joined.includes(w)) && !words.some(w => BLOCKED_WORDS.has(w)) && !BLOCKED_WORDS.has(joined);
+  const words = unleet(name).split(/[^a-z]+/).filter(Boolean), joined = words.join(''), squashed = squash(name);
+  return !BLOCKED_ANYWHERE.some(w => joined.includes(w)) && !words.some(w => BLOCKED_WORDS.has(w)) && !BLOCKED_WORDS.has(joined)
+    && !BLOCKED_SQUASHED.some(w => squashed.includes(w));
 }
 
 // The Cloudflare Web Analytics beacon for a token (letters and digits only).

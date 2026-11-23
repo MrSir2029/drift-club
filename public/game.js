@@ -1762,15 +1762,34 @@ function buildStreetWalls(track) {
   worldGroup.add(mesh);
 }
 
-// The sea round Palm Bay: one sheet of water out to the horizon, see-through
-// enough that the sand shows in the shallows and the deep reads darker.
+// The sea round Palm Bay: water out to the horizon, see-through enough that
+// the sand shows in the shallows and the deep reads darker. It's drawn as rings
+// round the camera, small close by and bigger further out, and moves with the
+// camera (it's flat and all one colour, so that looks the same as a sea that
+// goes on for ever). It used to be one huge square, two triangles kilometres
+// across, and graphics chips couldn't work out its depth accurately enough:
+// the sea flickered through the sand.
+function ringGeometry(rings = 62, segs = 48, first = 1, grow = 1.16) {
+  const pos = [0, 0, 0], index = [];
+  for (let k = 0, r = first; k < rings; k++, r *= grow) for (let j = 0; j < segs; j++) { const a = (j / segs) * Math.PI * 2; pos.push(Math.cos(a) * r, 0, Math.sin(a) * r); }
+  const at = (k, j) => 1 + k * segs + (j % segs);
+  for (let j = 0; j < segs; j++) index.push(0, at(0, j + 1), at(0, j)); // the middle (all facing up)
+  for (let k = 0; k < rings - 1; k++) for (let j = 0; j < segs; j++) index.push(at(k, j), at(k, j + 1), at(k + 1, j), at(k, j + 1), at(k + 1, j + 1), at(k + 1, j));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(pos.map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+  g.setIndex(index);
+  return g; // out to first * grow^(rings-1): about 7 km, past the furthest the camera sees
+}
 function buildSea(track) {
-  const sea = track.sea, c = track.limit;
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(26000, 26000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x29b8d0, transparent: true, opacity: 0.74 }));
-  water.position.set(c.x, sea.level, c.z);
-  water.receiveShadow = true; water.userData.dyn = true;
+  const sea = track.sea;
+  const water = new THREE.Mesh(ringGeometry(), new THREE.MeshLambertMaterial({ color: 0x29b8d0, transparent: true, opacity: 0.74 }));
+  water.position.y = sea.level;
+  water.receiveShadow = true; water.userData.dyn = true; water.frustumCulled = false;
+  water.renderOrder = -1; // first of the see-through things (the ghost car, the rotor's blur), which go over it
+  // centred under whichever camera is drawing it (the race, the menus, the podium)
+  water.onBeforeRender = (r, s, cam) => { water.position.set(cam.position.x, sea.level, cam.position.z); water.updateMatrixWorld(); };
   worldGroup.add(water);
-  anim.push((t) => { water.position.y = sea.level + Math.sin(t * 0.7) * 0.04; });
 }
 
 // Places to explore away from the circuit: a lake, a castle, a fairground, a
