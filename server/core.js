@@ -100,7 +100,8 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   // carries the server's signature, so a copy can be returned but not edited.
   const boards = new Map(); // 'track' -> [{ n: name, ms, c: car, s: signature }], fastest first
   const boardKey = (t) => String(t);
-  const signature = (k, n, ms, c) => sign(`${BOARD_SEASON}|${k}${(TRACK_VERSION[+k] || 1) > 1 ? 'v' + TRACK_VERSION[+k] : ''}|${n}|${ms}|${c}`);
+  const layoutTag = (k) => ((TRACK_VERSION[+k] || 1) > 1 ? 'v' + TRACK_VERSION[+k] : '');
+  const signature = (k, n, ms, c) => sign(`${BOARD_SEASON}|${k}${layoutTag(k)}|${n}|${ms}|${c}`);
   // A board's key, read as [track, car]. The car is null for today's boards
   // (one per track, any car); boards from v2.5 were kept per car, 'track:car'.
   function readKey(k) {
@@ -124,8 +125,29 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     boards.set(k, list);
     return list.indexOf(entry) + 1;
   }
+  // ---------- the best time ever through each third of each track ----------
+  // Purple in Polytrack mode's sector times. They only come with laps that
+  // count for the leaderboard (on this server's clock, and adding up to the
+  // lap), and are kept and handed back the same way as the boards, signed.
+  const secRecs = new Map(); // 'track' -> [{ n: name, ms, s: signature } or null] for sectors 1, 2 and 3
+  const secSignature = (k, i, n, ms) => sign(`${BOARD_SEASON}|sector|${k}${layoutTag(k)}|${i}|${n}|${ms}`);
+  function addSector(t, i, name, ms, c) {
+    ms = Math.round(ms);
+    if (!(i === 0 || i === 1 || i === 2) || !(t >= 0 && t < TRACK_COUNT) || !(ms >= minLapMs(t, c) / 3 && ms < 1200000) || !nameAllowed(name)) return false;
+    const k = boardKey(t), list = secRecs.get(k) || [null, null, null];
+    if (list[i] && list[i].ms <= ms) return false;
+    list[i] = { n: name, ms };
+    if (sign) list[i].s = secSignature(k, i, name, ms);
+    secRecs.set(k, list);
+    return true;
+  }
+  function sectorsChanged(k) {
+    const data = JSON.stringify({ t: 'srec', k, list: secRecs.get(k) });
+    for (const p of conns) { try { p.sock.send(data); } catch {} }
+    if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; boardsNow(); }, 20000);
+  }
   let boardsTimer = null;
-  const boardsNow = () => saveBoards({ season: BOARD_SEASON, boards: Object.fromEntries(boards) });
+  const boardsNow = () => saveBoards({ season: BOARD_SEASON, boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs) });
   function boardChanged(k) {
     const data = JSON.stringify({ t: 'lb', k, list: boards.get(k) });
     for (const p of conns) { try { p.sock.send(data); } catch {} }
@@ -135,6 +157,9 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     for (const [k, list] of Object.entries(savedBoards.boards || {})) {
       const kv = readKey(k);
       if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1] || e.c, +e.ms);
+    }
+    for (const [k, list] of Object.entries(savedBoards.sec || {})) {
+      if (Array.isArray(list)) list.forEach((e, i) => { if (e && typeof e.n === 'string') addSector(+k, i, cleanName(e.n), +e.ms, 'open'); });
     }
   }
 
@@ -364,6 +389,15 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
           broadcast(room, { t: 'best', id: player.id, time: player.best });
         }
         if (Math.abs(time - since) > 3000) return;
+        // its three sectors, if they add up to it, for the best-ever sector times
+        if (room.mode === 'quali' && Array.isArray(msg.sec) && msg.sec.length === 3) {
+          const sec = msg.sec.map(x => Math.round(+x));
+          if (sec.every(x => x > 0) && Math.abs(sec[0] + sec[1] + sec[2] - time) <= 50) {
+            let better = false;
+            sec.forEach((ms, i) => { if (addSector(room.trackId, i, player.name, ms, room.car)) better = true; });
+            if (better) sectorsChanged(boardKey(room.trackId));
+          }
+        }
         const place = addLap(player.name, room.trackId, room.car, time);
         if (place) {
           boardChanged(boardKey(room.trackId));
@@ -410,6 +444,16 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
           }
         }
         for (const k of changed) boardChanged(k);
+        // and their copy of the best sectors
+        if (msg.sec && typeof msg.sec === 'object') for (const [k, list] of Object.entries(msg.sec)) {
+          if (!/^\d$/.test(k) || !Array.isArray(list)) continue;
+          let better = false;
+          list.slice(0, 3).forEach((e, i) => {
+            if (!e || typeof e.n !== 'string' || typeof e.s !== 'string' || !Number.isInteger(e.ms) || e.n !== cleanName(e.n) || e.s !== secSignature(k, i, e.n, e.ms)) return;
+            if (addSector(+k, i, e.n, e.ms, 'open')) better = true;
+          });
+          if (better) sectorsChanged(k);
+        }
         break;
       }
       case 'endquali': {
@@ -504,7 +548,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       if (conns.size > stats.peak) { stats.peak = conns.size; stats.peakAt = Date.now(); }
       statsChanged();
       sweepTimer ??= setInterval(sweep, 20000);
-      send(p, { t: 'lbs', boards: Object.fromEntries(boards) }); // the leaderboard, to start with
+      send(p, { t: 'lbs', boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs) }); // the leaderboard (and best sectors), to start with
       return {
         message(raw) {
           p.seen = Date.now();

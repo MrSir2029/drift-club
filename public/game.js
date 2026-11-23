@@ -3621,28 +3621,38 @@ function tyreForce(surf, Fz, alpha) {
   return -surf.mu * Fz * Math.sin(surf.C * Math.atan(surf.B * alpha));
 }
 
-// Sector times in Polytrack mode, like F1: the lap in three, split at gates 2
-// and 4. Purple is the best anyone has done this session, green your own best,
-// yellow slower. The last lap's stay up, faded, until the new ones come in.
+// Sector times in Polytrack mode: the lap in three, split at gates 2 and 4.
+// The sector you're in counts up as you drive; one you've finished shows its
+// time in purple if it's the best ever on this track, green if it's the best
+// this session (anyone's), yellow if it's slower. The lap you've just finished
+// stays up for a moment after the line.
 function sectorDone(n, t) {
-  const S = app.sec; t = Math.round(t); // whole milliseconds, as the server keeps them (else your own best comes back a hair quicker)
+  const S = app.sec; t = Math.round(t); // whole milliseconds, as the server keeps them
   if (!S || !(t > 0)) return;
   S.cur[n] = t;
-  if (S.pb[n] == null || t < S.pb[n]) S.pb[n] = t;
-  if (S.best[n] == null || t < S.best[n]) { S.best[n] = t; send({ t: 'sector', n, time: Math.round(t) }); }
-  renderSectors();
+  if (S.session[n] == null || t < S.session[n]) { S.session[n] = t; send({ t: 'sector', n, time: t }); }
 }
-function newLapSectors() {
+function newLapSectors(finished) {
   const S = app.sec; if (!S) return;
-  S.old = S.cur.map((t, i) => t ?? S.old[i]); S.cur = [null, null, null];
-  renderSectors();
+  S.prev = finished ? [...S.cur] : [null, null, null]; S.prevUntil = finished ? performance.now() + 2500 : 0;
+  S.cur = [null, null, null];
 }
-function renderSectors() {
-  const S = app.sec, el = $('#sectors'); if (!S || !el) return;
+function sectorColour(n, t) {
+  const ever = app.secRec[String(app.trackId)]?.[n]?.ms, S = app.sec;
+  return t <= (ever ?? Infinity) ? 'purple' : t <= (S.session[n] ?? Infinity) ? 'green' : 'yellow';
+}
+function renderSectors(now) {
+  const S = app.sec, el = $('#sectors'), car = app.local; if (!S || !el || !car) return;
+  const running = !car.armed && car.lapStart > 0;
+  const at = S.cur[0] == null ? 0 : S.cur[1] == null ? 1 : 2; // the sector you're in
   [...el.children].forEach((pill, n) => {
-    const t = S.cur[n] ?? S.old[n], old = S.cur[n] == null;
-    pill.textContent = `S${n + 1} ${t == null ? '--' : (t / 1000).toFixed(2)}`;
-    pill.className = t == null ? '' : (t <= (S.best[n] ?? Infinity) ? 'purple' : t <= (S.pb[n] ?? Infinity) ? 'green' : 'yellow') + (old ? ' old' : '');
+    let text = '--', cls = '';
+    if (S.cur[n] != null) { text = (S.cur[n] / 1000).toFixed(2); cls = sectorColour(n, S.cur[n]); }
+    else if (running && n === at) { text = (Math.max(0, now - car.lapStart - (S.cur[0] ?? 0) - (S.cur[1] ?? 0)) / 1000).toFixed(1); cls = 'run'; }
+    else if (now < S.prevUntil && S.prev[n] != null) { text = (S.prev[n] / 1000).toFixed(2); cls = sectorColour(n, S.prev[n]); }
+    text = `S${n + 1} ${text}`;
+    if (pill.textContent !== text) pill.textContent = text;
+    if (pill.className !== cls) pill.className = cls;
   });
 }
 
@@ -3661,7 +3671,7 @@ function restartRun() {
   car.nextCp = 1; car.missedGate = false; car.offTrackTimer = 0; car.fellTimer = 0; car.onTrack = true;
   car.armed = true; car.lapStart = 0;
   app.rec = []; app.recFrom = null; app.dI = 0; app.ghostI = 0; app.ghostDelta = null;
-  newLapSectors();
+  newLapSectors(false);
   camInit = false;
   raceToast('Fresh run: your time starts at the line', 1800);
 }
@@ -3933,14 +3943,15 @@ function stepLocal(car, dt, canDrive) {
           const nowP = performance.now();
           const lapTime = nowP - (car.lapStart || raceStartPerf());
           if (app.mode === 'quali' && app.sec?.cur[0] != null && app.sec.cur[1] != null) sectorDone(2, lapTime - app.sec.cur[0] - app.sec.cur[1]);
-          newLapSectors();
+          const lapSec = app.mode === 'quali' && app.sec?.cur.every(x => x != null) ? [...app.sec.cur] : null;
+          newLapSectors(true);
           car.lapStart = nowP;
           if (!app.bestLap || lapTime < app.bestLap) app.bestLap = lapTime;
           app.myLaps.push(lapTime);
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          send({ t: 'lap', time: Math.round(lapTime) }); // for the leaderboard (and the best laps, in Polytrack mode)
+          send({ t: 'lap', time: Math.round(lapTime), sec: lapSec }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
           notePersonalBest(lapTime);
           if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
@@ -4156,7 +4167,7 @@ function connect() {
   ws.onopen = () => {
     $('#btn-create').disabled = false; $('#btn-join').disabled = false;
     // our copy of the leaderboard: fills it back in if the server has restarted
-    const seed = JSON.stringify({ t: 'lbseed', boards: app.lbKeep });
+    const seed = JSON.stringify({ t: 'lbseed', boards: app.lbKeep, sec: app.secKeep });
     if (seed.length > 30 && seed.length < 12000) ws.send(seed);
   };
   ws.onclose = () => {
@@ -4251,8 +4262,9 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
-    case 'sector': if (app.sec && msg.n >= 0 && msg.n < 3 && (app.sec.best[msg.n] == null || msg.time < app.sec.best[msg.n])) { app.sec.best[msg.n] = msg.time; renderSectors(); } break;
-    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); break;
+    case 'sector': if (app.sec && msg.n >= 0 && msg.n < 3 && (app.sec.session[msg.n] == null || msg.time < app.sec.session[msg.n])) app.sec.session[msg.n] = msg.time; break;
+    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); app.secRec = msg.sec && typeof msg.sec === 'object' ? msg.sec : {}; keepSectors(app.secRec); break;
+    case 'srec': if (typeof msg.k === 'string' && Array.isArray(msg.list)) { app.secRec[msg.k] = msg.list; keepSectors({ [msg.k]: msg.list }); } break;
     case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); } break;
     case 'record': {
       const where = TRACKS[msg.track]?.name || 'this track';
@@ -4289,8 +4301,7 @@ function beginRace(msg) {
   const slot = Math.max(0, gridOrder(msg.grid).findIndex(p => p.id === app.myId));
   spawnLocal(slot, app.mode === 'quali');
   if (app.mode === 'quali') { app.local.armed = true; app.local.lastCpIdx = app.local.idx; } // the clock starts at the line
-  app.sec = { cur: [null, null, null], old: [null, null, null], pb: [null, null, null], best: (msg.sectors || [null, null, null]).map(b => (b ? b.time : null)) };
-  renderSectors();
+  app.sec = { cur: [null, null, null], prev: [null, null, null], prevUntil: 0, session: (msg.sectors || [null, null, null]).map(b => (b ? b.time : null)) };
   for (const p of app.room.players) if (p.id !== app.myId) ensureRemote(p);
   app.phase = 'countdown';
   app.bestLap = 0;
@@ -4326,6 +4337,20 @@ try { const b = JSON.parse(localStorage.getItem('dc-pb') || '{}'); if (b && type
 // restarted with empty boards can't wipe it.
 app.lbKeep = {};
 try { const b = JSON.parse(localStorage.getItem('dc-lb-keep') || 'null'); app.lbKeep = b && typeof b === 'object' && !Array.isArray(b) ? b : { ...app.boards }; } catch {}
+// The best time ever through each sector of each track (purple in Polytrack
+// mode), signed by the server: kept here and handed back like the boards.
+app.secRec = {};
+app.secKeep = {};
+try { const b = JSON.parse(localStorage.getItem('dc-sec') || '{}'); if (b && typeof b === 'object' && !Array.isArray(b)) app.secKeep = b; } catch {}
+function keepSectors(recs) {
+  let changed = false;
+  for (const [k, list] of Object.entries(recs || {})) {
+    if (!Array.isArray(list)) continue;
+    const mine = app.secKeep[k] ||= [null, null, null];
+    list.forEach((e, i) => { if (e && e.s && (!mine[i] || e.ms < mine[i].ms)) { mine[i] = e; changed = true; } });
+  }
+  if (changed) try { localStorage.setItem('dc-sec', JSON.stringify(app.secKeep)); } catch {}
+}
 // A track with a new layout ('v' in tracks.js) starts its times again: this
 // browser's best and its copies of that board go (the server won't take the
 // old ones back either).
@@ -4334,12 +4359,12 @@ try {
   let changed = false;
   TRACKS.forEach((d, i) => {
     if ((seen[i] || 1) === (d.v || 1)) return;
-    for (const o of [app.pbs, app.boards, app.lbKeep]) for (const k of Object.keys(o)) if (k.split(':')[0] === String(i)) delete o[k];
+    for (const o of [app.pbs, app.boards, app.lbKeep, app.secKeep]) for (const k of Object.keys(o)) if (k.split(':')[0] === String(i)) delete o[k];
     seen[i] = d.v || 1; changed = true;
   });
   if (changed) {
     localStorage.setItem('dc-layouts', JSON.stringify(seen));
-    localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); localStorage.setItem('dc-lb', JSON.stringify(app.boards)); localStorage.setItem('dc-lb-keep', JSON.stringify(app.lbKeep));
+    localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); localStorage.setItem('dc-lb', JSON.stringify(app.boards)); localStorage.setItem('dc-lb-keep', JSON.stringify(app.lbKeep)); localStorage.setItem('dc-sec', JSON.stringify(app.secKeep));
   }
 } catch {}
 function keepBoards(boards) {
@@ -5079,6 +5104,7 @@ function updateHud(now) {
     }
   }
   setText('#hud-best', app.bestLap ? fmtTime(app.bestLap) : '--');
+  if (app.mode === 'quali') renderSectors(performance.now());
   const gd = app.mode === 'quali' ? app.ghostDelta : null;
   setText('#hud-delta', gd == null ? '' : (gd >= 0 ? '+' : '\u2212') + Math.abs(gd).toFixed(2));
   if (gd != null) { const el = textCache.get('#hud-delta').el; el.classList.toggle('ahead', gd < 0); el.classList.toggle('behind', gd >= 0); }
@@ -5295,7 +5321,7 @@ function frame(now) {
       const c = app.local;
       if (app.recFrom == null && c.idx < app.track.N / 2) {
         app.recFrom = now; app.rec = [];
-        if (c.armed) { c.armed = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); newLapSectors(); } // a fresh run starts here
+        if (c.armed) { c.armed = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); newLapSectors(false); } // a fresh run starts here
       }
       if (app.recFrom != null) {
         const r = app.rec, t = now - app.recFrom;
