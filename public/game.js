@@ -166,8 +166,8 @@ function onTop(g, spec, a0, a1, c0, c1, mat, text, ink, driver) {
 // buildOpenBody's sidepods, tub, nose, engine cover, airbox and endplates):
 // the car's colour on top, black underneath, a pinstripe in a colour that
 // stands out against it, the driver's name on the sidepods, their race number
-// (random, or the one they typed) on the engine cover and on top of the tub
-// where the driver sees it, and DRIFT CLUB once, on the rear wing endplates. The secret livery adds its sponsors and lime trim.
+// (random, or the one they typed) on the engine cover and on the nose (it
+// reads from in front, like on a real F1 car), and DRIFT CLUB once, on the rear wing endplates. The secret livery adds its sponsors and lime trim.
 const POD = [0.62, 0.44, 1.45, null, [0.35, 0.5, -0.028], 0.7, 0.45, -0.375];
 const TUB = [0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null, 0, 0.5, 0.85];
 const NOSE = [0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null, 0, 0.45, 2.62];
@@ -226,7 +226,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
   // the driver's name on each sidepod, up at the front in the car's colour (on the
   // secret livery, above its level lime line), clear of the black and the intake
   if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
-  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink, true)); // and on top of the tub, facing the driver
+  lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink)); // and on the nose, reading from in front like a real F1 car's
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
   const byMat = new Map();
@@ -2637,13 +2637,233 @@ function buildScenery(track) {
 // Noosa Heads's seaside: palms (in a row along the road, and in clumps), beach
 // huts facing the sea, umbrellas and towels down by the water, a lighthouse
 // on the headland and boats out at sea.
+// The harbour at Noosa Heads, in the bay beside the start straight: a marina
+// tucked under the headland (two piers, pontoons, boats moored between them),
+// a swimming beach between red and yellow flags with a lifeguard tower,
+// swimmers and a line of buoys, jet skis, a parasail towed round the bay,
+// gulls overhead and a cruise ship out on the horizon. Returns the patches of
+// sea it uses, so the boats going round out there keep clear.
+function buildHarbour(track, rnd, add, people) {
+  const { samples, hw } = track, sea = track.sea, L = sea.level, lim = track.limit, solids = track.solids, walls = track.walls;
+  const s0 = samples[0], out = wetAt(s0.p.x + s0.left.x * 80, s0.p.z + s0.left.z * 80) ? 1 : -1;
+  // (a, o): metres along the start straight from the line, and out to sea from it
+  const W = (a, o) => [s0.p.x + s0.th.x * a + s0.left.x * out * o, s0.p.z + s0.th.z * a + s0.left.z * out * o];
+  const toSea = Math.atan2(s0.left.x * out, s0.left.z * out), along = Math.atan2(s0.th.x, s0.th.z);
+  const shoreAt = (a) => { let o = 0; while (o < 160 && terrainHeight(...W(a, o)) > L) o += 0.5; return o; }; // where the water starts
+  const inMap = (x, z, m) => Math.hypot(x - lim.x, z - lim.z) < lim.r - m;
+  const wall = (a0, o0, a1, o1) => { const [ax, az] = W(a0, o0), [bx, bz] = W(a1, o1); walls.push({ ax, az, bx, bz, y: L - WADE }); };
+  const keep = [];
+  const model = (build) => { const g = new THREE.Group(); build(g); mergeStatic(g); return g; };
+
+  // ---- the marina: two piers out from the beach, a pontoon every 9 m, boats moored between ----
+  const DECK = L + 1.0, FLOAT = L + 0.45, berths = [];
+  for (const pa of [-48, -8]) {
+    const o0 = shoreAt(pa) - 5, o1 = Math.min(o0 + 82, 128); // from the sand just above the water
+    const ends = [W(pa, o0), W(pa, o1)];
+    if (o1 - o0 < 30 || !ends.every(([x, z]) => inMap(x, z, 20) && roadGap(track, x, z) > hw + 12)) continue;
+    const [cx, cz] = W(pa, (o0 + o1) / 2);
+    add(worldGroup, new THREE.BoxGeometry(3, 0.3, o1 - o0), 0xc9a271, cx, DECK - 0.15, cz).rotation.y = toSea;
+    for (let o = o0 + 2; o < o1; o += 6) for (const sd of [-1.3, 1.3]) {
+      const [x, z] = W(pa + sd, o), gy = Math.max(terrainHeight(x, z), L - 5);
+      add(worldGroup, new THREE.CylinderGeometry(0.16, 0.16, DECK - gy, 6), 0x6b4a2a, x, (DECK + gy) / 2, z);
+    }
+    wall(pa - 1.5, o0, pa - 1.5, o1); wall(pa + 1.5, o0, pa + 1.5, o1); wall(pa - 1.5, o1, pa + 1.5, o1);
+    { const [x, z] = W(pa, o0 - 3); claim(x, z, 4); } // keep the sand at its foot clear
+    for (let o = o0 + 12; o < o1 - 3; o += 9) for (const sd of [-1, 1]) {
+      const [fx, fz] = W(pa + sd * 6.5, o);
+      add(worldGroup, new THREE.BoxGeometry(10, 0.35, 1.2), 0xa8794a, fx, FLOAT - 0.175, fz).rotation.y = toSea;
+      wall(pa + sd * 1.5, o, pa + sd * 11.5, o);
+      if (o + 4.5 < o1 - 1 && rnd() < 0.8) berths.push({ a: pa + sd * 7, o: o + 4.5, sd });
+    }
+    keep.push({ x: cx, z: cz, r: 45 });
+  }
+  // the boats in the berths: three kinds, each drawn as instances
+  const kinds = [
+    model((g) => { // a yacht, sail furled on the boom
+      add(g, taperBox(2.6, 1.1, 8, [0.15, 1, 0.25], [0.8, 1, 0]), 0xf6f2e8, 0, 0.3, 0);
+      add(g, new THREE.BoxGeometry(1.7, 0.6, 3), 0xe9e2d0, 0, 1.1, -0.6);
+      add(g, new THREE.BoxGeometry(0.13, 11, 0.13), 0xb9bdc5, 0, 6.3, 0.9);
+      add(g, new THREE.BoxGeometry(0.32, 0.32, 3.4), 0x1d2b5c, 0, 2.1, -0.8);
+    }),
+    model((g) => { // a motor cruiser
+      add(g, taperBox(3, 1.3, 9, [0.2, 1, 0.35], [0.9, 1, 0]), 0xf6f2e8, 0, 0.35, 0);
+      add(g, new THREE.BoxGeometry(2.4, 1.0, 4), 0xf6f2e8, 0, 1.45, -0.7);
+      add(g, new THREE.BoxGeometry(2.46, 0.38, 3.4), 0x26303f, 0, 1.55, -0.5);
+      add(g, new THREE.BoxGeometry(1.9, 0.5, 2), 0xe9e2d0, 0, 2.2, -1.3);
+    }),
+    model((g) => { // a yacht with a navy hull
+      add(g, taperBox(2.4, 1.0, 7.4, [0.15, 1, 0.25], [0.8, 1, 0]), 0x1d2b5c, 0, 0.3, 0);
+      add(g, new THREE.BoxGeometry(1.6, 0.55, 2.6), 0xf6f2e8, 0, 1.05, -0.5);
+      add(g, new THREE.BoxGeometry(0.13, 10, 0.13), 0xb9bdc5, 0, 5.8, 0.8);
+      add(g, new THREE.BoxGeometry(0.3, 0.3, 3.1), 0xe6453a, 0, 2.0, -0.7);
+    }),
+  ].map((g) => { const m = new THREE.InstancedMesh(g.children[0].geometry, mergedMat(THREE.FrontSide, 0), berths.length || 1); m.count = 0; m.castShadow = true; m.frustumCulled = false; m.userData.dyn = true; worldGroup.add(m); return m; });
+  const moored = berths.map((b) => {
+    const [x, z] = W(b.a, b.o), m = kinds[Math.floor(rnd() * kinds.length)];
+    solids.push({ x, z, r: 2.4, y: L - WADE });
+    return { m, i: m.count++, x, z, rot: along + (b.sd > 0 ? Math.PI : 0), ph: rnd() * 6.28 };
+  });
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), P = V(0, 0, 0), ONE = V(1, 1, 1);
+  const place = (m, i, x, y, z, ry, rx = 0, rz = 0) => { m.setMatrixAt(i, M.compose(P.set(x, y, z), Q.setFromEuler(E.set(rx, ry, rz, 'YXZ')), ONE)); };
+
+  // ---- the swimming beach: flags at each end, a lifeguard tower, buoys, swimmers ----
+  const A0 = -150, A1 = -88, oFar = Math.max(shoreAt(A0), shoreAt(A1)) + 24;
+  const flag = (x, z, y) => {
+    const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = along; worldGroup.add(g);
+    add(g, new THREE.BoxGeometry(0.1, 4, 0.1), 0xf6f2e8, 0, 2, 0);
+    add(g, new THREE.BoxGeometry(1.3, 0.45, 0.05), 0xe6453a, 0.7, 3.75, 0);
+    add(g, new THREE.BoxGeometry(1.3, 0.45, 0.05), 0xffd23f, 0.7, 3.3, 0);
+  };
+  if ([A0, A1].every((a) => inMap(...W(a, oFar), 10))) {
+    for (const a of [A0, A1]) {
+      const [x, z] = W(a, shoreAt(a) - 7);
+      if (isFree(track, x, z, 1, hw + 8)) { const y = terrainHeight(x, z); flag(x, z, y); claim(x, z, 1.2); solids.push({ x, z, r: 0.2, y }); }
+    }
+    const [tx, tz] = W((A0 + A1) / 2, shoreAt((A0 + A1) / 2) - 10);
+    if (isFree(track, tx, tz, 3, hw + 8)) {
+      const g = new THREE.Group(), y = terrainHeight(tx, tz);
+      for (const [lx, lz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) add(g, new THREE.BoxGeometry(0.2, 3.3, 0.2), 0xf6f2e8, lx * 1.1, 1.6, lz * 1.1);
+      add(g, new THREE.BoxGeometry(3, 0.2, 3), 0xc9a271, 0, 3.25, 0.2);
+      add(g, new THREE.BoxGeometry(2.2, 1.8, 2.2), 0xe6453a, 0, 4.25, -0.2);
+      add(g, new THREE.BoxGeometry(1.9, 0.6, 0.06), 0x26303f, 0, 4.6, 0.92); // its window, looking out to sea
+      add(g, new THREE.BoxGeometry(2.8, 0.25, 2.8), 0xffd23f, 0, 5.25, -0.2);
+      add(g, new THREE.BoxGeometry(0.8, 0.1, 3.8), 0xf6f2e8, 0, 1.6, 2.6).rotation.x = -0.95; // the ladder
+      add(g, new THREE.BoxGeometry(0.08, 2.2, 0.08), 0xf6f2e8, 0.9, 6.4, -1.1);
+      add(g, new THREE.BoxGeometry(0.9, 0.3, 0.04), 0xe6453a, 1.35, 7.3, -1.1); add(g, new THREE.BoxGeometry(0.9, 0.3, 0.04), 0xffd23f, 1.35, 7.0, -1.1);
+      g.position.set(tx, y, tz); g.rotation.y = toSea; worldGroup.add(g);
+      claim(tx, tz, 3.2); solids.push({ x: tx, z: tz, r: 1.9, y });
+      people.add(tx + Math.sin(toSea) * 1.3, y + 3.35, tz + Math.cos(toSea) * 1.3, toSea, 0xe6453a); // on watch in front of the hut
+    }
+    const buoy = new THREE.SphereGeometry(0.35, 6, 4);
+    const buoyAt = (a, o) => { const [x, z] = W(a, o); add(worldGroup, buoy, 0xffd23f, x, L + 0.1, z).castShadow = false; };
+    for (const a of [A0, A1]) { for (let o = shoreAt(a) + 3; o < oFar; o += 4) buoyAt(a, o); wall(a, shoreAt(a) + 1, a, oFar); }
+    for (let a = A0; a <= A1; a += 4) buoyAt(a, oFar);
+    wall(A0, oFar, A1, oFar);
+    const ring = new THREE.TorusGeometry(0.56, 0.17, 6, 12).rotateX(Math.PI / 2), ringCols = [0xff6bcb, 0xffd23f, 0x2ec4b6, 0xff8a3d];
+    for (let k = 0, n = 0; k < 300 && n < 34; k++) {
+      const a = A0 + 3 + rnd() * (A1 - A0 - 6), so = shoreAt(a), o = so + 1.5 + rnd() * (oFar - so - 4), [x, z] = W(a, o), gy = terrainHeight(x, z);
+      if (L - gy < 0.3) continue; // not on the sand
+      people.add(x, Math.max(gy, L - 0.8), z, rnd() * 6.28); // standing in the shallows, or swimming with just their head out
+      if (L - gy > 0.9 && rnd() < 0.3) add(worldGroup, ring, ringCols[n % 4], x, L + 0.04, z).castShadow = false;
+      n++;
+    }
+  }
+
+  // ---- jet skis doing figures of eight ----
+  const skis = [];
+  for (const [a, o, R, col] of [[-115, 150, 30, 0xffd23f], [-30, 178, 26, 0xe6453a]]) {
+    const [cx, cz] = W(a, o);
+    if (!inMap(cx, cz, R + 15)) continue;
+    const g = model((g) => {
+      add(g, taperBox(1.1, 0.55, 3.2, [0.35, 1, 0.12], [0.95, 1, 0]), col, 0, 0.25, 0);
+      add(g, new THREE.BoxGeometry(0.5, 0.3, 1.3), 0x26303f, 0, 0.65, -0.35);
+      add(g, new THREE.BoxGeometry(0.46, 0.8, 0.3), 0x1d2230, 0, 1.15, -0.45);
+      add(g, new THREE.BoxGeometry(0.5, 0.45, 0.34), 0xff8a3d, 0, 1.3, -0.45); // life jacket
+      add(g, new THREE.BoxGeometry(0.3, 0.3, 0.3), 0xd9a577, 0, 1.75, -0.4);
+    });
+    g.userData.dyn = true; worldGroup.add(g);
+    skis.push({ g, cx, cz, R, ph: rnd() * 6.28, sp: 0.42 + rnd() * 0.08, turn: rnd() * 3.14 });
+    keep.push({ x: cx, z: cz, r: R + 8 });
+  }
+  const skiAt = (k, u) => { const c = Math.cos(k.turn), s = Math.sin(k.turn), lx = k.R * Math.sin(u), lz = (k.R / 2) * Math.sin(2 * u); return [k.cx + lx * c - lz * s, k.cz + lx * s + lz * c]; };
+
+  // ---- a parasail: a boat towing a striped canopy round the bay ----
+  let para = null;
+  { const [cx, cz] = W(-150, 250), R = 55;
+    if (inMap(cx, cz, R + 10)) {
+      const boat = model((g) => {
+        add(g, taperBox(2.4, 1.0, 6.5, [0.25, 1, 0.3], [0.95, 1, 0]), 0xf6f2e8, 0, 0.3, 0);
+        add(g, new THREE.BoxGeometry(1.2, 0.9, 1.0), 0x3d8bff, 0, 1.1, 0.2);
+        add(g, new THREE.BoxGeometry(0.46, 0.85, 0.3), 0xe6453a, 0, 1.25, -0.8);
+        add(g, new THREE.BoxGeometry(0.3, 0.3, 0.3), 0xd9a577, 0, 1.85, -0.8);
+      });
+      boat.userData.dyn = true; worldGroup.add(boat);
+      const dome = new THREE.SphereGeometry(4.2, 12, 4, 0, Math.PI * 2, 0, Math.PI / 2).toNonIndexed().scale(1.35, 0.55, 1);
+      const stripes = [0xe6453a, 0xffd23f, 0x3d8bff, 0x7ed957, 0xff6bcb, 0xff8a3d], c = new THREE.Color(), cols = [], pa = dome.attributes.position;
+      for (let i = 0; i < pa.count; i += 3) {
+        const ang = Math.atan2(pa.getZ(i) + pa.getZ(i + 1) + pa.getZ(i + 2), pa.getX(i) + pa.getX(i + 1) + pa.getX(i + 2));
+        c.set(stripes[Math.floor(((ang + Math.PI) / (Math.PI * 2)) * 12) % 6]);
+        for (let j = 0; j < 3; j++) cols.push(c.r, c.g, c.b);
+      }
+      dome.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+      const chute = new THREE.Group(); chute.userData.dyn = true; worldGroup.add(chute);
+      chute.add(new THREE.Mesh(dome, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })));
+      const rope = new THREE.MeshLambertMaterial({ color: 0x3b4250 });
+      for (const sx of [-1, 1]) chute.add(strut(V(sx * 5.5, 0.1, 0), V(0, -5.4, 0), 0.04, 0.04, rope));
+      const flyer = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.85, 0.3), new THREE.MeshLambertMaterial({ color: 0xffd23f, flatShading: true })); flyer.position.y = -5.9; chute.add(flyer);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: 0xd9a577, flatShading: true })); head.position.y = -5.3; chute.add(head);
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1), rope); line.userData.dyn = true; worldGroup.add(line);
+      para = { boat, chute, line, cx, cz, R, ph: rnd() * 6.28 };
+      keep.push({ x: cx, z: cz, r: R + 12 });
+    }
+  }
+
+  // ---- gulls wheeling over the beach and the bay ----
+  const GULLS = 14, gl = new THREE.MeshLambertMaterial({ color: 0xf6f2e8, flatShading: true }), gw = new THREE.MeshLambertMaterial({ color: 0xc9ced6, flatShading: true });
+  const gBody = new THREE.InstancedMesh(new THREE.BoxGeometry(0.28, 0.22, 0.75), gl, GULLS);
+  const gLeft = new THREE.InstancedMesh(new THREE.BoxGeometry(1.15, 0.05, 0.42).translate(0.575, 0, 0), gw, GULLS);
+  const gRight = new THREE.InstancedMesh(new THREE.BoxGeometry(1.15, 0.05, 0.42).translate(-0.575, 0, 0), gw, GULLS);
+  for (const m of [gBody, gLeft, gRight]) { m.frustumCulled = false; m.userData.dyn = true; worldGroup.add(m); }
+  const gulls = [];
+  for (let k = 0; k < GULLS; k++) {
+    const [cx, cz] = W(-200 + rnd() * 230, 15 + rnd() * 130), r = 8 + rnd() * 18, dir = rnd() < 0.5 ? 1 : -1;
+    gulls.push({ cx, cz, r, h: L + 12 + rnd() * 16, sp: dir * (6 + rnd() * 3) / r, ph: rnd() * 6.28 });
+  }
+  const MB = new THREE.Matrix4(), MW = new THREE.Matrix4();
+
+  // ---- and a cruise ship out on the horizon ----
+  { const [x, z] = W(-150, 560), g = new THREE.Group();
+    add(g, new THREE.BoxGeometry(24, 9, 105), 0xf6f2e8, 0, 1.5, -17.5);
+    add(g, taperBox(24, 9, 40, [0.12, 1, 0.8], null), 0xf6f2e8, 0, 1.5, 55);
+    add(g, new THREE.BoxGeometry(24.2, 2.6, 105), 0x1d2b5c, 0, 0.8, -17.5);
+    add(g, new THREE.BoxGeometry(20, 5, 95), 0xf6f2e8, 0, 8.5, -15);
+    add(g, new THREE.BoxGeometry(20.3, 1.4, 90), 0x26303f, 0, 8.6, -15);
+    add(g, new THREE.BoxGeometry(17, 4.5, 75), 0xf6f2e8, 0, 13.2, -18);
+    add(g, new THREE.BoxGeometry(17.3, 1.2, 70), 0x26303f, 0, 13.3, -18);
+    add(g, new THREE.BoxGeometry(13, 4, 40), 0xf6f2e8, 0, 17.4, -12);
+    add(g, taperBox(6, 10, 9, [0.85, 1, 0], null), 0xe6453a, 0, 24, -42);
+    add(g, new THREE.BoxGeometry(6.1, 1.5, 9.1), 0x1d2230, 0, 28.5, -42);
+    g.position.set(x, L - 0.5, z); g.rotation.y = along; worldGroup.add(g);
+  }
+
+  const tick = (t) => {
+    for (const b of moored) place(b.m, b.i, b.x, L - 0.15 + Math.sin(t * 1.1 + b.ph) * 0.07, b.z, b.rot, Math.sin(t * 0.8 + b.ph) * 0.02, Math.sin(t * 0.9 + b.ph) * 0.04);
+    for (const m of kinds) m.instanceMatrix.needsUpdate = true;
+    for (const k of skis) {
+      const u = t * k.sp + k.ph, [x, z] = skiAt(k, u), [x2, z2] = skiAt(k, u + 0.04), [x3, z3] = skiAt(k, u + 0.08);
+      const h = Math.atan2(x2 - x, z2 - z), h2 = Math.atan2(x3 - x2, z3 - z2);
+      let dh = h2 - h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+      k.g.position.set(x, L - 0.05 + Math.sin(t * 7 + k.ph) * 0.05, z);
+      k.g.rotation.set(-0.08, h, clamp(-dh * 9, -0.5, 0.5), 'YXZ');
+    }
+    if (para) {
+      const a = para.ph + t * 8 / para.R, bx = para.cx + Math.cos(a) * para.R, bz = para.cz + Math.sin(a) * para.R, fx = -Math.sin(a), fz = Math.cos(a);
+      para.boat.position.set(bx, L - 0.1 + Math.sin(t * 1.4) * 0.06, bz); para.boat.rotation.set(-0.05, Math.atan2(fx, fz), 0.05);
+      para.chute.position.set(bx - fx * 42, L + 26 + Math.sin(t * 0.6) * 1.2, bz - fz * 42); para.chute.rotation.set(0.15, Math.atan2(fx, fz), Math.sin(t * 0.5) * 0.06, 'YXZ');
+      const from = V(bx - fx * 3, L + 1.0, bz - fz * 3), to = V(bx - fx * 42, para.chute.position.y - 6.3, bz - fz * 42), d = to.clone().sub(from), len = d.length();
+      para.line.position.copy(from).addScaledVector(d, 0.5); para.line.quaternion.setFromUnitVectors(_z, d.normalize()); para.line.scale.set(1, 1, len);
+    }
+    gulls.forEach((g, k) => {
+      const a = g.ph + t * g.sp, s = Math.sign(g.sp), glide = Math.sin(t * 0.4 + g.ph) > 0.2, flap = glide ? 0.12 : Math.sin(t * 10 + g.ph) * 0.55;
+      MB.compose(P.set(g.cx + Math.cos(a) * g.r, g.h + Math.sin(t * 0.7 + g.ph) * 1.5, g.cz + Math.sin(a) * g.r), Q.setFromEuler(E.set(0, Math.atan2(-Math.sin(a) * s, Math.cos(a) * s), -s * 0.3, 'YXZ')), ONE);
+      gBody.setMatrixAt(k, MB);
+      MW.makeRotationZ(flap).setPosition(0.14, 0.05, 0); gLeft.setMatrixAt(k, MW.premultiply(MB));
+      MW.makeRotationZ(-flap).setPosition(-0.14, 0.05, 0); gRight.setMatrixAt(k, MW.premultiply(MB));
+    });
+    gBody.instanceMatrix.needsUpdate = gLeft.instanceMatrix.needsUpdate = gRight.instanceMatrix.needsUpdate = true;
+  };
+  tick(0); anim.push(tick); // placed now, so nothing waits at the origin for the first frame
+  return keep;
+}
+
 function buildBeach(track, rnd, randIn) {
   const { samples, N, hw } = track, sea = track.sea, lim = track.limit, solids = track.solids;
   const mats = new Map();
   const lam = (c) => { let m = mats.get(c); if (!m) mats.set(c, m = new THREE.MeshLambertMaterial({ color: c, flatShading: true })); return m; };
   const add = (g, geo, color, x, y, z) => { const m = new THREE.Mesh(geo, lam(color)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
   const M = new THREE.Matrix4();
-  const people = makePeople(80, rnd);
+  const people = makePeople(150, rnd);
+  const keep = buildHarbour(track, rnd, add, people); // first, so the huts and umbrellas leave it room
 
   // ---- palms: a curving trunk and a crown of drooping fronds, drawn as instances ----
   const part = new THREE.Group();
@@ -2772,7 +2992,7 @@ function buildBeach(track, rnd, randIn) {
     const a = rnd() * 6.2832, d = lim.r * (0.45 + rnd() * 0.9), cx = lim.x + Math.cos(a) * d, cz = lim.z + Math.sin(a) * d, r = 14 + rnd() * 30;
     let deep = true;
     for (let k = 0; k < 8 && deep; k++) deep = terrainHeight(cx + Math.cos(k * 0.785) * r, cz + Math.sin(k * 0.785) * r) < sea.level - 2.5;
-    if (!deep || boats.some(o => Math.hypot(o.cx - cx, o.cz - cz) < o.r + r + 12)) continue;
+    if (!deep || boats.some(o => Math.hypot(o.cx - cx, o.cz - cz) < o.r + r + 12) || keep.some(o => Math.hypot(o.x - cx, o.z - cz) < o.r + r + 10)) continue;
     const b = new THREE.Group(), motor = boats.length % 4 === 3;
     if (motor) {
       add(b, taperBox(2.2, 0.9, 6, [0.2, 1, 0.25], [0.95, 1, 0]), 0xf6f2e8, 0, 0.3, 0);
@@ -2831,6 +3051,7 @@ function buildCity(track, rnd) {
   const boxes = [];   // where the buildings are, for spacing them out
   const blink = [];   // red lights on the tallest roofs
   const signs = [];   // neon signs: { c, n, w } centre, facing, width
+  const boards = [];  // billboards: { c, n, w, h }
   const slab = [];    // pavement round each building
 
   // corners of a w x d footprint centred on (cx, cz), turned so local +z runs along `ry`,
@@ -2919,6 +3140,12 @@ function buildCity(track, rnd) {
         const f = lat - d / 2 - 0.14; // just off the front wall
         signs.push({ c: V(s.p.x + s.left.x * side * f, y, s.p.z + s.left.z * side * f), n: V(-s.left.x * side, 0, -s.left.z * side), w: sw });
       }
+      // and now and then a billboard higher up
+      if (r.top - r.gtop > 20 && w > 11 && rnd() < 0.4) {
+        const bw = Math.min(w - 2, 12 + rnd() * 3), bh = bw / 2, y = r.gtop + 10.5 + bh / 2 + rnd() * Math.max(0, r.top - r.gtop - 13.5 - bh);
+        const f = lat - d / 2 - 0.45;
+        boards.push({ c: V(s.p.x + s.left.x * side * f, y, s.p.z + s.left.z * side * f), n: V(-s.left.x * side, 0, -s.left.z * side), w: bw, h: bh });
+      }
       i += span + 2;
     }
   }
@@ -2986,6 +3213,125 @@ function buildCity(track, rnd) {
     sg.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2));
     const neon = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: cleanTexture(cv), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     neon.renderOrder = 2; worldGroup.add(neon);
+  }
+
+  // ---- billboards up on the buildings along the circuit: made-up brands, lit up ----
+  if (boards.length) {
+    const ADS = [['DINGO DONUTS', 'Fresh all night', '#ff6bcb', '#ffffff'], ['BILBY BURGERS', 'Open late', '#ff8a3d', '#ffffff'], ['CROC CRISPS', 'Snap them up', '#2fbf55', '#ffffff'], ['SUNBURNT SODA', 'Ice cold', '#3d8bff', '#ffffff'],
+      ['ROO RIDES', 'Hop in', '#ffd23f', '#1d2230'], ['TURBO TEA', 'Full throttle', '#a259ff', '#ffffff'], ['DRIFT CLUB', 'Race your mates', '#1d2230', '#ffd23f'], ['GALAH GAMES', 'Play all night', '#e6453a', '#ffffff']];
+    const bc = document.createElement('canvas'); bc.width = 1024; bc.height = 1024;
+    const bx = bc.getContext('2d'); bx.textAlign = 'center'; bx.textBaseline = 'middle';
+    ADS.forEach(([name, tag, bg, ink], k) => {
+      const x = (k % 2) * 512, y = Math.floor(k / 2) * 256;
+      bx.fillStyle = bg; bx.fillRect(x, y, 512, 256);
+      bx.fillStyle = ink; bx.fillRect(x + 40, y + 150, 432, 4);
+      let size = 96; do { bx.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (bx.measureText(name).width > 460);
+      bx.fillText(name, x + 256, y + 92);
+      bx.font = '700 40px "Segoe UI", Arial, sans-serif'; bx.fillText(tag, x + 256, y + 200);
+    });
+    const bp = [], buv = [], frame = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
+    boards.forEach((g) => {
+      const ad = Math.floor(rnd() * ADS.length), u0 = (ad % 2) * 0.5, v1 = 1 - Math.floor(ad / 2) * 0.25, v0 = v1 - 0.25;
+      const r = V(g.n.z, 0, -g.n.x).multiplyScalar(g.w / 2), up = V(0, g.h / 2, 0);
+      const c = [g.c.clone().sub(r).sub(up), g.c.clone().add(r).sub(up), g.c.clone().add(r).add(up), g.c.clone().sub(r).add(up)];
+      const t = [[u0, v0], [u0 + 0.5, v0], [u0 + 0.5, v1], [u0, v1]];
+      for (const i of [0, 1, 2, 0, 2, 3]) { bp.push(c[i].x, c[i].y, c[i].z); buv.push(...t[i]); }
+      const f = new THREE.Mesh(new THREE.BoxGeometry(g.w + 0.8, g.h + 0.8, 0.3), frame);
+      f.position.copy(g.c).addScaledVector(g.n, -0.22); f.rotation.y = Math.atan2(g.n.x, g.n.z); worldGroup.add(f);
+    });
+    const bgeo = new THREE.BufferGeometry();
+    bgeo.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
+    bgeo.setAttribute('uv', new THREE.Float32BufferAttribute(buv, 2));
+    worldGroup.add(new THREE.Mesh(bgeo, new THREE.MeshBasicMaterial({ map: cleanTexture(bc), color: 0xe4e4e4 })));
+  }
+
+  // ---- traffic: cars going round the blocks out past the wall round the map,
+  // driving on the left, headlights on ----
+  {
+    const loops = [];
+    for (let gx = lim.x - reach; gx < lim.x + reach; gx += PITCH) for (let gz = lim.z - reach; gz < lim.z + reach; gz += PITCH) {
+      const x0 = gx - 3.5, x1 = gx + 46.5, z0 = gz - 3.5, z1 = gz + 46.5;
+      const dNear = Math.hypot(clamp(lim.x, x0, x1) - lim.x, clamp(lim.z, z0, z1) - lim.z);
+      const dFar = Math.max(...[[x0, z0], [x1, z0], [x0, z1], [x1, z1]].map(([x, z]) => Math.hypot(x - lim.x, z - lim.z)));
+      if (dNear < lim.r + 12 || dFar > reach - 8) continue;
+      // nothing standing in the lane round the block (its own buildings sit inside it)
+      if (boxes.some(b => b.x0 < x1 + 2 && b.x1 > x0 - 2 && b.z0 < z1 + 2 && b.z1 > z0 - 2 && !(b.x0 > x0 + 2 && b.x1 < x1 - 2 && b.z0 > z0 + 2 && b.z1 < z1 - 2))) continue;
+      loops.push({ x0, x1, z0, z1, d: dNear });
+    }
+    loops.sort((a, b) => a.d - b.d); loops.length = Math.min(loops.length, 60);
+    // each loop as points about a metre apart: along each side with the block on
+    // the left, and a quarter turn at each corner
+    const RC = 5;
+    const paths = loops.map(({ x0, x1, z0, z1 }) => {
+      const pts = [];
+      const line = (ax, az, bx, bz) => { const n = Math.ceil(Math.hypot(bx - ax, bz - az)); for (let k = 0; k < n; k++) pts.push([ax + (bx - ax) * k / n, az + (bz - az) * k / n]); };
+      const arc = (cx, cz, a0) => { for (let k = 0; k < 8; k++) { const a = a0 - (k / 8) * Math.PI / 2; pts.push([cx + Math.cos(a) * RC, cz + Math.sin(a) * RC]); } };
+      line(x1 - RC, z0, x0 + RC, z0); arc(x0 + RC, z0 + RC, -Math.PI / 2);
+      line(x0, z0 + RC, x0, z1 - RC); arc(x0 + RC, z1 - RC, Math.PI);
+      line(x0 + RC, z1, x1 - RC, z1); arc(x1 - RC, z1 - RC, Math.PI / 2);
+      line(x1, z1 - RC, x1, z0 + RC); arc(x1 - RC, z0 + RC, 0);
+      return pts.map(([x, z]) => [x, terrainHeight(x, z), z]);
+    });
+    const cars = [];
+    paths.forEach((pts, k) => { for (let j = 0; j < 2; j++) cars.push({ pts, d: rnd() * pts.length, v: 9 + rnd() * 5 }); void k; });
+    const n = cars.length;
+    if (n) {
+      const body = new THREE.Group();
+      for (const [w, h, d, y, z, c] of [[1.8, 0.62, 4.2, 0.6, 0, 0xffffff], [1.6, 0.52, 2.1, 1.15, -0.3, 0x3a3f4a], [1.84, 0.32, 3.0, 0.22, 0, 0x16181d]]) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c, flatShading: true })); m.position.set(0, y, z); body.add(m);
+      }
+      mergeStatic(body);
+      const COLS = [0xffd23f, 0xf6f2e8, 0xb9bdc5, 0xe6453a, 0x3d8bff, 0x2b2f38, 0xffd23f, 0x7a9494];
+      const mk = (geo, mat) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; m.userData.dyn = true; worldGroup.add(m); return m; };
+      const bodies = mk(body.children[0].geometry, mergedMat(THREE.FrontSide, 0));
+      const heads = mk(new THREE.BoxGeometry(1.5, 0.16, 0.06).translate(0, 0.72, 2.11), new THREE.MeshBasicMaterial({ color: 0xfff4d6 }));
+      const tails = mk(new THREE.BoxGeometry(1.6, 0.18, 0.06).translate(0, 0.74, -2.11), new THREE.MeshBasicMaterial({ color: 0xff2a2a }));
+      const pools = mk(new THREE.PlaneGeometry(5.5, 12).rotateX(-Math.PI / 2).translate(0, 0.1, 8.5), lightMat(glowTexture(128, 128, 64, 64, 64), 0xffe6b0, 0.75));
+      cars.forEach((c, i) => bodies.setColorAt(i, new THREE.Color(COLS[i % COLS.length])));
+      const M = new THREE.Matrix4();
+      const tick = (t, dt = 0) => {
+        cars.forEach((c, i) => {
+          const L = c.pts.length; c.d = (c.d + c.v * Math.min(dt || 0, 0.1)) % L;
+          const k = Math.floor(c.d), f = c.d - k, a = c.pts[k], b = c.pts[(k + 1) % L];
+          M.makeRotationY(Math.atan2(b[0] - a[0], b[2] - a[2]));
+          M.setPosition(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f);
+          bodies.setMatrixAt(i, M); heads.setMatrixAt(i, M); tails.setMatrixAt(i, M); pools.setMatrixAt(i, M);
+        });
+        for (const m of [bodies, heads, tails, pools]) m.instanceMatrix.needsUpdate = true;
+      };
+      tick(0); anim.push(tick);
+    }
+  }
+
+  // ---- crowds behind the walls, up on a kerb so they can see over ----
+  if (track.wallAt) {
+    const crowd = makePeople(440, rnd), IN = hw + 3.4, kerb = new THREE.MeshLambertMaterial({ color: 0x4a4f5a, flatShading: true });
+    const nearLamp = (i, side) => { const k = Math.round(i / 30); return Math.abs(i - k * 30) < 3 && (k % 2 ? 1 : -1) === side; }; // where buildNight puts its lamps
+    for (const side of [1, -1]) {
+      const has = track.wallAt[side];
+      for (let i = 12; i < N - 12; i += 24) {
+        if (rnd() < 0.35) continue;
+        let ok = true;
+        for (let j = i - 6; j <= i + 6 && ok; j++) ok = !!has[j] && track.vergeDrop[j] < 1.2;
+        if (!ok) continue;
+        for (let j = i - 5; j <= i + 5; j++) {
+          const s = samples[j], rot = Math.atan2(-s.left.x * side, -s.left.z * side), at = (lat) => [s.p.x + s.left.x * side * lat, s.p.z + s.left.z * side * lat];
+          const [kx, kz] = at(IN + 1.7), g = terrainHeight(kx, kz), top = s.p.y + 0.05;
+          if (top - g > 1.5) continue;
+          const k = new THREE.Mesh(new THREE.BoxGeometry(2.2, top - g + 0.3, 1.6), kerb);
+          k.position.set(kx, (top + g - 0.3) / 2, kz); k.rotation.y = Math.atan2(s.th.x, s.th.z); k.receiveShadow = true; worldGroup.add(k);
+          if (nearLamp(j, side)) continue;
+          for (const row of [0, 1]) {
+            if (rnd() < 0.2) continue;
+            const [x, z] = at(IN + 1.15 + row * 0.95);
+            if (!isFree(track, x, z, 0.3, hw + 4.2)) continue;
+            crowd.add(x + s.th.x * row * 0.5, top, z + s.th.z * row * 0.5, rot, undefined, 1.4);
+            claim(x, z, 0.3);
+          }
+        }
+      }
+    }
+    crowd.finish();
   }
 
   // ---- red lights blinking on the tall roofs ----
@@ -4778,7 +5124,7 @@ function buildTrackCards() {
     card._track = buildTrack(def);
     drawTrackPreview(cv, card._track);
     card.appendChild(cv);
-    card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div><div class="tblurb">${def.blurb}</div>`);
+    card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div>${def.was ? `<div class="twas">Formerly ${def.was}</div>` : ''}<div class="tblurb">${def.blurb}</div>`);
     card.addEventListener('click', () => {
       if (app.room?.hostId !== app.myId) return;
       send({ t: 'track', trackId: i });

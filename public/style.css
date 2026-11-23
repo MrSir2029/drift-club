@@ -126,8 +126,9 @@ input:focus { border-color: var(--blue); }
 .trackcard.on { background: var(--orange); }
 .trackcard canvas { width: 100%; height: auto; aspect-ratio: 5 / 2; max-height: 96px; display: block; border-radius: 8px; background: #7fc86a; border: 2px solid var(--ink); } /* the shape it's drawn: not stretched */
 .trackcard .tname { font-weight: 900; margin-top: 8px; }
-.trackcard .tblurb { font-size: 12px; font-weight: 600; color: var(--muted); }
-.trackcard.on .tblurb { color: var(--ink); }
+.trackcard .tblurb, .trackcard .twas { font-size: 12px; font-weight: 600; color: var(--muted); }
+.trackcard.on .tblurb, .trackcard.on .twas { color: var(--ink); }
+.trackcard .twas { font-size: 11px; line-height: 1.2; }
 .trackcards.locked .trackcard { cursor: default; }
 .trackcards.locked .trackcard:hover { transform: none; }
 .lobby-actions { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }

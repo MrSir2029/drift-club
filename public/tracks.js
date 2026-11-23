@@ -5,6 +5,7 @@ import * as THREE from 'three';
 export const TRACKS = [
   {
     name: 'Queens Park GP',
+    was: 'Meadow GP', // its old name, shown under the new one in the lobby
     short: 'Queens Park', // where there's no room for the whole name (the leaderboard's tabs)
     blurb: 'Fast sweepers, a chicane and two hairpins. Start here.',
     width: 16,
@@ -16,6 +17,7 @@ export const TRACKS = [
   },
   {
     name: 'Centennial Park Raceway',
+    was: 'Pinewood',
     short: 'Centennial',
     blurb: 'A fast road through tall pines, under a rock arch.',
     width: 15,
@@ -31,6 +33,7 @@ export const TRACKS = [
   },
   {
     name: 'Thredbo Alpine Circuit',
+    was: 'Frost Pass',
     short: 'Thredbo',
     blurb: 'Snowy figure-eight with a bridge over the straight.',
     theme: 'snow',
@@ -44,8 +47,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Switchback',
-    short: 'Switchback',
+    name: 'Mount Panorama Circuit',
+    was: 'Switchback',
+    short: 'Mount Panorama',
     blurb: 'Tight and technical, under the floodlights at night.',
     theme: 'night',
     width: 14,
@@ -57,6 +61,7 @@ export const TRACKS = [
   },
   {
     name: 'Noosa Heads Circuit',
+    was: 'Palm Bay',
     short: 'Noosa Heads',
     blurb: 'Up the cliffs, round the lighthouse, over the bridge and back through the palms.',
     theme: 'beach',
@@ -74,6 +79,7 @@ export const TRACKS = [
   },
   {
     name: 'Sydney CBD Street Circuit',
+    was: 'Neon City',
     short: 'Sydney CBD',
     blurb: 'A street circuit at night: a hairpin, a flyover and a chicane between the walls.',
     theme: 'city',
