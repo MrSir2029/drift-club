@@ -4581,6 +4581,12 @@ function renderLobby() {
   $('#track-hint').textContent = isHost ? '— you pick' : '— host picks';
   renderRecord();
   document.querySelectorAll('.trackcard').forEach((el, i) => el.classList.toggle('on', i === r.trackId));
+  // a new pick (or a new lobby): scroll the track list to show it, if it's out of view
+  const tl = $('#track-list'), on = tl.querySelector('.trackcard.on');
+  if (on && tl.clientHeight && r.trackId !== app.listTrack) {
+    app.listTrack = r.trackId;
+    if (on.offsetTop < tl.scrollTop || on.offsetTop + on.offsetHeight > tl.scrollTop + tl.clientHeight) tl.scrollTop = on.offsetTop - 3;
+  }
   $('#car-list').classList.toggle('locked', !isHost);
   // the car row only shows when there's a choice to make (the rally car is unlocked) or the host picked another car
   const showRally = (isHost && app.rallyOn) || r.car === 'rally';

@@ -114,14 +114,16 @@ input:focus { border-color: var(--blue); }
 .chip.host::after { content: "HOST"; font-size: 10px; letter-spacing: .1em; background: var(--ink); color: #fff; padding: 2px 6px; border-radius: 999px; }
 .chip.me { background: var(--paper-2); }
 
-.trackcards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+/* the tracks: cards one size, as many to a row as fit. Past one row the list
+   scrolls (a slice of the next row shows, so you can tell there's more) */
+.trackcards { position: relative; display: grid; grid-template-columns: repeat(auto-fill, 168px); gap: 10px; max-height: 165px; overflow-y: auto; padding: 3px 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
 .trackcard {
   border: 3px solid var(--ink); border-radius: 12px; background: #fff; padding: 10px; cursor: pointer; text-align: left;
   font: inherit; color: var(--ink); transition: transform .08s;
 }
 .trackcard:hover { transform: translateY(-2px); }
 .trackcard.on { background: var(--orange); }
-.trackcard canvas { width: 100%; height: 90px; display: block; border-radius: 8px; background: #7fc86a; border: 2px solid var(--ink); }
+.trackcard canvas { width: 100%; height: auto; aspect-ratio: 2 / 1; display: block; border-radius: 8px; background: #7fc86a; border: 2px solid var(--ink); } /* the shape it's drawn: not stretched */
 .trackcard .tname { font-weight: 900; margin-top: 8px; }
 .trackcard .tblurb { font-size: 12px; font-weight: 600; color: var(--muted); }
 .trackcard.on .tblurb { color: var(--ink); }
@@ -202,7 +204,6 @@ input:focus { border-color: var(--blue); }
 @media (max-width: 760px) {
   .logo { font-size: 44px; }
   .lobby-top, .lobby-bottom { grid-template-columns: 1fr; }
-  .trackcards { grid-template-columns: 1fr; }
   .code { font-size: 48px; }
   .hud-speed { font-size: 36px; }
   .standings { display: none; }
@@ -213,8 +214,7 @@ input:focus { border-color: var(--blue); }
 @media (max-width: 760px) {
   #screen-lobby { justify-content: flex-start; gap: 10px; overflow-y: auto; pointer-events: auto; padding: 10px; }
   .panel { padding: 12px; }
-  .trackcards { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .trackcard canvas { height: 48px; }
+  .trackcards { grid-template-columns: repeat(auto-fill, 120px); gap: 8px; max-height: 136px; }
   .trackcard .tblurb { display: none; }
   .trackcard .tname { font-size: 13px; }
   .code { font-size: 40px; margin-bottom: 8px; }
@@ -233,7 +233,6 @@ input:focus { border-color: var(--blue); }
 #pause { z-index: 5; }
 
 .carrow { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
-@media (min-width: 761px) { .trackcard canvas { height: 76px; } }
 .carrow .label { margin: 0; }
 .carpicks { display: flex; gap: 10px; flex: 1; }
 .carpick { flex: 1; text-align: left; font: inherit; color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; }
@@ -333,9 +332,8 @@ input:focus { border-color: var(--blue); }
   .foot { margin-top: 0; }
   .code { font-size: 40px; margin-bottom: 8px; }
   .hint { display: none; }
-  .trackcards { gap: 8px; }
+  .trackcards { gap: 8px; grid-template-columns: repeat(auto-fill, 112px); max-height: 116px; }
   .trackcard { padding: 6px; }
-  .trackcard canvas { height: 48px; }
   .trackcard .tblurb { display: none; }
   .trackcard .tname { font-size: 13px; margin-top: 4px; }
   .carpick span { display: none; }
