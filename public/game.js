@@ -3971,8 +3971,11 @@ function newLapSectors(finished) {
   S.cur = [null, null, null];
 }
 function sectorColour(n, t) {
-  const ever = app.secRec[String(app.trackId)]?.[n]?.ms, S = app.sec;
-  return t <= (ever ?? Infinity) ? 'purple' : t <= (S.session[n] ?? Infinity) ? 'green' : 'yellow';
+  // purple only for the fastest anyone has done: the record kept on the server,
+  // or the best this session where that's quicker (a record only arrives with
+  // a finished lap, so until there is one, a slower sector isn't purple)
+  const S = app.sec, session = S.session[n] ?? Infinity, ever = Math.min(app.secRec[String(app.trackId)]?.[n]?.ms ?? Infinity, session);
+  return t <= ever ? 'purple' : t <= session ? 'green' : 'yellow';
 }
 function renderSectors(now) {
   const S = app.sec, el = $('#sectors'), car = app.local; if (!S || !el || !car) return;
