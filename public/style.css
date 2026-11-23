@@ -290,6 +290,17 @@ input:focus { border-color: var(--blue); }
 .seg button:first-child { border-left: 0; }
 .seg button.on { background: var(--orange); }
 .warn { font-size: 13px; font-weight: 700; background: #fff3c4; border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px; }
+/* Settings > Change keys */
+.keyspanel { width: min(500px, 100%); }
+.keyhint { font-size: 13px; font-weight: 600; color: var(--muted); }
+.keylist { display: grid; grid-template-columns: 1fr 108px 108px; gap: 6px 8px; align-items: center; }
+.keylist span { font-weight: 800; font-size: 14px; }
+.keylist button { font: inherit; font-weight: 900; font-size: 14px; padding: 6px 4px; min-height: 36px; border: 3px solid var(--ink); border-radius: 10px; background: #fff; color: var(--ink); cursor: pointer; }
+.keylist button:hover { background: var(--paper-2); }
+.keylist button.empty { color: var(--muted); }
+.keylist button.listening { background: var(--orange); }
+.keybtns { display: flex; gap: 10px; }
+.keybtns .btn { flex: 1; }
 .lapsbox { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 10px; }
 .lapsbox .label { margin: 0; }
 #laps-val { font-size: 22px; font-weight: 900; min-width: 30px; text-align: center; }

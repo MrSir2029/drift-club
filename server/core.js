@@ -359,6 +359,13 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         }
         break;
       }
+      case 'restart': {
+        // Polytrack mode: the player went back to the grid for a fresh run and
+        // has just crossed the line, so their lap starts now
+        if (!room || room.phase !== 'racing' || room.mode !== 'quali' || player.finished) return;
+        player.lapAt = Date.now();
+        break;
+      }
       case 'lbseed': {
         // a returning player's copy of the boards (see the leaderboard above):
         // only entries this server signed are taken back

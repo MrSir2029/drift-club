@@ -102,9 +102,13 @@ sells them at cost, around $10 a year) and add it to the Worker under
 | A / D or Left / Right | steer |
 | Space | handbrake |
 | R | reset to the last gate |
+| Backspace | Polytrack mode: restart your run (back to the grid; the lap clock starts at the line) |
 | C | chase / cockpit camera (every race starts in the cockpit in the open seater, outside in the others) |
 | M | sound on / off |
-| Esc | menu: resume, camera, graphics, leave |
+| Esc | menu: resume, restart your run (Polytrack mode), camera, graphics, leave |
+
+Players can change any of these but Esc under **Settings → Change keys**
+(up to two keys each; kept in their browser, `ACTIONS` in `game.js`).
 
 Drift Club is made for a computer with a keyboard. There are no touch
 controls, so phones and tablets get a "Not for phones" warning on the home

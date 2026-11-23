@@ -4,6 +4,14 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.3', date: '23 Nov 2026', title: 'Your keys',
+    items: [
+      'Change your keys: Settings, then Change keys. Pick any key for accelerating, braking, steering, the handbrake, reset and more, two keys each if you like.',
+      'Polytrack mode: restart your run with Backspace (or Restart your run in the Esc menu). You go back to the grid and your lap clock starts again at the line.',
+      'In Polytrack mode the clock now shows the lap you\'re on.',
+    ],
+  },
+  {
     v: '3.2', date: '23 Nov 2026', title: 'Two new tracks',
     items: [
       'Palm Bay: along the seafront, out round the lighthouse and back through the palms. Beach huts, umbrellas and boats, and you can drive into the sea (it\'s slow going).',
