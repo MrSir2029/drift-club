@@ -86,7 +86,7 @@ input:focus { border-color: var(--blue); }
 .board-bubble { width: min(420px, 100%); margin-top: 14px; padding: 12px; }
 .board-bubble .board-btn { margin-top: 0; }
 .btn.ghost { background: transparent; box-shadow: none; border-color: transparent; color: var(--muted); }
-.btn.ghost:hover { border-color: var(--ink); color: var(--ink); transform: none; }
+.btn.ghost:hover { color: var(--ink); transform: none; } /* no ring: it stuck round a button after a tap on touch screens */
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 .divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 12px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
