@@ -114,17 +114,17 @@ input:focus { border-color: var(--blue); }
 .chip.host::after { content: "HOST"; font-size: 10px; letter-spacing: .1em; background: var(--ink); color: #fff; padding: 2px 6px; border-radius: 999px; }
 .chip.me { background: var(--paper-2); }
 
-/* the tracks: four to a row, cards one size (narrower only if the window is).
-   Past the first row the list scrolls (a slice of the next row shows, so you
-   can tell there's more) */
-.trackcards { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 168px)); gap: 10px; max-height: 165px; overflow-y: auto; padding: 3px 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+/* the tracks: four to a row, filling it. Past the first row the list scrolls
+   (a slice of the next row shows, so you can tell there's more; the height is
+   set from the cards in game.js) */
+.trackcards { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-height: 165px; overflow-y: auto; padding: 3px 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
 .trackcard {
   border: 3px solid var(--ink); border-radius: 12px; background: #fff; padding: 10px; cursor: pointer; text-align: left;
   font: inherit; color: var(--ink); transition: transform .08s;
 }
 .trackcard:hover { transform: translateY(-2px); }
 .trackcard.on { background: var(--orange); }
-.trackcard canvas { width: 100%; height: auto; aspect-ratio: 2 / 1; display: block; border-radius: 8px; background: #7fc86a; border: 2px solid var(--ink); } /* the shape it's drawn: not stretched */
+.trackcard canvas { width: 100%; height: auto; aspect-ratio: 5 / 2; max-height: 96px; display: block; border-radius: 8px; background: #7fc86a; border: 2px solid var(--ink); } /* the shape it's drawn: not stretched */
 .trackcard .tname { font-weight: 900; margin-top: 8px; }
 .trackcard .tblurb { font-size: 12px; font-weight: 600; color: var(--muted); }
 .trackcard.on .tblurb { color: var(--ink); }
@@ -223,7 +223,7 @@ input:focus { border-color: var(--blue); }
 @media (max-width: 760px) {
   #screen-lobby { justify-content: flex-start; gap: 10px; overflow-y: auto; pointer-events: auto; padding: 10px; }
   .panel { padding: 12px; }
-  .trackcards { grid-template-columns: repeat(4, minmax(0, 120px)); gap: 8px; max-height: 136px; }
+  .trackcards { gap: 8px; max-height: 136px; }
   .trackcard .tblurb { display: none; }
   .trackcard .tname { font-size: 13px; }
   .code { font-size: 40px; margin-bottom: 8px; }
@@ -352,7 +352,7 @@ input:focus { border-color: var(--blue); }
   .foot { margin-top: 0; }
   .code { font-size: 40px; margin-bottom: 8px; }
   .hint { display: none; }
-  .trackcards { gap: 8px; grid-template-columns: repeat(4, minmax(0, 112px)); max-height: 116px; }
+  .trackcards { gap: 8px; max-height: 116px; }
   .trackcard { padding: 6px; }
   .trackcard .tblurb { display: none; }
   .trackcard .tname { font-size: 13px; margin-top: 4px; }

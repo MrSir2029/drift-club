@@ -460,7 +460,7 @@ function buildTerrain(track) {
   const amp = track.look?.noise ?? 1; // the desert's hills roll bigger
   const noise = (x, z) => (Math.sin(x * 0.011 + 0.3) * Math.cos(z * 0.009) * 8 + Math.sin(x * 0.027 + 1.7) * Math.sin(z * 0.023 + 0.4) * 3 + Math.sin(x * 0.06) * Math.cos(z * 0.07) * 0.8) * amp;
   const smooth = (t) => t * t * (3 - 2 * t);
-  // The sea (Palm Bay): more than `shore` metres from any road, and past the
+  // The sea (Noosa Heads): more than `shore` metres from any road, and past the
   // line `from` metres behind the start straight (z < -from), the ground runs
   // down to the sea bed. The road never comes that close, so the guarantee
   // below holds. Inland the hills sit a little higher, so few hollows flood.
@@ -535,6 +535,9 @@ function buildTerrain(track) {
     if (!best) continue;
     taken.push(best); sites[name] = best;
   }
+  // (there used to be a castle: its spot is still picked, so everything picked
+  // after it stays where it was, but nothing is built there now)
+  delete sites.castle;
   // Everyone picks the same spots (the 9LAT2 building has to be in the same
   // place for every player), but the ground is only shaped for what this
   // player will build: the expanded map is a per-player setting.
@@ -836,7 +839,7 @@ function buildRibbon(track, offA, offB, colorFn, yLift = 0) {
 
 let menuOrbit = 0;
 
-// Pinewood is a gravel rally stage with two jumps, made for the rally car. In
+// Centennial Park is a gravel rally stage with two jumps, made for the rally car. In
 // any other car (the open seater, the Camry) it's tarmac and the jumps are
 // smoothed out: on gravel the open seater was quicker across the grass.
 function trackDef(trackId, car) {
@@ -1214,6 +1217,7 @@ function updateGhost(now) {
 
 // Crowd: every spectator is one instance of a body box and a head box. They
 // bob about, and jump when a car comes past.
+const _psc = new THREE.Vector3();
 function makePeople(max, rnd) {
   const shirts = [0xf6f2e8, 0xe6453a, 0x1d2230, 0xffd23f, 0x9ad0ff, 0xff6bcb, 0x7ed957, 0xff8a3d, 0x3d8bff];
   const skins = [0xf1c9a5, 0xd9a577, 0xa8703f, 0x6b4526];
@@ -1222,10 +1226,10 @@ function makePeople(max, rnd) {
   bodies.frustumCulled = heads.frustumCulled = false;
   const list = [], col = new THREE.Color(), M = new THREE.Matrix4();
   return {
-    add(x, y, z, rot, shirt) {
+    add(x, y, z, rot, shirt, sc = 1) {
       if (list.length >= max) return;
       const i = list.length;
-      list.push({ x, y, z, rot, ph: rnd() * 6.28, sp: 5 + rnd() * 4, keen: rnd() < 0.2 });
+      list.push({ x, y, z, rot, sc, ph: rnd() * 6.28, sp: 5 + rnd() * 4, keen: rnd() < 0.2 });
       bodies.setColorAt(i, col.set(shirt ?? shirts[Math.floor(rnd() * shirts.length)]));
       heads.setColorAt(i, col.set(skins[Math.floor(rnd() * skins.length)]));
     },
@@ -1245,8 +1249,9 @@ function makePeople(max, rnd) {
           if (car) { const dx = car.pos.x - p.x, dz = car.pos.z - p.z; if (dx * dx + dz * dz < 4900) amp = 0.32; }
           const hop = Math.abs(Math.sin(t * p.sp + p.ph)) * amp;
           M.makeRotationY(p.rot);
-          M.setPosition(p.x, p.y + 0.43 + hop, p.z); bodies.setMatrixAt(i, M);
-          M.setPosition(p.x, p.y + 1.02 + hop, p.z); heads.setMatrixAt(i, M);
+          if (p.sc !== 1) M.scale(_psc.set(p.sc, p.sc, p.sc));
+          M.setPosition(p.x, p.y + 0.43 * p.sc + hop, p.z); bodies.setMatrixAt(i, M);
+          M.setPosition(p.x, p.y + 1.02 * p.sc + hop, p.z); heads.setMatrixAt(i, M);
         }
         bodies.instanceMatrix.needsUpdate = heads.instanceMatrix.needsUpdate = true;
       };
@@ -1697,7 +1702,7 @@ function insideLoop(track, x, z) {
   return inside;
 }
 
-// A street circuit (Neon City): concrete walls down both sides of the road,
+// A street circuit (Sydney CBD): concrete walls down both sides of the road,
 // just past the kerbs, painted in blocks of colour on the road side. Side
 // streets break them now and then, always on the outside of the circuit, so
 // there's a way out to the rest of the city (and 9LAT2) but no short cut
@@ -1725,6 +1730,7 @@ function buildStreetWalls(track) {
   const adCols = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0xff6bcb, 0x2ec4b6];
   const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e), ad = new THREE.Color();
   const pos = [], col = [];
+  track.wallAt = {}; // which samples have a wall beside them, each side (the city puts its crowds behind them)
   for (const side of [1, -1]) {
     // the wall's road-side face, IN metres out; where the inside of a tight
     // bend folds that line back on itself the points come too near the road
@@ -1746,6 +1752,7 @@ function buildStreetWalls(track) {
       if (m > 1 && roadGap(track, (P[i].p.x + c.p.x) / 2, (P[i].p.z + c.p.z) / 2) < hw + 1.9) continue;
       links.push([P[i], c]); hasOut[i] = 1; hasIn[j] = 1;
     }
+    track.wallAt[side] = hasIn.map((v, i) => v | hasOut[i]);
     const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
     for (const [a, b] of links) {
       // faces: road side, top, back (each facing out, whichever side of the road)
@@ -1765,7 +1772,7 @@ function buildStreetWalls(track) {
   worldGroup.add(mesh);
 }
 
-// The sea round Palm Bay: water out to the horizon, see-through enough that
+// The sea round Noosa Heads: water out to the horizon, see-through enough that
 // the sand shows in the shallows and the deep reads darker. It's drawn as rings
 // round the camera, small close by and bigger further out, and moves with the
 // camera (it's flat and all one colour, so that looks the same as a sea that
@@ -1795,7 +1802,7 @@ function buildSea(track) {
   worldGroup.add(water);
 }
 
-// Places to explore away from the circuit: a lake, a castle, a fairground, a
+// Places to explore away from the circuit: a lake, a fairground, a
 // village, a stone circle, a campsite, a windmill, a radio mast, and a blimp
 // overhead. Everything here is solid.
 function buildLandmarks(track) {
@@ -1897,26 +1904,6 @@ function buildLandmarks(track) {
     const pad = new THREE.Mesh(new THREE.RingGeometry(3.6, 5.5, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd23f })); pad.position.y = 0.12; fx.add(pad);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 160, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, fog: false })); beam.position.y = 80; fx.add(beam);
     anim.push((t) => { fx.visible = app.mode === 'dash' && inRace(); beam.material.opacity = 0.26 + Math.sin(t * 3) * 0.08; });
-  }
-
-  // ---- castle on the highest ground: drive in through the gate ----
-  if (full && S.castle) {
-    const g = start(S.castle, rnd() * 6.28), stone = 0xa9a79a, dark = 0x8d8c80, W = 13;
-    box(g, 1.6, 9, 2 * W, stone, -W, 1.5, 0); box(g, 1.6, 9, 2 * W, stone, W, 1.5, 0);
-    box(g, 2 * W, 9, 1.6, stone, 0, 1.5, -W);
-    for (const sx of [-1, 1]) box(g, 10, 9, 1.6, stone, sx * 8, 1.5, W);        // front wall, with a 6 m gateway
-    box(g, 6, 2.2, 1.8, dark, 0, 5.4, W);                                         // lintel over the gate
-    line(g, -W, -W, -W, W); line(g, W, -W, W, W); line(g, -W, -W, W, -W);
-    line(g, -W, W, -3, W); line(g, 3, W, W, W);
-    for (const [x, z] of [[-W, -W], [W, -W], [-W, W], [W, W]]) {
-      cyl(g, 3, 3.3, 14, 8, stone, x, 4, z); cyl(g, 3.6, 3.6, 1.4, 8, dark, x, 11.6, z);
-      circ(g, x, z, 3.4);
-    }
-    box(g, 9, 15, 8, stone, 0, 4.5, -7); box(g, 10, 1.4, 9, dark, 0, 12.6, -7);  // the keep
-    for (const x of [-3.6, 0, 3.6]) box(g, 1.6, 1.2, 9.2, dark, x, 13.8, -7);
-    box(g, 2, 3, 0.2, 0x3b2a1a, 0, 1.5, -2.95);
-    rect(g, 0, -7, 9, 8);
-    for (const [x, z, h, c] of [[-W, W, 12.3, 0xe6453a], [W, W, 12.3, 0xffd23f], [0, -7, 14.4, 0x3d8bff]]) { const [wx, wz] = g.userData.w(x, z); flags.add(wx, S.castle.y + h, wz, c, 5); }
   }
 
   // ---- fairground: big wheel, carousel, big top, stalls ----
@@ -2647,7 +2634,7 @@ function buildScenery(track) {
 
 }
 
-// Palm Bay's seaside: palms (in a row along the road, and in clumps), beach
+// Noosa Heads's seaside: palms (in a row along the road, and in clumps), beach
 // huts facing the sea, umbrellas and towels down by the water, a lighthouse
 // on the headland and boats out at sea.
 function buildBeach(track, rnd, randIn) {
@@ -2809,7 +2796,7 @@ function buildBeach(track, rnd, randIn) {
   people.finish();
 }
 
-// Neon City: offices and flats packed along the streets, a grid of blocks
+// Sydney CBD: offices and flats packed along the streets, a grid of blocks
 // behind them, windows lit at random, neon over the shops and a skyline
 // running off into the night. Every building is in one mesh (the windows are
 // a texture) and the ones inside the map are solid.
@@ -4267,7 +4254,7 @@ function handle(msg) {
     case 'srec': if (typeof msg.k === 'string' && Array.isArray(msg.list)) { app.secRec[msg.k] = msg.list; keepSectors({ [msg.k]: msg.list }); } break;
     case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); } break;
     case 'record': {
-      const where = TRACKS[msg.track]?.name || 'this track';
+      const where = TRACKS[msg.track]?.short || 'this track';
       if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
       else if (msg.place === 1) raceToast(`${msg.name} set a new track record: ${fmtTime(msg.time)}`, 3000);
       break;
@@ -4407,7 +4394,7 @@ function openBoard(track) {
   renderBoard();
 }
 function renderBoard() {
-  $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}">${esc(t.name)}</button>`).join('');
+  $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}" title="${esc(t.name)}">${esc(t.short || t.name)}</button>`).join('');
   const list = boardList(board.track);
   const me = (app.room ? app.name : $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer').toLowerCase();
   $('#board-list').innerHTML = list.length
@@ -4730,6 +4717,7 @@ function showLobby() {
   if (app.phase !== 'lobby') showTip(); // a new tip each time you come into the lobby
   app.phase = 'lobby';
   showScreen('lobby');
+  requestAnimationFrame(sizeTrackCards);
   $('#results').classList.add('hidden');
 }
 
@@ -4758,6 +4746,7 @@ function renderLobby() {
   $('#track-hint').textContent = isHost ? '— you pick' : '— host picks';
   renderRecord();
   document.querySelectorAll('.trackcard').forEach((el, i) => el.classList.toggle('on', i === r.trackId));
+  sizeTrackCards();
   // a new pick (or a new lobby): scroll the track list to show it, if it's out of view
   const tl = $('#track-list'), on = tl.querySelector('.trackcard.on');
   if (on && tl.clientHeight && r.trackId !== app.listTrack) {
@@ -4786,7 +4775,8 @@ function buildTrackCards() {
     if (def.theme === 'night') cv.style.background = '#1b2442';
     if (def.theme === 'beach') cv.style.background = '#8fd6e6';
     if (def.theme === 'city') cv.style.background = '#141a33';
-    drawTrackPreview(cv, buildTrack(def));
+    card._track = buildTrack(def);
+    drawTrackPreview(cv, card._track);
     card.appendChild(cv);
     card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div><div class="tblurb">${def.blurb}</div>`);
     card.addEventListener('click', () => {
@@ -4798,21 +4788,37 @@ function buildTrackCards() {
 }
 
 function drawTrackPreview(cv, track) {
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d'), k = cv.height / 120; // lines and margins in step with the picture's size
+  ctx.clearRect(0, 0, cv.width, cv.height);
   const b = track.bounds;
   const w = b.max.x - b.min.x, h = b.max.z - b.min.z;
-  const sc = Math.min((cv.width - 24) / w, (cv.height - 24) / h);
+  const sc = Math.min((cv.width - 24 * k) / w, (cv.height - 24 * k) / h); // the same scale both ways: never stretched
   const ox = (cv.width - w * sc) / 2 - b.min.x * sc, oz = (cv.height - h * sc) / 2 - b.min.z * sc;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.beginPath();
   track.samples.forEach((s, i) => { const x = s.p.x * sc + ox, y = s.p.z * sc + oz; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
   ctx.closePath();
-  ctx.strokeStyle = '#1d2230'; ctx.lineWidth = 9; ctx.stroke();
-  ctx.strokeStyle = '#5b6472'; ctx.lineWidth = 6; ctx.stroke();
+  ctx.strokeStyle = '#1d2230'; ctx.lineWidth = 9 * k; ctx.stroke();
+  ctx.strokeStyle = '#5b6472'; ctx.lineWidth = 6 * k; ctx.stroke();
   const s0 = track.samples[0];
-  ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#1d2230'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(s0.p.x * sc + ox, s0.p.z * sc + oz, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#1d2230'; ctx.lineWidth = 2 * k;
+  ctx.beginPath(); ctx.arc(s0.p.x * sc + ox, s0.p.z * sc + oz, 4 * k, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 }
+// The track pictures are drawn at the size they show at (the cards fill the
+// row, so that changes with the window), and the list is one row high plus a
+// slice of the next.
+function sizeTrackCards() {
+  const list = $('#track-list'); if (!list || !list.offsetParent) return; // not on screen
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  let row = 0;
+  list.querySelectorAll('.trackcard').forEach((card, i) => {
+    const cv = card.querySelector('canvas'), w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    if (w > 0 && h > 0 && (cv.width !== w || cv.height !== h)) { cv.width = w; cv.height = h; drawTrackPreview(cv, card._track); }
+    if (i < 4) row = Math.max(row, card.offsetHeight);
+  });
+  if (row) list.style.maxHeight = `${row + 40}px`;
+}
+window.addEventListener('resize', () => sizeTrackCards());
 
 function buildSwatches() {
   const el = $('#colors');
