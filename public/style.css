@@ -144,6 +144,14 @@ input:focus { border-color: var(--blue); }
 .hud-label { font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .hud-value { font-size: 28px; font-weight: 900; line-height: 1.1; }
 .hud-value small { font-size: 14px; color: var(--muted); }
+/* Polytrack mode's sector times, under the boxes */
+.sectors { position: absolute; left: 16px; top: 100px; display: flex; gap: 6px; }
+.sectors span { min-width: 82px; padding: 3px 9px; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font-weight: 900; font-size: 14px; font-variant-numeric: tabular-nums; box-shadow: 0 3px 0 var(--ink); text-align: center; }
+.sectors span.purple { background: #a259ff; color: #fff; }
+.sectors span.green { background: #2fbf55; color: #fff; }
+.sectors span.yellow { background: #ffd23f; }
+.sectors span.old { opacity: .5; }
+@media (max-width: 760px), (max-height: 520px) { .sectors { left: 8px; top: 66px; gap: 4px; } .sectors span { min-width: 0; font-size: 11px; padding: 2px 6px; } }
 .mono { font-variant-numeric: tabular-nums; }
 .hud-right { position: absolute; right: 16px; top: 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 #minimap { width: 150px; height: 150px; background: rgba(29,34,48,.55); border: 3px solid var(--ink); border-radius: 12px; }

@@ -251,6 +251,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     room.results = [];
     resetPositions(room);
     for (const p of room.players.values()) { p.finished = false; p.spec = false; p.best = null; p.lapAt = 0; }
+    room.sectors = [null, null, null]; // Polytrack mode: the best time through each third of the lap this session
     room.startAt = Date.now() + COUNTDOWN_MS;
     stats.races++; statsChanged(true);
     broadcast(room, startMessage(room));
@@ -260,7 +261,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     tickTimer ??= setInterval(tick, 1000 / BROADCAST_HZ);
   }
   function startMessage(room, extra) {
-    return { t: 'start', mode: room.mode, startAt: room.startAt, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, now: Date.now(), ...extra };
+    return { t: 'start', mode: room.mode, startAt: room.startAt, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, sectors: room.mode === 'quali' ? room.sectors : null, now: Date.now(), ...extra };
   }
   // Polytrack mode ends when the host ends it: fastest lap first, no-time drivers at the back.
   function endQualifying(room) {
@@ -365,6 +366,17 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
           boardChanged(boardKey(room.trackId));
           broadcast(room, { t: 'record', id: player.id, name: player.name, place, time: Math.round(time), track: room.trackId, car: room.car });
         }
+        break;
+      }
+      case 'sector': {
+        // Polytrack mode: someone's time through a third of the lap. The best
+        // this session goes to everyone, for the purple sectors.
+        if (!room || room.phase !== 'racing' || room.mode !== 'quali' || !room.sectors) return;
+        const n = msg.n, time = Math.round(+msg.time);
+        if (!(n === 0 || n === 1 || n === 2) || !(time > 1000 && time < 600000)) return;
+        if (room.sectors[n] && room.sectors[n].time <= time) return;
+        room.sectors[n] = { time, id: player.id };
+        broadcast(room, { t: 'sector', n, time, id: player.id });
         break;
       }
       case 'restart': {

@@ -4,6 +4,14 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.4', date: '24 Nov 2026', title: 'Polytrack timing',
+    items: [
+      'Polytrack mode has a rolling start: you start back down the straight and your first lap starts as you cross the line, so it counts like all the others. Restarting your run puts you back there too.',
+      'Sector times, like F1: each lap in three parts. Purple is the best anyone has done this session, green is your own best, yellow is slower.',
+      'The sea on Palm Bay doesn\'t flicker any more, and names with swear words spelt wrong to sneak past are caught now.',
+    ],
+  },
+  {
     v: '3.3', date: '23 Nov 2026', title: 'Your keys',
     items: [
       'Change your keys: Settings, then Change keys. Pick any key for accelerating, braking, steering, the handbrake, reset and more, two keys each if you like.',
