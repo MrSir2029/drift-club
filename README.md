@@ -135,7 +135,12 @@ in the lobby, then starts either a race or **Polytrack mode**. Polytrack
 mode is free laps against your ghost with no time limit, until the host ends
 it (if the host leaves, whoever becomes host can end it); the results list
 everyone's best lap. It stands on its own: its times don't change the grid
-for a race. A race's results show the order, the gaps, and every lap you set.
+for a race. It has a rolling start (the grid moves back down the straight and
+your clock starts at the line) and sector times: each lap in three, counting
+up as you drive, purple for the best ever on that track, green for the best
+this session, yellow slower. The best-ever sectors are kept like the
+leaderboard (signed, in the snapshot, handed back by browsers), and only come
+from laps that count for it. A race's results show the order, the gaps, and every lap you set.
 After a race (or a Race to 9LAT2) there's a podium ceremony just past the
 finish line before the results: cinema bars and a drumroll, third and second
 crash down onto their steps, then the winner lands on the top step with a

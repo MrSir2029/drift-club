@@ -4,6 +4,13 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.6', date: '24 Nov 2026', title: 'Sector times',
+    items: [
+      'Polytrack sector times count up as you drive each part of the lap.',
+      'Purple now means the best ever on that track, by anyone. Green is the best this session, yellow is slower.',
+    ],
+  },
+  {
     v: '3.5', date: '24 Nov 2026', title: 'New layouts',
     items: [
       'Palm Bay climbs the cliffs to a hairpin round the lighthouse, comes back down over the start straight on a bridge, and winds back through the palms.',
