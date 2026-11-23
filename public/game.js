@@ -982,13 +982,15 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
     track.solids.push({ x: post.position.x, z: post.position.z, r: 0.8, y: s0.p.y });
   }
   const bannerTex = makeCheckerTexture();
-  const banner = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 5.6, 2.2, 1.2), new THREE.MeshLambertMaterial({ map: bannerTex }));
+  // a little longer and deeper than the posts it sits on: with faces level with
+  // theirs, the two flickered through each other
+  const banner = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 6.2, 2.2, 1.5), new THREE.MeshLambertMaterial({ map: bannerTex }));
   banner.position.copy(s0.p); banner.position.y += 8.2;
   banner.rotation.y = Math.atan2(s0.th.x, s0.th.z);
   banner.castShadow = true;
   arch.add(banner);
   const line = buildRibbonSegment(track, 0, hw, -hw, 0.05);
-  const lineMesh = new THREE.Mesh(line, new THREE.MeshLambertMaterial({ map: bannerTex }));
+  const lineMesh = new THREE.Mesh(line, new THREE.MeshLambertMaterial({ map: bannerTex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 })); // drawn in front of the road from far off too
   arch.add(lineMesh);
   worldGroup.add(arch);
 
@@ -1016,6 +1018,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   if (track.def.walls) buildStreetWalls(track);
   buildProps(track);
   buildLandmarks(track);
+  buildLocal(track);
   buildBoundary(track);
   buildScenery(track);
   if (track.sea) buildSea(track);
@@ -1800,6 +1803,439 @@ function buildSea(track) {
   // centred under whichever camera is drawing it (the race, the menus, the podium)
   water.onBeforeRender = (r, s, cam) => { water.position.set(cam.position.x, sea.level, cam.position.z); water.updateMatrixWorld(); };
   worldGroup.add(water);
+}
+
+// Something of the real place each track is named after (`local` in
+// tracks.js). Queens Park: a footy field (NSW blue against QLD maroon), a
+// cricket match and big Moreton Bay figs. Centennial Park: the Federation
+// Pavilion, horses in a paddock and black swans on the pond. Thredbo: a
+// chairlift up the mountain with skiers coming down, and A-frame lodges.
+// Mount Panorama: the real corner names on signs round the lap, and campers
+// round their fires on the mountain. Noosa Heads: surfers riding the waves in
+// along the headland, koalas in the gum trees on it. Sydney: Sydney Tower at
+// the end of the main straight, the Harbour Bridge and the Opera House across
+// the water. Built after the landmarks and before the scenery, so the trees,
+// huts and buildings leave room for it.
+function buildLocal(track) {
+  const which = track.def.local;
+  if (!which) return;
+  const rnd = mulberry32(5150 + app.trackId * 41);
+  const { samples, N, hw } = track, lim = track.limit, solids = track.solids;
+  const spots = track.localSpots = []; // what went where (handy for testing)
+  const mats = new Map();
+  const lam = (c, e = 0, side = THREE.FrontSide) => { const k = `${c}|${e}|${side}`; let m = mats.get(k); if (!m) mats.set(k, m = new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true, side })); return m; };
+  const put = (g, geo, c, x, y, z, e = 0, side) => { const m = new THREE.Mesh(geo, lam(c, e, side)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const box = (g, w, h, d, c, x, y, z, e) => put(g, new THREE.BoxGeometry(w, h, d), c, x, y, z, e);
+  const cyl = (g, r0, r1, h, n, c, x, y, z, e) => put(g, new THREE.CylinderGeometry(r0, r1, h, n), c, x, y, z, e);
+  const at = (x, z, ry = 0, y = terrainHeight(x, z)) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; worldGroup.add(g); return g; };
+  const W = (x, z, ry, lx, lz) => [x + lx * Math.cos(ry) + lz * Math.sin(ry), z - lx * Math.sin(ry) + lz * Math.cos(ry)]; // a group's local x, z in the world
+  const randIn = (pad) => { const a = rnd() * 6.2832, d = Math.sqrt(rnd()) * (lim.r - pad); return [lim.x + Math.cos(a) * d, lim.z + Math.sin(a) * d]; };
+  // a free spot of radius r, `margin` clear of the road, rising or falling no more than `flat` across it
+  const spot = (r, margin, flat = 99, near = null, tries = 400) => {
+    for (let k = 0; k < tries; k++) {
+      const [x, z] = near ? [near[0] + (rnd() - 0.5) * near[2] * 2, near[1] + (rnd() - 0.5) * near[2] * 2] : randIn(r + 10);
+      if (Math.hypot(x - lim.x, z - lim.z) > lim.r - r - 6 || !isFree(track, x, z, r, margin)) continue;
+      if (flat < 99) {
+        let lo = Infinity, hi = -Infinity;
+        for (let j = 0; j < 9; j++) { const y = terrainHeight(x + (j ? Math.cos(j * 0.785) * r : 0), z + (j ? Math.sin(j * 0.785) * r : 0)); lo = Math.min(lo, y); hi = Math.max(hi, y); }
+        if (hi - lo > flat) continue;
+      }
+      return [x, z];
+    }
+    return null;
+  };
+  const nearest = (x, z) => { let b = samples[0], d = Infinity; for (let i = 0; i < N; i += 2) { const s = samples[i], e = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (e < d) { d = e; b = s; } } return b; };
+  // a line painted on the grass, in short pieces that follow the ground
+  const paint = (x0, z0, x1, z1, w = 0.22, c = 0xf6f2e8, h = 0.06) => {
+    const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.ceil(len / 3)), ry = Math.atan2(x1 - x0, z1 - z0);
+    for (let k = 0; k < n; k++) {
+      const x = x0 + (x1 - x0) * (k + 0.5) / n, z = z0 + (z1 - z0) * (k + 0.5) / n;
+      const m = box(worldGroup, w, h, len / n + 0.05, c, x, terrainHeight(x, z) + 0.04, z); m.rotation.y = ry; m.castShadow = false;
+    }
+  };
+  // a three-sided prism: a w x h triangle standing on its base, d deep (tents, A-frames)
+  const prism = (w, h, d) => {
+    const P = [], f = d / 2, A = [-w / 2, 0], B = [w / 2, 0], C = [0, h], v = (p, z) => [p[0], p[1], z];
+    const tri = (a, b, c) => P.push(...a, ...b, ...c), quad = (a, b, c, e) => { tri(a, b, c); tri(a, c, e); };
+    tri(v(A, f), v(B, f), v(C, f)); tri(v(B, -f), v(A, -f), v(C, -f));
+    quad(v(B, f), v(B, -f), v(C, -f), v(C, f)); quad(v(C, f), v(C, -f), v(A, -f), v(A, f)); quad(v(A, f), v(A, -f), v(B, -f), v(B, f));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.computeVertexNormals(); return g;
+  };
+  // words on a sign
+  const label = (text, bg, ink, w = 512, h = 128) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    x.fillStyle = bg; x.fillRect(0, 0, w, h); x.strokeStyle = ink; x.lineWidth = 8; x.strokeRect(12, 12, w - 24, h - 24);
+    x.fillStyle = ink; x.textAlign = 'center'; x.textBaseline = 'middle';
+    let size = 78; do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > w - 70 && size > 20);
+    x.fillText(text, w / 2, h / 2 + 4);
+    return cleanTexture(c);
+  };
+
+  if (which === 'queens') {
+    const crowd = makePeople(70, rnd);
+    // a footy field: the try lines, halfway and the 20s, H posts at each end, a State of Origin on it
+    let f = null, FL = 70, FW = 48;
+    for (const [l, w, flat] of [[70, 48, 1.8], [70, 48, 3], [60, 40, 3], [54, 36, 4]]) { f = spot(Math.hypot(l, w) / 2 + 2, hw + 12, flat); if (f) { FL = l; FW = w; break; } } // as big and flat as there's room for
+    if (f) {
+      const [x, z] = f, s = nearest(x, z), ry = Math.atan2(s.th.x, s.th.z), P = (lx, lz) => W(x, z, ry, lx, lz);
+      for (const lz of [-FL / 2, -FL / 2 + 20, 0, FL / 2 - 20, FL / 2]) paint(...P(-FW / 2, lz), ...P(FW / 2, lz));
+      for (const lx of [-FW / 2, FW / 2]) paint(...P(lx, -FL / 2), ...P(lx, FL / 2));
+      for (const e of [-1, 1]) {
+        const [gx, gz] = P(0, e * FL / 2), g = at(gx, gz, ry);
+        for (const sx of [-2.8, 2.8]) {
+          box(g, 0.18, 10, 0.18, 0xf6f2e8, sx, 5, 0);
+          box(g, 0.55, 1.8, 0.55, e > 0 ? 0x6cb4ee : 0x7a1f3d, sx, 0.9, 0); // post pads
+          const [px, pz] = W(gx, gz, ry, sx, 0); solids.push({ x: px, z: pz, r: 0.35, y: g.position.y });
+        }
+        box(g, 5.8, 0.16, 0.16, 0xf6f2e8, 0, 3, 0);
+      }
+      for (let k = 0; k < 26; k++) {
+        const side = k % 2 ? 1 : -1, [px, pz] = P((rnd() - 0.5) * FW * 0.8, side * (3 + rnd() * (FL / 2 - 8)));
+        crowd.add(px, terrainHeight(px, pz), pz, ry + (side > 0 ? Math.PI : 0), side > 0 ? 0x6cb4ee : 0x7a1f3d);
+      }
+      claim(x, z, Math.hypot(FL, FW) / 2 + 2); spots.push({ name: 'footy', x, z });
+    }
+    // a cricket match: the pitch, stumps at each end, everyone in white
+    const c = spot(30, hw + 14, 1.4);
+    if (c) {
+      const [x, z] = c, ry = rnd() * 6.28, P = (lx, lz) => W(x, z, ry, lx, lz);
+      paint(...P(0, -11), ...P(0, 11), 3.0, 0xc9b17c, 0.05);
+      for (const e of [-1, 1]) {
+        const g = at(...P(0, e * 10), ry);
+        for (const sx of [-0.11, 0, 0.11]) box(g, 0.05, 0.71, 0.05, 0xf1e9d6, sx, 0.36, 0);
+        box(g, 0.3, 0.03, 0.04, 0xf1e9d6, 0, 0.73, 0);
+        paint(...P(-1.5, e * 8.8), ...P(1.5, e * 8.8), 0.08);
+      }
+      for (const [lx, lz] of [[0.5, 9.3], [-0.5, -9.7], [0.3, -12.5], [0, 13.5], [-1.5, 15]]) { const [px, pz] = P(lx, lz); crowd.add(px, terrainHeight(px, pz), pz, ry, 0xf6f2e8); }
+      for (let k = 0; k < 7; k++) { const a = (k / 7) * 6.28 + rnd() * 0.5, d = 15 + rnd() * 10, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; crowd.add(px, terrainHeight(px, pz), pz, Math.atan2(x - px, z - pz), 0xf6f2e8); }
+      const sc = at(...P(0, 27), ry); box(sc, 9, 4, 0.3, 0xf6f2e8, 0, 2.8, 0); for (const sx of [-3.5, 3.5]) box(sc, 0.25, 1.2, 0.25, 0x9a9aa6, sx, 0.5, 0); // the sight screen
+      claim(x, z, 30); spots.push({ name: 'cricket', x, z });
+    }
+    // Moreton Bay figs: a fat trunk on buttress roots under a huge dark canopy
+    for (let k = 0; k < 6; k++) {
+      const f2 = spot(7, hw + 9); if (!f2) break;
+      const [x, z] = f2, g = at(x, z, rnd() * 6.28), sc = 0.9 + rnd() * 0.35;
+      cyl(g, 0.9 * sc, 1.5 * sc, 6 * sc, 7, 0x7a6a58, 0, 2.6 * sc, 0);
+      for (let j = 0; j < 4; j++) box(g, 0.5, 1.2, 2.4 * sc, 0x6e5f4f, Math.sin(j * 1.571) * sc * 1.1, 0.35, Math.cos(j * 1.571) * sc * 1.1).rotation.y = j * 1.571;
+      for (let j = 0; j < 6; j++) { const a = j * 1.05 + rnd() * 0.4, d = j ? 3.6 * sc : 0; put(g, new THREE.IcosahedronGeometry((3.8 + rnd() * 1.4) * sc, 0), j % 2 ? 0x2f5d2a : 0x3a6b31, Math.cos(a) * d, (7 + rnd() * 1.5) * sc, Math.sin(a) * d).scale.y = 0.62; }
+      solids.push({ x, z, r: 1.4 * sc, y: g.position.y }); claim(x, z, 7 * sc); spots.push({ name: 'fig', x, z });
+    }
+    crowd.finish();
+  }
+
+  if (which === 'centennial') {
+    // the Federation Pavilion: a dome on a ring of columns, up on a round base
+    const p = spot(11, hw + 12, 1.2);
+    if (p) {
+      const [x, z] = p, g = at(x, z, 0, terrainHeight(x, z) - 0.3), stone = 0xe8d9b5;
+      cyl(g, 8.6, 9.2, 1.6, 16, stone, 0, 0.6, 0);
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * 6.2832; cyl(g, 0.42, 0.5, 5.2, 8, 0xf1e9d6, Math.cos(a) * 6.6, 4.0, Math.sin(a) * 6.6); }
+      cyl(g, 7.4, 7.4, 1.1, 16, stone, 0, 7.1, 0);
+      put(g, new THREE.SphereGeometry(7.2, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0xd9c9a0, 0, 7.6, 0);
+      cyl(g, 1.1, 1.3, 1.8, 8, stone, 0, 15.6, 0);
+      solids.push({ x, z, r: 8.6, y: g.position.y }); claim(x, z, 11); spots.push({ name: 'pavilion', x, z });
+    }
+    // horses in a paddock with a white post-and-rail fence
+    const h = spot(19, hw + 14, 2.5);
+    if (h) {
+      const [x, z] = h, ry = rnd() * 6.28, P = (lx, lz) => W(x, z, ry, lx, lz), white = lam(0xf6f2e8);
+      const cs = [[-16, -12], [16, -12], [16, 12], [-16, 12]].map(([a, b]) => P(a, b));
+      for (let k = 0; k < 4; k++) {
+        const [ax, az] = cs[k], [bx, bz] = cs[(k + 1) % 4], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 3.2);
+        const post = (j) => { const px = ax + (bx - ax) * j / n, pz = az + (bz - az) * j / n; return V(px, terrainHeight(px, pz), pz); };
+        for (let j = 0; j <= n; j++) { const q = post(j); box(worldGroup, 0.16, 1.5, 0.16, 0xf6f2e8, q.x, q.y + 0.6, q.z); }
+        for (let j = 0; j < n; j++) for (const y of [0.55, 1.15]) { const a = post(j), b = post(j + 1); worldGroup.add(strut(a.clone().setY(a.y + y), b.clone().setY(b.y + y), 0.1, 0.12, white)); }
+        track.walls.push({ ax, az, bx, bz, y: terrainHeight(ax, az) });
+      }
+      const coats = [0x6b4226, 0x3b2a1e, 0x8a5a2b, 0xd9c9a0, 0x2a2a2a, 0x7a4a2a];
+      for (let k = 0; k < 6; k++) {
+        const [hx, hz] = P((rnd() - 0.5) * 24, (rnd() - 0.5) * 16), c0 = coats[k], g = at(hx, hz, rnd() * 6.28), grazing = k % 2 === 0;
+        box(g, 0.9, 1.0, 2.2, c0, 0, 1.55, 0);
+        for (const [lx, lz] of [[-0.3, -0.8], [0.3, -0.8], [-0.3, 0.8], [0.3, 0.8]]) box(g, 0.22, 1.1, 0.22, c0, lx, 0.55, lz);
+        if (grazing) { box(g, 0.42, 1.3, 0.5, c0, 0, 1.45, 1.35).rotation.x = 2.2; box(g, 0.36, 0.42, 0.9, c0, 0, 0.75, 1.95).rotation.x = 1.2; }
+        else { box(g, 0.42, 1.2, 0.5, c0, 0, 2.2, 1.05).rotation.x = 0.6; box(g, 0.36, 0.42, 0.95, c0, 0, 2.7, 1.7).rotation.x = 0.5; box(g, 0.1, 0.55, 0.6, 0x1d1a17, 0, 2.5, 0.95).rotation.x = 0.6; }
+        box(g, 0.14, 0.85, 0.16, 0x1d1a17, 0, 1.55, -1.2).rotation.x = 0.35;
+      }
+      claim(x, z, 21); spots.push({ name: 'horses', x, z });
+    }
+    // black swans on the pond
+    if (track.lake && track.sites?.lake) {
+      const Lk = track.lake, swans = [];
+      for (let k = 0; k < 5; k++) {
+        const g = new THREE.Group(); g.userData.dyn = true; worldGroup.add(g);
+        box(g, 0.6, 0.42, 1.15, 0x1d1a17, 0, 0.2, 0);
+        box(g, 0.15, 0.95, 0.15, 0x1d1a17, 0, 0.8, 0.45).rotation.x = -0.15;
+        box(g, 0.17, 0.17, 0.4, 0x1d1a17, 0, 1.22, 0.55);
+        box(g, 0.11, 0.09, 0.26, 0xe6453a, 0, 1.19, 0.86);
+        box(g, 0.5, 0.25, 0.5, 0x2a2622, 0, 0.42, -0.42).rotation.x = 0.5;
+        mergeStatic(g);
+        swans.push({ g, a: rnd() * 6.28, r: Lk.r * (0.25 + rnd() * 0.4), sp: (0.08 + rnd() * 0.06) * (k % 2 ? 1 : -1), cx: Lk.x + (rnd() - 0.5) * Lk.r * 0.3, cz: Lk.z + (rnd() - 0.5) * Lk.r * 0.3 });
+      }
+      const swim = (t) => { for (const s of swans) { const a = s.a + t * s.sp; s.g.position.set(s.cx + Math.cos(a) * s.r, Lk.level + 0.05, s.cz + Math.sin(a) * s.r); s.g.rotation.y = Math.atan2(-Math.sin(a) * s.sp, Math.cos(a) * s.sp); } };
+      swim(0); anim.push(swim); spots.push({ name: 'swans', x: Lk.x, z: Lk.z });
+    }
+  }
+
+  if (which === 'thredbo') {
+    // a chairlift up the mountain: the steepest clear line we can find
+    let lift = null;
+    for (let k = 0; k < 300; k++) {
+      const [tx, tz] = randIn(20), a = rnd() * 6.2832, len = 150 + rnd() * 80, bx = tx + Math.cos(a) * len, bz = tz + Math.sin(a) * len;
+      if (Math.hypot(bx - lim.x, bz - lim.z) > lim.r - 20) continue;
+      const climb = terrainHeight(tx, tz) - terrainHeight(bx, bz);
+      if (climb < 12 || (lift && climb <= lift.climb)) continue;
+      let ok = true;
+      for (let d = 0; d <= len && ok; d += 6) ok = isFree(track, bx + (tx - bx) * d / len, bz + (tz - bz) * d / len, 3, hw + 9);
+      if (ok) lift = { bx, bz, tx, tz, len, climb };
+    }
+    if (lift) {
+      const { bx, bz, len } = lift, ux = (lift.tx - bx) / len, uz = (lift.tz - bz) / len, sx = uz, sz = -ux, ry = Math.atan2(ux, uz);
+      const n = Math.max(2, Math.round(len / 32)), H = 9, tops = [], steel = 0x5b606a;
+      for (let k = 0; k <= n; k++) {
+        const px = bx + ux * len * k / n, pz = bz + uz * len * k / n, y = terrainHeight(px, pz), g = at(px, pz, ry, y), end = k === 0 || k === n;
+        if (!end) { box(g, 0.6, H + 0.6, 0.6, steel, 0, (H + 0.6) / 2, 0); box(g, 5.4, 0.35, 0.35, steel, 0, H + 0.4, 0); solids.push({ x: px, z: pz, r: 0.5, y }); claim(px, pz, 3); }
+        else {
+          const back = k ? 3 : -3; // the station hut sits behind the big wheel
+          box(g, 7, 3.4, 5, k ? 0x8f3a2e : 0x6b4a2a, 0, 1.7, back); box(g, 7.8, 0.5, 5.8, 0xf6f2e8, 0, 3.6, back);
+          box(g, 0.8, H, 0.8, steel, 0, H / 2, 0); cyl(g, 2.4, 2.4, 0.5, 16, 0x3b4250, 0, H, 0);
+          solids.push({ x: px + ux * back, z: pz + uz * back, r: 3.5, y }); claim(px, pz, 7);
+        }
+        tops.push(V(px, y + H, pz));
+      }
+      const wire = lam(0x26303f);
+      for (const side of [2.2, -2.2]) for (let k = 0; k < n; k++) {
+        const a = tops[k].clone().add(V(sx * side, 0.4, sz * side)), b = tops[k + 1].clone().add(V(sx * side, 0.4, sz * side));
+        worldGroup.add(strut(a, b, 0.07, 0.07, wire));
+      }
+      // the chairs: up one side with skiers on, down the other empty
+      const chairG = new THREE.Group();
+      box(chairG, 1.7, 0.15, 0.62, 0x3b4250, 0, -2.4, 0.05); box(chairG, 1.7, 0.65, 0.12, 0x3b4250, 0, -2.0, -0.26); box(chairG, 0.09, 2.3, 0.09, 0x8d93a0, 0, -1.15, -0.1);
+      mergeStatic(chairG);
+      const riderG = new THREE.Group();
+      for (const s of [-0.42, 0.42]) { box(riderG, 0.46, 0.75, 0.32, 0xffffff, s, -1.95, 0.05); box(riderG, 0.3, 0.3, 0.3, 0xffffff, s, -1.4, 0.05); }
+      mergeStatic(riderG);
+      const SP = 14, count = Math.floor((2 * len) / SP), jackets = [0xe6453a, 0x3d8bff, 0xffd23f, 0x7ed957, 0xff6bcb, 0xff8a3d, 0x2ec4b6];
+      const mk = (geo, mat) => { const m = new THREE.InstancedMesh(geo, mat, count); m.frustumCulled = false; m.userData.dyn = true; m.castShadow = true; worldGroup.add(m); return m; };
+      const chairs = mk(chairG.children[0].geometry, mergedMat(THREE.FrontSide, 0)), riders = mk(riderG.children[0].geometry, mergedMat(THREE.FrontSide, 0));
+      for (let i = 0; i < count; i++) riders.setColorAt(i, new THREE.Color(jackets[i % jackets.length]));
+      const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), up = V(0, 1, 0), Z = V(0, 0, 0), ONE = V(1, 1, 1), P = V(0, 0, 0);
+      // skiers coming down beside it, turning from side to side; the run is kept clear of trees
+      const off = (rnd() < 0.5 ? 1 : -1) * 20, SKI = 7;
+      for (let d = 0; d <= len; d += 10) claim(bx + ux * d + sx * off, bz + uz * d + sz * off, 9);
+      const skierG = new THREE.Group();
+      for (const s of [-0.16, 0.16]) box(skierG, 0.1, 0.05, 1.7, 0xffffff, s, 0.03, 0);
+      box(skierG, 0.46, 0.8, 0.32, 0xffffff, 0, 0.8, 0).rotation.x = 0.25; box(skierG, 0.3, 0.3, 0.3, 0xffffff, 0, 1.35, 0.12);
+      mergeStatic(skierG);
+      const skiers = new THREE.InstancedMesh(skierG.children[0].geometry, mergedMat(THREE.FrontSide, 0), SKI);
+      skiers.frustumCulled = false; skiers.userData.dyn = true; skiers.castShadow = true; worldGroup.add(skiers);
+      for (let i = 0; i < SKI; i++) skiers.setColorAt(i, new THREE.Color(jackets[(i + 3) % jackets.length]));
+      const run = (t) => {
+        for (let i = 0; i < count; i++) {
+          const d = (i * SP + t * 2.4) % (2 * len), goingUp = d < len, f = (goingUp ? d : 2 * len - d) / len * n, k = Math.min(n - 1, Math.floor(f)), u = f - k, side = goingUp ? 2.2 : -2.2;
+          const a = tops[k], b = tops[k + 1];
+          P.set(a.x + (b.x - a.x) * u + sx * side, a.y + (b.y - a.y) * u - Math.sin(Math.PI * u) * 0.8 + 0.4, a.z + (b.z - a.z) * u + sz * side);
+          Q.setFromAxisAngle(up, ry + (goingUp ? 0 : Math.PI));
+          chairs.setMatrixAt(i, M.compose(P, Q, ONE)); riders.setMatrixAt(i, M.compose(P, Q, goingUp ? ONE : Z));
+        }
+        for (let i = 0; i < SKI; i++) {
+          const p = (t * 7 + (i * len) / SKI) % len, d = len - p, w = 0.11 + i * 0.01, lat = off + Math.sin(p * w + i) * 7, slope = Math.cos(p * w + i) * 7 * w;
+          const x = bx + ux * d + sx * lat, z = bz + uz * d + sz * lat;
+          P.set(x, terrainHeight(x, z), z); Q.setFromAxisAngle(up, ry + Math.PI - Math.atan(slope));
+          skiers.setMatrixAt(i, M.compose(P, Q, ONE));
+        }
+        chairs.instanceMatrix.needsUpdate = riders.instanceMatrix.needsUpdate = skiers.instanceMatrix.needsUpdate = true;
+      };
+      run(0); anim.push(run);
+      spots.push({ name: 'chairlift', x: bx + ux * len / 2, z: bz + uz * len / 2 });
+      // A-frame lodges round the bottom of it
+      for (let k = 0, made = 0; k < 40 && made < 6; k++) {
+        const f = spot(5, hw + 9, 2.5, [bx - ux * 24, bz - uz * 24, 28], 30); if (!f) continue;
+        const [x, z] = f, g = at(x, z, ry + Math.PI + (rnd() - 0.5) * 0.6);
+        put(g, prism(7, 7.5, 8), [0x8f3a2e, 0x6b4a2a, 0x3b4250][made % 3], 0, 0, 0);
+        box(g, 2.6, 2.6, 0.1, 0xffd27a, 0, 2.2, 4.02, 0xc98a2a); // a lit window in the gable
+        box(g, 1.1, 1.9, 0.1, 0x3b2a1e, 0, 0.95, 4.02);
+        solids.push({ x, z, r: 3.6, y: g.position.y }); claim(x, z, 5); made++;
+      }
+    }
+  }
+
+  if (which === 'panorama') {
+    // the corners' real names, in order round the lap, on lit signs on the outside of each
+    const turn = samples.map((a, i) => { const b = samples[(i + 10) % N]; return a.th.x * b.th.z - a.th.z * b.th.x; });
+    const corners = [];
+    for (let i = 0; i < N; i++) {
+      const k = Math.abs(turn[i]);
+      if (k < 0.22) continue;
+      const last = corners[corners.length - 1];
+      if (last && i - last.i < 45) { if (k > last.k) Object.assign(last, { i, k, dir: Math.sign(turn[i]) }); continue; }
+      corners.push({ i, k, dir: Math.sign(turn[i]) });
+    }
+    if (corners.length > 1 && corners[0].i + N - corners[corners.length - 1].i < 45) corners.pop(); // the last bend is the first one again
+    const NAMES = ['HELL CORNER', 'GRIFFINS BEND', 'THE CUTTING', 'REID PARK', 'McPHILLAMY PARK', 'SKYLINE', 'THE ESSES', 'THE DIPPER', "FORREST'S ELBOW", 'THE CHASE', "MURRAY'S CORNER"];
+    const m = Math.min(corners.length, NAMES.length);
+    for (let j = 0; j < m; j++) {
+      const name = j === 0 ? NAMES[0] : j === m - 1 ? NAMES[NAMES.length - 1] : NAMES[1 + Math.round((j - 1) * (NAMES.length - 3) / Math.max(1, m - 3))];
+      const c = corners[j], out = c.dir > 0 ? 1 : -1;
+      // on the approach, on the outside if there's room there, further back or on the inside if not
+      const tries = [];
+      for (const back of [14, 20, 9, 27, 34]) for (const side of [out, -out]) for (let lat = hw + 6; lat < hw + 22; lat += 2) tries.push([back, side, lat]);
+      for (const [back, side, lat] of tries) {
+        const s = samples[(c.i - back + N) % N], x = s.p.x + s.left.x * side * lat, z = s.p.z + s.left.z * side * lat;
+        if (Math.hypot(x - lim.x, z - lim.z) > lim.r - 6 || !isFree(track, x, z, 3.4, hw + 5)) continue;
+        const g = at(x, z, Math.atan2(-s.th.x, -s.th.z));
+        for (const px of [-3.2, 3.2]) box(g, 0.22, 3.4, 0.22, 0x3b4250, px, 1.7, -0.12);
+        box(g, 7.8, 2.1, 0.16, 0x1d2230, 0, 2.75, -0.12);
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 1.85), new THREE.MeshBasicMaterial({ map: label(name, '#1f5f3a', '#ffffff'), color: 0xd8d8d8 }));
+        face.position.set(0, 2.75, 0); g.add(face);
+        for (const px of [-3.2, 3.2]) { const [wx, wz] = W(x, z, g.rotation.y, px, 0); solids.push({ x: wx, z: wz, r: 0.3, y: g.position.y }); }
+        claim(x, z, 4); spots.push({ name, x, z, ry: g.rotation.y });
+        break;
+      }
+    }
+    // campers up on the mountain, round their fires
+    let top = samples[0];
+    for (const s of samples) if (s.p.y > top.p.y) top = s;
+    const crowd = makePeople(80, rnd), fires = [], glow = glowTexture(128, 128, 64, 64, 64);
+    const canvas = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0xe6453a, 0x2ec4b6];
+    for (const side of [1, -1]) {
+      const cx = top.p.x + top.left.x * side * (hw + 38), cz = top.p.z + top.left.z * side * (hw + 38);
+      for (let k = 0, placed = 0; k < 200 && placed < 22; k++) {
+        const x = cx + (rnd() - 0.5) * 64, z = cz + (rnd() - 0.5) * 64;
+        if (Math.hypot(x - lim.x, z - lim.z) > lim.r - 8 || !isFree(track, x, z, 3, hw + 12)) continue;
+        const g = at(x, z, rnd() * 6.28), kind = placed % 5;
+        if (kind === 4) {
+          cyl(g, 0.75, 0.9, 0.3, 7, 0x5b5b5b, 0, 0.15, 0);
+          for (let j = 0; j < 3; j++) box(g, 0.18, 0.18, 1.3, 0x4a3221, 0, 0.35, 0).rotation.y = j * 1.05;
+          const flame = put(g, new THREE.ConeGeometry(0.55, 1.4, 6), 0xffa040, 0, 0.95, 0, 0xff6a00); flame.castShadow = false; flame.userData.dyn = true;
+          const pool = new THREE.Mesh(new THREE.PlaneGeometry(10, 10).rotateX(-Math.PI / 2), lightMat(glow, 0xff8a30, 0.8)); pool.position.y = 0.12; pool.userData.dyn = true; g.add(pool);
+          fires.push({ m: flame, ph: rnd() * 6.28 });
+          for (let j = 0; j < 4; j++) { const a = j * 1.571 + rnd() * 0.5; crowd.add(x + Math.cos(a) * 2.3, g.position.y, z + Math.sin(a) * 2.3, Math.atan2(-Math.cos(a), -Math.sin(a))); }
+        } else if (kind === 3) { // a caravan
+          box(g, 2.3, 2.2, 5, 0xf1f0ea, 0, 1.4, 0); box(g, 2.34, 0.3, 4.6, canvas[placed % canvas.length], 0, 1.1, 0); box(g, 2.36, 0.6, 2.4, 0x26303f, 0, 1.9, 0.6);
+          for (const wx of [-1.2, 1.2]) cyl(g, 0.4, 0.4, 0.3, 8, 0x1d2230, wx, 0.4, 0).rotation.z = Math.PI / 2;
+        } else { // a tent, and now and then a flag on a pole by it
+          put(g, prism(2.6, 1.8, 3), canvas[(placed * 7) % canvas.length], 0, 0, 0);
+          if (placed % 3 === 0) { box(g, 0.08, 5, 0.08, 0xd9dde3, 2, 2.5, 0); box(g, 1.3, 0.75, 0.04, canvas[(placed + 2) % canvas.length], 2.65, 4.5, 0); }
+        }
+        claim(x, z, 3); solids.push({ x, z, r: 1.8, y: g.position.y }); placed++;
+      }
+    }
+    crowd.finish();
+    if (fires.length) anim.push((t) => { for (const f of fires) f.m.scale.set(1, 0.8 + Math.sin(t * 11 + f.ph) * 0.15 + Math.sin(t * 17.3 + f.ph * 2) * 0.1, 1); });
+    spots.push({ name: 'campers', x: top.p.x, z: top.p.z });
+  }
+
+  if (which === 'noosa') {
+    const L = track.sea.level, s0 = samples[0], out = wetAt(s0.p.x + s0.left.x * 80, s0.p.z + s0.left.z * 80) ? 1 : -1;
+    const F = (a, o) => [s0.p.x + s0.th.x * a + s0.left.x * out * o, s0.p.z + s0.th.z * a + s0.left.z * out * o]; // along the straight, out to sea
+    // waves rolling in along the headland, surfers riding them, more waiting out the back
+    const shoreA = (o) => { let a = 150; while (a > -80 && terrainHeight(...F(a, o)) > L) a -= 0.5; return a; };
+    const o0 = 165, o1 = 245, a0 = shoreA(o0), a1 = shoreA(o1), da = a1 - a0, dO = o1 - o0, len = Math.hypot(da, dO);
+    const na = -dO / len, no = da / len; // out from the shore, into the bay
+    const [ex, ez] = F(a0 + da, o0 + dO), [sx0, sz0] = F(a0, o0), ry = Math.atan2(ex - sx0, ez - sz0); // along the shore, in the world
+    const waves = [];
+    for (let k = 0; k < 3; k++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, len * 0.85), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0, flatShading: true }));
+      m.rotation.y = ry; m.userData.dyn = true; worldGroup.add(m); waves.push(m);
+    }
+    const board = (g, c) => put(g, taperBox(0.55, 0.08, 2.3, [0.4, 1, 0.05], [0.8, 1, 0]), c, 0, 0.04, 0);
+    const surfers = [0xffd23f, 0xf6f2e8, 0xff6bcb, 0x2ec4b6].map((c, k) => {
+      const g = new THREE.Group(); g.userData.dyn = true; worldGroup.add(g);
+      board(g, c); box(g, 0.46, 0.7, 0.3, 0x1d2230, 0, 0.5, 0).rotation.x = 0.3; box(g, 0.3, 0.3, 0.3, 0xd9a577, 0, 1.0, 0.12);
+      mergeStatic(g); return { g, wave: k % 3, ph: rnd() * 6.28 };
+    });
+    const sitters = [0x3d8bff, 0xffffff, 0xe6453a, 0x7ed957].map((c, k) => {
+      const g = new THREE.Group(); g.userData.dyn = true; worldGroup.add(g);
+      board(g, c); box(g, 0.46, 0.55, 0.3, 0x1d2230, 0, 0.32, 0); box(g, 0.3, 0.3, 0.3, 0xd9a577, 0, 0.75, 0);
+      mergeStatic(g);
+      const u = (k + 0.5) / 4 - 0.5, [x, z] = F(a0 + da * (0.5 + u * 0.8) + na * 70, o0 + dO * (0.5 + u * 0.8) + no * 70);
+      return { g, x, z, ph: rnd() * 6.28 };
+    });
+    const CYCLE = 13;
+    const surf = (t) => {
+      waves.forEach((m, k) => {
+        const p = ((t / CYCLE) + k / 3) % 1, off = 4 + 56 * (1 - p), [x, z] = F(a0 + da / 2 + na * off, o0 + dO / 2 + no * off);
+        m.position.set(x, L + 0.12, z); m.material.opacity = Math.sin(Math.PI * p) * 0.85; m.userData.p = p;
+      });
+      for (const s of surfers) {
+        const w = waves[s.wave], p = w.userData.p, along = Math.sin(t * 0.32 + s.ph) * len * 0.33, dir = Math.cos(t * 0.32 + s.ph) >= 0 ? 1 : -1;
+        s.g.visible = p > 0.12 && p < 0.88;
+        s.g.position.set(w.position.x + Math.sin(ry) * along, L + 0.2, w.position.z + Math.cos(ry) * along);
+        s.g.rotation.set(0, ry + (dir > 0 ? 0 : Math.PI) + 0.35 * dir, -0.15 * dir, 'YXZ');
+      }
+      for (const s of sitters) { s.g.position.set(s.x, L + 0.05 + Math.sin(t * 1.2 + s.ph) * 0.12, s.z); s.g.rotation.set(0, s.ph, Math.sin(t * 0.9 + s.ph) * 0.06); }
+    };
+    surf(0); anim.push(surf);
+    { const [x, z] = F(a0 + da / 2, o0 + dO / 2); spots.push({ name: 'surf', x, z }); }
+    // koalas up in the gum trees on the headland
+    for (let k = 0, n = 0; k < 500 && n < 7; k++) {
+      const [x, z] = F(60 + rnd() * 140, 25 + rnd() * 240);
+      if (wetAt(x, z) || Math.hypot(x - lim.x, z - lim.z) > lim.r - 10 || !isFree(track, x, z, 2.5, hw + 8)) continue;
+      const g = at(x, z, rnd() * 6.28);
+      cyl(g, 0.26, 0.4, 7.5, 6, 0xe3ddd0, 0, 3.75, 0);
+      box(g, 0.2, 3, 0.2, 0xe3ddd0, 0.9, 6.4, 0).rotation.z = -0.5;
+      for (let j = 0; j < 4; j++) put(g, new THREE.IcosahedronGeometry(1.8 + rnd() * 0.6, 0), j % 2 ? 0x6f8f5a : 0x7d9a62, (rnd() - 0.5) * 2.6, 7.8 + rnd() * 1.6, (rnd() - 0.5) * 2.6);
+      box(g, 0.56, 0.76, 0.5, 0x8f949e, 0, 4.2, 0.44);           // the koala, hugging the trunk
+      box(g, 0.5, 0.44, 0.44, 0x9a9faa, 0, 4.8, 0.5);
+      for (const ex2 of [-0.32, 0.32]) box(g, 0.26, 0.26, 0.12, 0x9a9faa, ex2, 5.05, 0.48);
+      box(g, 0.15, 0.19, 0.1, 0x1d1a17, 0, 4.74, 0.75);
+      solids.push({ x, z, r: 0.45, y: g.position.y }); claim(x, z, 2.5); spots.push({ name: 'koala', x, z }); n++;
+    }
+  }
+
+  if (which === 'sydney') {
+    const s0 = samples[0];
+    // Sydney Tower: straight ahead down the main straight, out past the edge of the map
+    const R = lim.r + 70, dx = s0.p.x - lim.x, dz = s0.p.z - lim.z, b = dx * s0.th.x + dz * s0.th.z, d = -b + Math.sqrt(Math.max(0, b * b - (dx * dx + dz * dz - R * R)));
+    const tx = s0.p.x + s0.th.x * d, tz = s0.p.z + s0.th.z * d, g = at(tx, tz, 0), grey = 0xb9bdc5;
+    cyl(g, 3.4, 4.4, 252, 10, grey, 0, 124, 0);
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * 6.2832; g.add(strut(V(Math.cos(a) * 13, 0, Math.sin(a) * 13), V(Math.cos(a) * 4.3, 196, Math.sin(a) * 4.3), 0.35, 0.35, lam(0x9a9faa))); }
+    cyl(g, 12, 9, 6, 16, grey, 0, 200, 0);
+    cyl(g, 12.5, 12.5, 20, 16, 0xd9b44a, 0, 213, 0, 0x6a5214);                    // the golden turret
+    cyl(g, 12.7, 12.7, 3.2, 16, 0xffe9a8, 0, 208, 0, 0xffd27a);                    // its lit windows
+    cyl(g, 9, 12.5, 4, 16, grey, 0, 225, 0);
+    cyl(g, 0.7, 1.4, 70, 6, grey, 0, 262, 0);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), new THREE.MeshBasicMaterial({ color: 0xff2a2a })); tip.position.set(tx, g.position.y + 298, tz); tip.userData.dyn = true; worldGroup.add(tip);
+    anim.push((t) => { tip.visible = t % 1.5 < 0.75; });
+    claim(tx, tz, 26); spots.push({ name: 'tower', x: tx, z: tz, h: 220 });
+    // the harbour behind the start line: the Harbour Bridge across it, the Opera House on the far side
+    const ox = -s0.th.x, oz = -s0.th.z, HR = 210, hx = lim.x + ox * (lim.r + 430), hz = lim.z + oz * (lim.r + 430);
+    let top = -Infinity;
+    for (let k = 0; k < 60; k++) { const a = rnd() * 6.2832, r = Math.sqrt(rnd()) * HR; top = Math.max(top, terrainHeight(hx + Math.cos(a) * r, hz + Math.sin(a) * r)); }
+    const WL = top + 0.4, water = new THREE.Mesh(new THREE.CircleGeometry(HR, 48).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x14304f, emissive: 0x050f1d }));
+    water.position.set(hx, WL, hz); water.receiveShadow = true; worldGroup.add(water);
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(HR, HR, 12, 48, 1, true), lam(0x5b606a, 0, THREE.DoubleSide)); wall.position.set(hx, WL - 6, hz); worldGroup.add(wall);
+    track.harbour = { x: hx, z: hz, r: HR }; claim(hx, hz, HR + 8);
+    // the bridge: a steel arch from pylon to pylon, the deck hanging under it
+    const px = -oz, pz = ox, cx = hx + ox * -(HR * 0.35), cz = hz + oz * -(HR * 0.35), DECK = WL + 48, SPAN = 140;
+    const bp = (u, across, y) => V(cx + px * u + ox * across, y, cz + pz * u + oz * across);
+    const steel = lam(0x6f7680), lit = lam(0xffe2a8, 0xffc070);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(24, 3, 400), lam(0x4a4f5a)); deck.position.copy(bp(0, 0, DECK)); deck.rotation.y = Math.atan2(px, pz); worldGroup.add(deck);
+    for (const u of [-SPAN - 14, SPAN + 14]) for (const ac of [-13, 13]) {
+      const pyl = new THREE.Mesh(new THREE.BoxGeometry(14, DECK - WL + 36, 16), lam(0xc9b48c)); pyl.position.copy(bp(u, ac, WL + (DECK - WL + 36) / 2)); pyl.rotation.y = Math.atan2(px, pz); worldGroup.add(pyl);
+    }
+    const yTop = (u) => DECK + 10 + 54 * (1 - (u / SPAN) ** 2), yBot = (u) => DECK - 10 + 64 * (1 - (u / SPAN) ** 2), SEG = 20;
+    for (const ac of [-11, 11]) for (let k = 0; k < SEG; k++) {
+      const u0 = -SPAN + (2 * SPAN * k) / SEG, u1 = u0 + (2 * SPAN) / SEG;
+      worldGroup.add(strut(bp(u0, ac, yTop(u0)), bp(u1, ac, yTop(u1)), 1.6, 1.6, steel));
+      worldGroup.add(strut(bp(u0, ac, yBot(u0)), bp(u1, ac, yBot(u1)), 2.2, 2.2, steel));
+      worldGroup.add(strut(bp(u0, ac, k % 2 ? yTop(u0) : yBot(u0)), bp(u1, ac, k % 2 ? yBot(u1) : yTop(u1)), 0.8, 0.8, steel));
+      if (yBot(u0) > DECK + 2) worldGroup.add(strut(bp(u0, ac, yBot(u0)), bp(u0, ac, DECK + 1.5), 0.6, 0.6, steel));
+      if (k % 2 === 0) { const l = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), lit); l.position.copy(bp(u0, ac, yTop(u0) + 1.2)); worldGroup.add(l); }
+    }
+    for (let k = 0; k <= SEG; k += 2) worldGroup.add(strut(bp(-SPAN + (2 * SPAN * k) / SEG, -11, yTop(-SPAN + (2 * SPAN * k) / SEG)), bp(-SPAN + (2 * SPAN * k) / SEG, 11, yTop(-SPAN + (2 * SPAN * k) / SEG)), 0.7, 0.7, steel));
+    spots.push({ name: 'bridge', x: cx, z: cz, h: DECK });
+    // the Opera House: white shells on a stone podium, lit up at night
+    const ohx = hx + ox * (HR * 0.3) + px * (HR * 0.45), ohz = hz + oz * (HR * 0.3) + pz * (HR * 0.45), oh = at(ohx, ohz, Math.atan2(px, pz) + 0.4, WL);
+    box(oh, 84, 7, 52, 0xc9a98a, 0, 3.5, 0, 0x3a3026);
+    const shell = (r, x, z, lean) => {
+      const m = put(oh, new THREE.SphereGeometry(r, 10, 6, 0, Math.PI / 3, 0, Math.PI / 2), 0xf4f2ec, x, 7, z, 0xb4b2ac, THREE.DoubleSide); // lit up at night
+      m.rotation.set(0, Math.PI / 2 - Math.PI / 6, lean); return m;
+    };
+    for (const [row, zz] of [[0, -11], [1, 13]]) [32, 26, 18].forEach((r, k) => shell(r - row * 4, -28 + k * 20, zz, -0.35 - k * 0.05));
+    spots.push({ name: 'opera', x: ohx, z: ohz, h: 30 });
+  }
 }
 
 // Places to explore away from the circuit: a lake, a fairground, a
@@ -3162,8 +3598,10 @@ function buildCity(track, rnd) {
   }
   // ---- and a skyline far off ----
   for (let k = 0; k < 70; k++) {
-    const a = (k / 70) * 6.2832 + rnd() * 0.06, d = lim.r + 330 + rnd() * 600, hx = 14 + rnd() * 26, hz = 14 + rnd() * 26;
-    building(footprint(lim.x + Math.cos(a) * d, lim.z + Math.sin(a) * d, hx, hz, rnd() * 1.6), FLOOR * (20 + Math.floor(rnd() * 50)), false);
+    const a = (k / 70) * 6.2832 + rnd() * 0.06, d = lim.r + 330 + rnd() * 600, hx = 14 + rnd() * 26, hz = 14 + rnd() * 26, bx = lim.x + Math.cos(a) * d, bz = lim.z + Math.sin(a) * d;
+    const H = track.harbour, h = FLOOR * (20 + Math.floor(rnd() * 50)), ry = rnd() * 1.6;
+    if (H && Math.hypot(bx - H.x, bz - H.z) < H.r + 60) continue; // not standing in the harbour
+    building(footprint(bx, bz, hx, hz, ry), h, false);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
@@ -3256,6 +3694,7 @@ function buildCity(track, rnd) {
       if (dNear < lim.r + 12 || dFar > reach - 8) continue;
       // nothing standing in the lane round the block (its own buildings sit inside it)
       if (boxes.some(b => b.x0 < x1 + 2 && b.x1 > x0 - 2 && b.z0 < z1 + 2 && b.z1 > z0 - 2 && !(b.x0 > x0 + 2 && b.x1 < x1 - 2 && b.z0 > z0 + 2 && b.z1 < z1 - 2))) continue;
+      if (occupied.some(o => o.r >= 10 && o.x > x0 - o.r && o.x < x1 + o.r && o.z > z0 - o.r && o.z < z1 + o.r)) continue; // nor round Sydney Tower or into the harbour
       loops.push({ x0, x1, z0, z1, d: dNear });
     }
     loops.sort((a, b) => a.d - b.d); loops.length = Math.min(loops.length, 60);

@@ -4,6 +4,15 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.8', date: '24 Nov 2026', title: 'The real places',
+    items: [
+      'Every track has a bit of the real place now. Queens Park: a footy field (NSW against QLD), a cricket match and big Moreton Bay figs. Centennial Park: the Federation Pavilion, horses in a paddock and black swans on the pond.',
+      'Thredbo: a chairlift up the mountain with skiers coming down, and A-frame lodges. Mount Panorama: every corner has its real name on a sign (Hell Corner, Skyline, The Dipper, The Chase and the rest), and campers sit round their fires on the mountain.',
+      'Noosa Heads: surfers riding the waves in along the headland, and koalas in the gum trees. Sydney CBD: Sydney Tower at the end of the main straight, and the Harbour Bridge and the Opera House across the water.',
+      'The chequered banner over the start line doesn\'t flicker any more, and the Feedback button looks like Settings.',
+    ],
+  },
+  {
     v: '3.7', date: '24 Nov 2026', title: 'Aussie tracks',
     items: [
       'Every track has an Australian name: Queens Park GP, Centennial Park Raceway, Thredbo Alpine Circuit, Mount Panorama Circuit, Noosa Heads Circuit and Sydney CBD Street Circuit. The lobby shows their old names underneath.',

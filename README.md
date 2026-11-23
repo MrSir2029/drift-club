@@ -232,6 +232,13 @@ walls, and traffic going round the blocks out past the edge of the map. A few
 side streets, always on the outside of the
 circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
 the fairground and the radio mast.
+Each track also has a bit of the real place it's named after (`local` in
+`tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
+match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
+black swans at Centennial Park; a chairlift, skiers and A-frame lodges at
+Thredbo; the real corner names on signs and campers round their fires at Mount
+Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
+and the Opera House around Sydney CBD.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.
