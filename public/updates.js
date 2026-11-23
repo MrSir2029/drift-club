@@ -18,7 +18,7 @@ export const UPDATES = [
       'Palm Bay: along the seafront, out round the lighthouse and back through the palms. Beach huts, umbrellas and boats, and you can drive into the sea (it\'s slow going).',
       'Neon City: a street circuit at night between walls, with square corners, a chicane, lit-up office blocks and neon signs. Side streets lead out into the city.',
       'The landmarks are still there to explore, but the stars to find are gone.',
-      'Smaller track cards in the lobby, the right shape now: as many as fit in a row, and the list scrolls for the rest.',
+      'Smaller track cards in the lobby, the right shape now: four to a row, and the list scrolls for the rest.',
     ],
   },
   {
