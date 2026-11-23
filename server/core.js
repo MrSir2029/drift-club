@@ -23,7 +23,10 @@ const BOARD_SEASON = 1;
 // top speed the whole way round (with 10% in hand for cutting the corners).
 // Lengths in metres, one per track in tracks.js; top speeds in m/s, as in
 // CAR_CLASSES in game.js.
-const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1571, 1475];
+const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1423, 1429];
+// Each track's layout, as 'v' in tracks.js. A new layout starts its board again:
+// the layout goes into each time's signature, so old copies don't come back.
+const TRACK_VERSION = [1, 1, 1, 1, 2, 2];
 const TOP_SPEED = { open: 60, rally: 52, camry: 46 };
 const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // Names with these in them stay off the leaderboard (everyone sees it, not
@@ -97,7 +100,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   // carries the server's signature, so a copy can be returned but not edited.
   const boards = new Map(); // 'track' -> [{ n: name, ms, c: car, s: signature }], fastest first
   const boardKey = (t) => String(t);
-  const signature = (k, n, ms, c) => sign(`${BOARD_SEASON}|${k}|${n}|${ms}|${c}`);
+  const signature = (k, n, ms, c) => sign(`${BOARD_SEASON}|${k}${(TRACK_VERSION[+k] || 1) > 1 ? 'v' + TRACK_VERSION[+k] : ''}|${n}|${ms}|${c}`);
   // A board's key, read as [track, car]. The car is null for today's boards
   // (one per track, any car); boards from v2.5 were kept per car, 'track:car'.
   function readKey(k) {

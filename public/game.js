@@ -487,7 +487,7 @@ function buildTerrain(track) {
       const dx = x - s.p.x, dz = z - s.p.z, d = dx * dx + dz * dz;
       if (d < best) { best = d; yN = s.p.y; }
     }
-    const far = smooth(clamp((Math.sqrt(best) - R) / 90, 0, 1));
+    const far = smooth(clamp((Math.sqrt(best) - R) / (track.theme === 'city' ? 14 : 90), 0, 1)); // (a city's raised road drops straight to the street)
     H[j * n1 + i] = lerp(yN - ROAD_CLEARANCE - 0.3, sea ? noise(x, z) * 0.7 + 2.5 : noise(x, z), far);
     if (sea) H[j * n1 + i] = lerp(H[j * n1 + i], sea.bed, smooth(clamp((Math.sqrt(best) - sea.shore) / 30, 0, 1)) * smooth(clamp((-z - sea.from) / 40, 0, 1)));
   }
@@ -948,6 +948,8 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
         pier.rotation.y = Math.atan2(s.th.x, s.th.z); // wide side across the road
         pier.castShadow = true;
         worldGroup.add(pier);
+        const w = hw * 0.65; // and solid, for anyone driving about underneath
+        track.walls.push({ ax: s.p.x - s.left.x * w, az: s.p.z - s.left.z * w, bx: s.p.x + s.left.x * w, bz: s.p.z + s.left.z * w, y: ground });
       }
     }
   }
@@ -1729,7 +1731,8 @@ function buildStreetWalls(track) {
     // and are dropped, and the wall cuts straight across instead
     const P = samples.map((s, i) => {
       const p = V(s.p.x + s.left.x * side * IN, s.p.y, s.p.z + s.left.z * side * IN);
-      return inGap(side, i) || roadGap(track, p.x, p.z) < IN - 0.35 ? null : { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i };
+      if (inGap(side, i) || track.vergeDrop[i] > VERGE_MAX_DROP || roadGap(track, p.x, p.z) < IN - 0.35) return null; // (a bridge deck has railings instead)
+      return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g: terrainHeight(p.x, p.z) };
     });
     // join each point to the next one; across a run of dropped points (but
     // never a side street) only if a straight wall there keeps clear of the road
@@ -1743,10 +1746,10 @@ function buildStreetWalls(track) {
       if (m > 1 && roadGap(track, (P[i].p.x + c.p.x) / 2, (P[i].p.z + c.p.z) / 2) < hw + 1.9) continue;
       links.push([P[i], c]); hasOut[i] = 1; hasIn[j] = 1;
     }
-    const lo = (v) => V(v.x, v.y - SINK, v.z), hi = (v) => V(v.x, v.y + H, v.z);
+    const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
     for (const [a, b] of links) {
       // faces: road side, top, back (each facing out, whichever side of the road)
-      const A0 = lo(a.p), A1 = hi(a.p), B0 = lo(b.p), B1 = hi(b.p);
+      const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
       const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
       const blk = Math.floor(a.i / 10);
       const face = blk % 3 === 1 ? ad.set(adCols[(blk + (side > 0 ? 0 : 3)) % adCols.length]) : concrete;
@@ -1755,7 +1758,7 @@ function buildStreetWalls(track) {
       track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2 });
     }
     // close off the ends of each run of wall (drawn both sides, so either way round is fine)
-    for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) { const q = P[i], b0 = q.p, b1 = q.p.clone().add(q.o); pushQuad(pos, col, lo(b0), lo(b1), hi(b1), hi(b0), backC); }
+    for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) { const q = P[i], b0 = q.p, b1 = q.p.clone().add(q.o); pushQuad(pos, col, lo(b0, q.g), lo(b1, q.g), hi(b1), hi(b0), backC); }
   }
   const mesh = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
   mesh.castShadow = mesh.receiveShadow = true;
@@ -2897,6 +2900,8 @@ function buildCity(track, rnd) {
     return b;
   };
   const place = (pts, h, kind) => {
+    const gs = pts.map(([x, z]) => terrainHeight(x, z));
+    if (Math.max(...gs) - Math.min(...gs) > 2.5) return null; // not on the slope down from a raised road
     const b = fits(pts, kind === 'front' ? hw + 9 : hw + 13, kind);
     if (!b) return null;
     boxes.push(b);
@@ -4321,6 +4326,22 @@ try { const b = JSON.parse(localStorage.getItem('dc-pb') || '{}'); if (b && type
 // restarted with empty boards can't wipe it.
 app.lbKeep = {};
 try { const b = JSON.parse(localStorage.getItem('dc-lb-keep') || 'null'); app.lbKeep = b && typeof b === 'object' && !Array.isArray(b) ? b : { ...app.boards }; } catch {}
+// A track with a new layout ('v' in tracks.js) starts its times again: this
+// browser's best and its copies of that board go (the server won't take the
+// old ones back either).
+try {
+  const seen = JSON.parse(localStorage.getItem('dc-layouts') || '{}');
+  let changed = false;
+  TRACKS.forEach((d, i) => {
+    if ((seen[i] || 1) === (d.v || 1)) return;
+    for (const o of [app.pbs, app.boards, app.lbKeep]) for (const k of Object.keys(o)) if (k.split(':')[0] === String(i)) delete o[k];
+    seen[i] = d.v || 1; changed = true;
+  });
+  if (changed) {
+    localStorage.setItem('dc-layouts', JSON.stringify(seen));
+    localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); localStorage.setItem('dc-lb', JSON.stringify(app.boards)); localStorage.setItem('dc-lb-keep', JSON.stringify(app.lbKeep));
+  }
+} catch {}
 function keepBoards(boards) {
   for (const [k, list] of Object.entries(boards || {})) {
     if (!Array.isArray(list)) continue;
