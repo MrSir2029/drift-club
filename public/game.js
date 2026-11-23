@@ -248,7 +248,7 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
 // Feedback: the link to a Google Form (or any page) where players can send
 // feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
 // this is empty.
-const FEEDBACK_URL = '';
+const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf5U42l6jkWDvBuiG2E4ggpI6ZcHBNJH4_4nfAL_sbAMMtnnA/viewform';
 // Tips for guests in the lobby while they wait for the host: a random one
 // each time, and clicking it shows another.
 const TIPS = [
