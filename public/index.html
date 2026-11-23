@@ -139,11 +139,12 @@
       <div class="panel pausepanel">
         <div class="label">Paused for you &mdash; the race carries on</div>
         <button id="btn-resume" class="btn primary">Resume</button>
+        <button id="btn-restart" class="btn hidden">Restart your run</button>
         <button id="btn-cam" class="btn">Camera: chase</button>
         <button id="btn-settings-pause" class="btn">Settings</button>
         <button id="btn-feedback-pause" class="btn hidden">Send feedback</button>
         <button id="btn-quit" class="btn">Leave to main menu</button>
-        <div class="hint">Esc menu &middot; C camera &middot; M sound &middot; R reset to last gate</div>
+        <div id="pause-hint" class="hint">Esc menu &middot; C camera &middot; M sound &middot; R reset to last gate</div>
       </div>
     </div>
 
@@ -184,10 +185,20 @@
       <div class="setrow"><b>Graphics</b><div id="seg-gfx" class="seg"><button data-v="auto">Auto</button><button data-v="max">Max</button><button data-v="high">High</button><button data-v="medium">Medium</button><button data-v="low">Low</button></div></div>
       <div class="setrow"><b>Sound</b><div id="seg-sound" class="seg"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
       <div class="setrow"><b>Volume</b><div class="volrow"><input id="vol" type="range" min="0" max="100" step="5" aria-label="Volume"><span id="vol-val">100%</span></div></div>
+      <div class="setrow"><b>Keys</b><button id="btn-keys" class="btn">Change keys</button></div>
       <div class="setrow"><b>Expanded map &amp; Easter eggs</b><div id="seg-map" class="seg"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
       <div class="warn">&#9888; Adds a lake, castle, fairground, village and more to explore. It can make the game run slower, especially on school laptops and older computers.</div>
       <div id="map-note" class="hint"></div>
       <button id="btn-settings-close" class="btn primary">Done</button>
+    </div>
+  </div>
+
+  <div id="keys" class="overlay hidden">
+    <div class="panel settings keyspanel">
+      <div class="label">Keys</div>
+      <div class="keyhint">Click a key, then press the one you want instead. Each can have two keys.</div>
+      <div id="key-list" class="keylist"></div>
+      <div class="keybtns"><button id="btn-keys-reset" class="btn">Reset keys</button><button id="btn-keys-done" class="btn primary">Done</button></div>
     </div>
   </div>
 

@@ -326,6 +326,41 @@ try { app.expanded = localStorage.getItem('dc-map') !== 'off'; } catch { app.exp
 // (the landmarks used to hide stars to find; forget the ones found)
 try { localStorage.removeItem('dc-found'); } catch {}
 
+// ---- controls: which key does what. Players can change them under Settings
+// (Change keys), up to two keys an action, kept in this browser. Esc is
+// always the menu. Keys are physical positions (KeyW is the key where W is on
+// an English keyboard), so WASD works on any layout.
+const ACTIONS = [
+  ['up', 'Accelerate', ['ArrowUp', 'KeyW']],
+  ['down', 'Brake, reverse', ['ArrowDown', 'KeyS']],
+  ['left', 'Steer left', ['ArrowLeft', 'KeyA']],
+  ['right', 'Steer right', ['ArrowRight', 'KeyD']],
+  ['hand', 'Handbrake', ['Space']],
+  ['reset', 'Reset to the last gate', ['KeyR']],
+  ['restart', 'Restart your run (Polytrack mode)', ['Backspace']],
+  ['cam', 'Camera', ['KeyC']],
+  ['mute', 'Sound on / off', ['KeyM']],
+];
+const defaultBinds = () => Object.fromEntries(ACTIONS.map(([a, , keys]) => [a, [...keys]]));
+app.bind = defaultBinds();
+try {
+  const b = JSON.parse(localStorage.getItem('dc-keys') || 'null');
+  if (b && typeof b === 'object' && !Array.isArray(b)) for (const [a] of ACTIONS) if (Array.isArray(b[a])) app.bind[a] = b[a].filter(c => typeof c === 'string' && /^[A-Za-z0-9]{1,24}$/.test(c)).slice(0, 2);
+} catch {}
+const held = (a) => app.bind[a].some(c => app.keys[c]);     // is that action's key down?
+const isKey = (a, code) => app.bind[a].includes(code);      // is this key one of that action's?
+const KEY_NAMES = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Space: 'Space', Backspace: 'Backspace', Enter: 'Enter', Tab: 'Tab', CapsLock: 'Caps Lock', Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', PageUp: 'Page Up', PageDown: 'Page Down', IntlBackslash: '\\' };
+function keyName(c) {
+  if (!c) return '—';
+  if (KEY_NAMES[c]) return KEY_NAMES[c];
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if (/^Digit\d$/.test(c)) return c.slice(5);
+  if (c.startsWith('Numpad')) return 'Num ' + c.slice(6);
+  const m = /^(Shift|Control|Alt)(Left|Right)$/.exec(c);
+  return m ? `${m[2]} ${m[1] === 'Control' ? 'Ctrl' : m[1]}` : c;
+}
+const keyOf = (a) => keyName(app.bind[a][0]); // the first key for an action, for hints
+
 // ---------------------------------------------------------------------------
 // three.js scene
 // ---------------------------------------------------------------------------
@@ -1152,7 +1187,7 @@ function updateGhost(now) {
     app.ghost.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.45; m.material.color?.setHex(0xbfe4ff); m.material.depthWrite = false; m.castShadow = false; } });
     carsGroup.add(app.ghost.group);
   }
-  const t = now - car.lapStart, g = app.ghost.group;
+  const t = car.armed ? 0 : now - car.lapStart, g = app.ghost.group;
   // the gap: how long the ghost took to reach the point you're at now, against
   // your own time so far this lap (negative: you're ahead)
   let j = app.dI || 0;
@@ -1160,7 +1195,7 @@ function updateGhost(now) {
   while (j < lap.length - 2 && lap[j + 1].i <= car.idx) j++;
   app.dI = j;
   const pa = lap[j], pb = lap[j + 1];
-  if (pa && pb && pb.i > pa.i && car.lap > 1) app.ghostDelta = (t - lerp(pa.t, pb.t, clamp((car.idx - pa.i) / (pb.i - pa.i), 0, 1))) / 1000;
+  if (pa && pb && pb.i > pa.i && car.lap > 1 && !car.armed) app.ghostDelta = (t - lerp(pa.t, pb.t, clamp((car.idx - pa.i) / (pb.i - pa.i), 0, 1))) / 1000;
   else app.ghostDelta = null;
   let i = app.ghostI || 0;
   if (i >= lap.length || lap[i].t > t) i = 0;
@@ -3545,6 +3580,25 @@ function tyreForce(surf, Fz, alpha) {
   return -surf.mu * Fz * Math.sin(surf.C * Math.atan(surf.B * alpha));
 }
 
+// Polytrack mode: back to your place on the grid for a fresh run. Your lap
+// clock (and your ghost) wait at the start line until you cross it; the
+// server restarts its clock for your lap then too, so the lap still counts.
+function restartRun() {
+  const car = app.local;
+  if (!car || app.mode !== 'quali' || app.phase !== 'racing' || app.menuOpen) return;
+  const slot = Math.max(0, gridOrder(app.room?.grid).findIndex(p => p.id === app.myId));
+  const { pos, heading, idx } = startSlot(app.track, slot);
+  car.pos.copy(pos); car.h = heading;
+  car.vx = car.vz = car.vy = car.speed = car.yawRate = car.steerAngle = car.ax = 0;
+  car.airborne = false; car.stopTime = 0;
+  car.idx = car.lastIdx = car.lastCpIdx = idx; // R before the first gate brings you back here
+  car.nextCp = 1; car.missedGate = false; car.offTrackTimer = 0; car.fellTimer = 0; car.onTrack = true;
+  car.armed = true; car.lapStart = 0;
+  app.rec = []; app.recFrom = null; app.dI = 0; app.ghostI = 0; app.ghostDelta = null;
+  camInit = false;
+  raceToast('Fresh run: your time starts at the line', 1800);
+}
+
 function respawn(car) {
   const s = app.track.samples[car.lastCpIdx];
   car.pos.copy(s.p); car.pos.y += 0.3;
@@ -3558,11 +3612,10 @@ function respawn(car) {
 }
 
 function stepLocal(car, dt, canDrive) {
-  const k = app.keys;
-  const throttle = canDrive && (k.ArrowUp || k.KeyW) ? 1 : 0;
-  const brake = canDrive && (k.ArrowDown || k.KeyS) ? 1 : 0;
-  const steerIn = canDrive ? ((k.ArrowLeft || k.KeyA) ? 1 : 0) - ((k.ArrowRight || k.KeyD) ? 1 : 0) : 0;
-  const handbrake = canDrive && !!k.Space;
+  const throttle = canDrive && held('up') ? 1 : 0;
+  const brake = canDrive && held('down') ? 1 : 0;
+  const steerIn = canDrive ? (held('left') ? 1 : 0) - (held('right') ? 1 : 0) : 0;
+  const handbrake = canDrive && held('hand');
 
   // ---- where are we on the track ----
   const loc = locate(app.track, car.pos, car.idx, 30) || locate(app.track, car.pos, -1);
@@ -4152,7 +4205,7 @@ function beginRace(msg) {
   app.myLaps = [];
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.joinedRaceAt = performance.now();
-  $('#hud-time-label').textContent = 'Time';
+  $('#hud-time-label').textContent = app.mode === 'quali' ? 'Lap time' : 'Time';
   if (worldStale(msg.trackId, msg.car)) buildWorld(msg.trackId, msg.car || 'open');
   setCarClass(msg.car);
   clearCars();
@@ -4179,7 +4232,7 @@ function beginRace(msg) {
   $('#dash-nav').classList.toggle('hidden', !dash);
   if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
-  if (app.mode === 'quali') raceToast('Polytrack mode: free laps, no time limit. Race your ghost!', 3500);
+  if (app.mode === 'quali') raceToast(`Polytrack mode: free laps, race your ghost!${app.bind.restart.length ? ` ${keyOf('restart')} restarts your run.` : ''}`, 4000);
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
 }
 
@@ -4525,6 +4578,11 @@ function setMenu(open) {
   app.menuOpen = open;
   if (open) app.keys = {};
   $('#pause').classList.toggle('hidden', !open);
+  if (open) {
+    const poly = app.mode === 'quali' && app.phase === 'racing';
+    $('#btn-restart').classList.toggle('hidden', !poly);
+    $('#pause-hint').textContent = `Esc menu · ${keyOf('cam')} camera · ${keyOf('mute')} sound · ${keyOf('reset')} reset to last gate${poly ? ` · ${keyOf('restart')} restart your run` : ''}`;
+  }
 }
 function toggleCamera() {
   app.camMode = app.camMode === 'cockpit' ? 'chase' : 'cockpit';
@@ -4732,6 +4790,7 @@ function wireUI() {
   $('#lobby-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });
   $('#btn-leave').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
   $('#btn-resume').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); });
+  $('#btn-restart').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); restartRun(); });
   $('#btn-quit').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
   $('#btn-cam').addEventListener('click', (e) => { e.currentTarget.blur(); toggleCamera(); });
   $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
@@ -4739,6 +4798,42 @@ function wireUI() {
   const openSettings = (e) => { e?.currentTarget?.blur?.(); $('#map-note').textContent = ''; renderSettings(); $('#settings').classList.remove('hidden'); };
   for (const id of ['#btn-settings', '#btn-settings-lobby', '#btn-settings-pause']) $(id).addEventListener('click', openSettings);
   $('#btn-settings-close').addEventListener('click', () => $('#settings').classList.add('hidden'));
+  // ---- Settings > Change keys: click a key, then press the one you want ----
+  const saveKeys = () => { try { localStorage.setItem('dc-keys', JSON.stringify(app.bind)); } catch {} };
+  const renderKeys = () => {
+    const el = $('#key-list');
+    el.innerHTML = '';
+    for (const [a, label] of ACTIONS) {
+      const name = document.createElement('span'); name.textContent = label; el.appendChild(name);
+      for (const i of [0, 1]) {
+        const b = document.createElement('button'), code = app.bind[a][i];
+        const listening = app.binding?.a === a && app.binding.i === i;
+        b.textContent = listening ? 'Press a key…' : code ? keyName(code) : '+';
+        b.className = listening ? 'listening' : code ? '' : 'empty';
+        b.title = listening ? 'Press the key you want, or Esc to leave it' : code ? 'Click, then press another key' : 'Click, then press a key to add one';
+        b.addEventListener('click', (e) => { e.currentTarget.blur(); app.binding = { a, i: Math.min(i, app.bind[a].length) }; renderKeys(); });
+        el.appendChild(b);
+      }
+    }
+  };
+  // while waiting for a key, it goes here and nowhere else (Esc leaves it as it was)
+  window.addEventListener('keydown', (e) => {
+    if (!app.binding) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (e.repeat) return;
+    const { a, i } = app.binding;
+    if (e.code !== 'Escape' && !/^(Meta|OS)/.test(e.code) && /^[A-Za-z0-9]{1,24}$/.test(e.code)) {
+      for (const k of Object.keys(app.bind)) app.bind[k] = app.bind[k].filter(c => c !== e.code); // a key does one thing
+      const list = app.bind[a];
+      if (i < list.length) list[i] = e.code; else list.push(e.code);
+      saveKeys();
+    }
+    app.binding = null;
+    renderKeys();
+  }, true);
+  $('#btn-keys').addEventListener('click', (e) => { e.currentTarget.blur(); app.binding = null; renderKeys(); $('#keys').classList.remove('hidden'); });
+  $('#btn-keys-done').addEventListener('click', () => { app.binding = null; $('#keys').classList.add('hidden'); });
+  $('#btn-keys-reset').addEventListener('click', (e) => { e.currentTarget.blur(); app.binding = null; app.bind = defaultBinds(); saveKeys(); renderKeys(); });
   $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').classList.add('hidden'); });
   document.querySelectorAll('#seg-gfx button').forEach(b => b.addEventListener('click', () => setGfxMode(b.dataset.v)));
   document.querySelectorAll('#seg-map button').forEach(b => b.addEventListener('click', () => setExpanded(b.dataset.v === 'on')));
@@ -4761,6 +4856,7 @@ function wireUI() {
 
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Escape' && !$('#keys').classList.contains('hidden')) { $('#keys').classList.add('hidden'); return; }
     if (e.code === 'Escape' && !$('#settings').classList.contains('hidden')) { $('#settings').classList.add('hidden'); return; }
     if (e.code === 'Escape' && !$('#board').classList.contains('hidden')) { $('#board').classList.add('hidden'); return; }
     if (e.key && e.key.length === 1) {
@@ -4789,13 +4885,15 @@ function wireUI() {
       }
     }
     if (!e.repeat) initAudio();
-    if (e.code === 'KeyM' && !e.repeat) { setSound(!audio.on); if (inRace()) raceToast(audio.on ? 'Sound on' : 'Sound off', 1000); }
-    if (e.code === 'KeyC' && !e.repeat) toggleCamera();
+    if (isKey('mute', e.code) && !e.repeat) { setSound(!audio.on); if (inRace()) raceToast(audio.on ? 'Sound on' : 'Sound off', 1000); }
+    if (isKey('cam', e.code) && !e.repeat) toggleCamera();
     if (e.code === 'Escape' && !e.repeat && inRace()) { setMenu(!app.menuOpen); return; }
     if (app.menuOpen) return;
     app.keys[e.code] = true;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
-    if (e.code === 'KeyR' && app.local && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local);
+    // arrows and Space would scroll the page; in a race, so might any other key you drive with
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code) || (inRace() && ACTIONS.some(([a]) => isKey(a, e.code)))) e.preventDefault();
+    if (isKey('reset', e.code) && app.local && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local);
+    if (isKey('restart', e.code) && !e.repeat) restartRun();
   });
   window.addEventListener('keyup', (e) => { app.keys[e.code] = false; });
   window.addEventListener('blur', () => { app.keys = {}; });
@@ -4891,7 +4989,8 @@ function updateHud(now) {
   setText('#hud-delta', gd == null ? '' : (gd >= 0 ? '+' : '\u2212') + Math.abs(gd).toFixed(2));
   if (gd != null) { const el = textCache.get('#hud-delta').el; el.classList.toggle('ahead', gd < 0); el.classList.toggle('behind', gd >= 0); }
   if (app.phase === 'racing' || app.phase === 'results') {
-    const t = app.mode !== 'quali' && app.finished && !app.spectate ? app.finishTime : Math.max(0, now - raceStartPerf()); // Polytrack mode has no time limit: the clock counts up
+    // Polytrack mode: the lap you're on (nought until a fresh run reaches the line); a race: the race clock
+    const t = app.mode === 'quali' ? (car.armed || !car.lapStart ? 0 : Math.max(0, now - car.lapStart)) : app.finished && !app.spectate ? app.finishTime : Math.max(0, now - raceStartPerf());
     setText('#hud-time', fmtTime(t));
   }
   const goal = app.mode === 'dash' ? app.track.goal : null;
@@ -5055,9 +5154,9 @@ function updateAudio(car, dt) {
   else if (g > 0 && v < GEARS[g - 1] * 0.86) g--;
   audio.gear = g;
   const lo = g ? GEARS[g - 1] : 0, hi = GEARS[g];
-  const throttle = (app.keys.KeyW || app.keys.ArrowUp) && app.phase !== 'countdown' ? 1 : 0;
+  const throttle = held('up') && app.phase !== 'countdown' ? 1 : 0;
   let rpm = 0.25 + 0.75 * clamp((v - lo) / (hi - lo), 0, 1);
-  if (v < 1.5) rpm = 0.16 + (app.keys.KeyW || app.keys.ArrowUp ? 0.5 : 0) * (0.6 + 0.4 * Math.sin(t * 18)); // blipping on the grid
+  if (v < 1.5) rpm = 0.16 + (held('up') ? 0.5 : 0) * (0.6 + 0.4 * Math.sin(t * 18)); // blipping on the grid
   if (car.spinning) rpm = Math.min(1, rpm + 0.2);
   audio.rpm = lerp(audio.rpm, rpm, 1 - Math.exp(-dt * 10));
   const f = CAR.engine[0] + audio.rpm * CAR.engine[1];
@@ -5100,7 +5199,10 @@ function frame(now) {
       // first lap only starts recording once the car has crossed the line.
       // (Recording from the grid made the ghost trail behind you, out of sight.)
       const c = app.local;
-      if (app.recFrom == null && c.idx < app.track.N / 2) { app.recFrom = now; app.rec = []; }
+      if (app.recFrom == null && c.idx < app.track.N / 2) {
+        app.recFrom = now; app.rec = [];
+        if (c.armed) { c.armed = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); } // a fresh run starts here
+      }
       if (app.recFrom != null) {
         const r = app.rec, t = now - app.recFrom;
         if (!r.length || t - r[r.length - 1].t >= 50) r.push({ t, x: c.pos.x, y: c.pos.y, z: c.pos.z, h: c.h, i: c.idx });
