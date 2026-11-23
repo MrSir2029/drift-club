@@ -209,16 +209,18 @@ third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
 drive off it). Switchback (the fourth) is raced at night, under floodlights,
 with fireworks overhead, searchlights sweeping the sky and glowing studs
-along the track edges. Palm Bay (the fifth) is an island: sand, palms, beach
-huts and umbrellas, a lighthouse on the headland and boats out at sea. The
-track's `sea` in `tracks.js` sets where the sea starts; you can drive into it
-(slowly), and buoys mark the edge of the map out on the water. It has no lake.
+along the track edges. Palm Bay (the fifth) is an island: along the seafront, up a clifftop
+headland to a hairpin round the lighthouse, back down and over the start
+straight on a bridge, then through the palms past the village. Sand, palms,
+beach huts and umbrellas, and boats out at sea. The track's `sea` in
+`tracks.js` sets where the sea starts; you can drive into it (slowly), and
+buoys mark the edge of the map out on the water. It has no lake.
 Neon City (the sixth) is a street circuit at night: concrete walls down both
-sides (`walls` in `tracks.js`), office blocks with lit windows, neon signs and
-a skyline. A few side streets, always on the outside of the circuit, lead out
-into the city and to 9LAT2; the middle of the circuit is closed off, so
-there's no short cut. Its only landmarks are 9LAT2, the fairground and the
-radio mast.
+sides (`walls` in `tracks.js`), a hairpin at the end of the main straight, a
+flyover that crosses above it, and a chicane; office blocks with lit windows,
+neon signs and a skyline. A few side streets, always on the outside of the
+circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
+the fairground and the radio mast.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.
@@ -313,7 +315,9 @@ get a red dot on the button until they've read it.
 - `public/tracks.js`: tracks are a list of control points. Add a new one by
   adding an entry to `TRACKS`, bumping `TRACK_COUNT` in `server/core.js` and
   adding its length to `TRACK_LENGTH` there (the leaderboard's check for
-  impossible laps).
+  impossible laps). Changing a track's layout? Bump its `v` in `tracks.js` and
+  in `TRACK_VERSION` in `server/core.js`: its leaderboard starts again, and old
+  times don't come back from players' browsers.
 - `public/vendor/`: Three.js r187, copied from npm so nothing loads from a CDN.
 
 Physics runs on each player's own computer (there are no car-to-car

@@ -4,6 +4,14 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.5', date: '24 Nov 2026', title: 'New layouts',
+    items: [
+      'Palm Bay climbs the cliffs to a hairpin round the lighthouse, comes back down over the start straight on a bridge, and winds back through the palms.',
+      'Neon City has a hairpin at the end of the main straight, a flyover that crosses above it, and a chicane past the fairground.',
+      'Their leaderboards start again, as they\'re new tracks.',
+    ],
+  },
+  {
     v: '3.4', date: '24 Nov 2026', title: 'Polytrack timing',
     items: [
       'Polytrack mode has a rolling start: you start back down the straight and your first lap starts as you cross the line, so it counts like all the others. Restarting your run puts you back there too.',
