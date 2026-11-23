@@ -3371,8 +3371,25 @@ function clearCars() {
   if (app.ghost) { carsGroup.remove(app.ghost.group); disposeTree(app.ghost.group); app.ghost = null; }
 }
 
-function spawnLocal(slot) {
-  const { pos, heading, idx } = startSlot(app.track, slot);
+// Polytrack mode's rolling start: the grid moved back to where the straight
+// before the line begins, so everyone is up to speed when their first lap
+// starts, at the line. At least 200 m back (through the last corner, where the
+// straight is short) and at most 320. Pairs of cars 6 m apart, as on a grid.
+function rollSlot(track, slot) {
+  const { samples, N, hw } = track, step = track.length / N;
+  const turn = (i) => { const a = samples[(i + N) % N].th, b = samples[(i + 14 + N) % N].th; return Math.abs(a.x * b.z - a.z * b.x); };
+  const most = Math.round(320 / step);
+  let back = 40;
+  while (back < most && turn(-back - 14) < 0.05) back++; // back along the straight, until a corner comes up
+  back = Math.max(back, Math.round(200 / step));
+  const idx = (N - back - Math.floor(slot / 2) * 4 + N * 2) % N, s = samples[idx];
+  const pos = s.p.clone().addScaledVector(s.left, (slot % 2 === 0 ? -1 : 1) * hw * 0.45);
+  pos.y += 0.05;
+  return { pos, heading: Math.atan2(s.th.x, s.th.z), idx };
+}
+
+function spawnLocal(slot, rolling) {
+  const { pos, heading, idx } = (rolling ? rollSlot : startSlot)(app.track, slot);
   const mesh = makeCarMesh(app.color, app.name, true, app.carClass, true, raceNumberOf(app.myId));
   const car = {
     pos, h: heading, speed: 0, vx: 0, vz: 0, yawRate: 0, steerAngle: 0, ax: 0, slip: 0, vy: 0, airborne: false,
@@ -3599,6 +3616,31 @@ function tyreForce(surf, Fz, alpha) {
   return -surf.mu * Fz * Math.sin(surf.C * Math.atan(surf.B * alpha));
 }
 
+// Sector times in Polytrack mode, like F1: the lap in three, split at gates 2
+// and 4. Purple is the best anyone has done this session, green your own best,
+// yellow slower. The last lap's stay up, faded, until the new ones come in.
+function sectorDone(n, t) {
+  const S = app.sec; t = Math.round(t); // whole milliseconds, as the server keeps them (else your own best comes back a hair quicker)
+  if (!S || !(t > 0)) return;
+  S.cur[n] = t;
+  if (S.pb[n] == null || t < S.pb[n]) S.pb[n] = t;
+  if (S.best[n] == null || t < S.best[n]) { S.best[n] = t; send({ t: 'sector', n, time: Math.round(t) }); }
+  renderSectors();
+}
+function newLapSectors() {
+  const S = app.sec; if (!S) return;
+  S.old = S.cur.map((t, i) => t ?? S.old[i]); S.cur = [null, null, null];
+  renderSectors();
+}
+function renderSectors() {
+  const S = app.sec, el = $('#sectors'); if (!S || !el) return;
+  [...el.children].forEach((pill, n) => {
+    const t = S.cur[n] ?? S.old[n], old = S.cur[n] == null;
+    pill.textContent = `S${n + 1} ${t == null ? '--' : (t / 1000).toFixed(2)}`;
+    pill.className = t == null ? '' : (t <= (S.best[n] ?? Infinity) ? 'purple' : t <= (S.pb[n] ?? Infinity) ? 'green' : 'yellow') + (old ? ' old' : '');
+  });
+}
+
 // Polytrack mode: back to your place on the grid for a fresh run. Your lap
 // clock (and your ghost) wait at the start line until you cross it; the
 // server restarts its clock for your lap then too, so the lap still counts.
@@ -3606,7 +3648,7 @@ function restartRun() {
   const car = app.local;
   if (!car || app.mode !== 'quali' || app.phase !== 'racing' || app.menuOpen) return;
   const slot = Math.max(0, gridOrder(app.room?.grid).findIndex(p => p.id === app.myId));
-  const { pos, heading, idx } = startSlot(app.track, slot);
+  const { pos, heading, idx } = rollSlot(app.track, slot);
   car.pos.copy(pos); car.h = heading;
   car.vx = car.vz = car.vy = car.speed = car.yawRate = car.steerAngle = car.ax = 0;
   car.airborne = false; car.stopTime = 0;
@@ -3614,6 +3656,7 @@ function restartRun() {
   car.nextCp = 1; car.missedGate = false; car.offTrackTimer = 0; car.fellTimer = 0; car.onTrack = true;
   car.armed = true; car.lapStart = 0;
   app.rec = []; app.recFrom = null; app.dI = 0; app.ghostI = 0; app.ghostDelta = null;
+  newLapSectors();
   camInit = false;
   raceToast('Fresh run: your time starts at the line', 1800);
 }
@@ -3877,9 +3920,15 @@ function stepLocal(car, dt, canDrive) {
       if (dc > 0 && dc <= d) {
         car.lastCpIdx = cpIdx;
         car.missedGate = false;
+        if (app.mode === 'quali' && !car.armed && car.lapStart && (car.nextCp === 2 || car.nextCp === 4)) { // the ends of sectors 1 and 2
+          const so = performance.now() - car.lapStart;
+          if (car.nextCp === 2) sectorDone(0, so); else if (app.sec?.cur[0] != null) sectorDone(1, so - app.sec.cur[0]);
+        }
         if (car.nextCp === 0) {
           const nowP = performance.now();
           const lapTime = nowP - (car.lapStart || raceStartPerf());
+          if (app.mode === 'quali' && app.sec?.cur[0] != null && app.sec.cur[1] != null) sectorDone(2, lapTime - app.sec.cur[0] - app.sec.cur[1]);
+          newLapSectors();
           car.lapStart = nowP;
           if (!app.bestLap || lapTime < app.bestLap) app.bestLap = lapTime;
           app.myLaps.push(lapTime);
@@ -4197,6 +4246,7 @@ function handle(msg) {
       break;
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
+    case 'sector': if (app.sec && msg.n >= 0 && msg.n < 3 && (app.sec.best[msg.n] == null || msg.time < app.sec.best[msg.n])) { app.sec.best[msg.n] = msg.time; renderSectors(); } break;
     case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); break;
     case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); } break;
     case 'record': {
@@ -4232,7 +4282,10 @@ function beginRace(msg) {
   // through, who gets msg.spectate, keeps the others' spectator flags.)
   if (!msg.spectate) for (const p of app.room.players) delete p.spec;
   const slot = Math.max(0, gridOrder(msg.grid).findIndex(p => p.id === app.myId));
-  spawnLocal(slot);
+  spawnLocal(slot, app.mode === 'quali');
+  if (app.mode === 'quali') { app.local.armed = true; app.local.lastCpIdx = app.local.idx; } // the clock starts at the line
+  app.sec = { cur: [null, null, null], old: [null, null, null], pb: [null, null, null], best: (msg.sectors || [null, null, null]).map(b => (b ? b.time : null)) };
+  renderSectors();
   for (const p of app.room.players) if (p.id !== app.myId) ensureRemote(p);
   app.phase = 'countdown';
   app.bestLap = 0;
@@ -4251,7 +4304,8 @@ function beginRace(msg) {
   $('#dash-nav').classList.toggle('hidden', !dash);
   if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
-  if (app.mode === 'quali') raceToast(`Polytrack mode: free laps, race your ghost!${app.bind.restart.length ? ` ${keyOf('restart')} restarts your run.` : ''}`, 4000);
+  if (app.mode === 'quali') raceToast(`Polytrack mode: rolling start, your lap starts at the line!${app.bind.restart.length ? ` ${keyOf('restart')} restarts your run.` : ''}`, 4000);
+  $('#sectors').classList.toggle('hidden', app.mode !== 'quali');
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
 }
 
@@ -4996,7 +5050,7 @@ function updateHud(now) {
       app.phase = 'racing';
       // the exact start, like the race clock (not this frame, a moment later);
       // or, joining a session that's already going, the moment you joined
-      car.lapStart = Math.max(raceStartPerf(), app.joinedRaceAt || 0);
+      if (!car.armed) car.lapStart = Math.max(raceStartPerf(), app.joinedRaceAt || 0); // (Polytrack mode's starts at the line)
       beep(1040, 0.6, 0.25);
       const el = $('#countdown');
       el.textContent = 'GO!'; el.classList.remove('hidden'); el.classList.add('go');
@@ -5220,7 +5274,7 @@ function frame(now) {
       const c = app.local;
       if (app.recFrom == null && c.idx < app.track.N / 2) {
         app.recFrom = now; app.rec = [];
-        if (c.armed) { c.armed = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); } // a fresh run starts here
+        if (c.armed) { c.armed = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); newLapSectors(); } // a fresh run starts here
       }
       if (app.recFrom != null) {
         const r = app.rec, t = now - app.recFrom;
