@@ -4,6 +4,15 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.7', date: '24 Nov 2026', title: 'Aussie tracks',
+    items: [
+      'Every track has an Australian name: Queens Park GP, Centennial Park Raceway, Thredbo Alpine Circuit, Mount Panorama Circuit, Noosa Heads Circuit and Sydney CBD Street Circuit. The lobby shows their old names underneath.',
+      'The harbour at Noosa Heads is busy now: a marina full of boats, a swimming beach between the flags with a lifeguard tower, jet skis, a parasail, gulls and a cruise ship on the horizon.',
+      'Sydney CBD has traffic in the streets, crowds behind the walls and lit-up billboards.',
+      'The race number on the nose reads from in front, like on a real F1 car. The castles are gone, and the track cards in the lobby fill their row.',
+    ],
+  },
+  {
     v: '3.6', date: '24 Nov 2026', title: 'Sector times',
     items: [
       'Polytrack sector times count up as you drive each part of the lap.',

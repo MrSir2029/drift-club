@@ -4,7 +4,9 @@ import * as THREE from 'three';
 
 export const TRACKS = [
   {
-    name: 'Meadow GP',
+    name: 'Queens Park GP',
+    was: 'Meadow GP', // its old name, shown under the new one in the lobby
+    short: 'Queens Park', // where there's no room for the whole name (the leaderboard's tabs)
     blurb: 'Fast sweepers, a chicane and two hairpins. Start here.',
     width: 16,
     points: [
@@ -14,7 +16,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Pinewood',
+    name: 'Centennial Park Raceway',
+    was: 'Pinewood',
+    short: 'Centennial',
     blurb: 'A fast road through tall pines, under a rock arch.',
     width: 15,
     surface: 'gravel',
@@ -28,7 +32,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Frost Pass',
+    name: 'Thredbo Alpine Circuit',
+    was: 'Frost Pass',
+    short: 'Thredbo',
     blurb: 'Snowy figure-eight with a bridge over the straight.',
     theme: 'snow',
     goalFar: true, // 9LAT2 sits out near the edge of the map...
@@ -41,7 +47,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Switchback',
+    name: 'Mount Panorama Circuit',
+    was: 'Switchback',
+    short: 'Mount Panorama',
     blurb: 'Tight and technical, under the floodlights at night.',
     theme: 'night',
     width: 14,
@@ -52,7 +60,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Palm Bay',
+    name: 'Noosa Heads Circuit',
+    was: 'Palm Bay',
+    short: 'Noosa Heads',
     blurb: 'Up the cliffs, round the lighthouse, over the bridge and back through the palms.',
     theme: 'beach',
     v: 2, // the layout: a new one starts its leaderboard again (server/core.js)
@@ -68,7 +78,9 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Neon City',
+    name: 'Sydney CBD Street Circuit',
+    was: 'Neon City',
+    short: 'Sydney CBD',
     blurb: 'A street circuit at night: a hairpin, a flyover and a chicane between the walls.',
     theme: 'city',
     v: 2,

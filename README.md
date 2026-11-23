@@ -198,7 +198,7 @@ before.
 
 Barriers, fences, buildings, trees, big rocks and posts are solid, and a
 stone wall rings the edge of the map. Away from the circuit there are
-places to explore: a lake you can wade through, a castle, a fairground, a
+places to explore: a lake you can wade through, a fairground, a
 village, a stone circle, a campsite, a windmill and a radio mast. These
 are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
@@ -206,24 +206,30 @@ building is always there, hidden as far from the roads as the map allows,
 down in low ground, with a sign you only make out up close. A TV
 helicopter follows the race leader.
 
-Pinewood (the second track) runs through a forest: thick with dark pines,
+Centennial Park (the second track) runs through a forest: thick with dark pines,
 ferns and mossy rocks, with a stone arch over the road. In the open seater (or
 the Camry) it's a tarmac road; in the rally car it turns back into a gravel
-stage with two jumps (`trackDef` in `game.js`). Frost Pass (the
+stage with two jumps (`trackDef` in `game.js`). Thredbo (the
 third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
-drive off it). Switchback (the fourth) is raced at night, under floodlights,
+drive off it). Mount Panorama (the fourth) is raced at night, under floodlights,
 with fireworks overhead, searchlights sweeping the sky and glowing studs
-along the track edges. Palm Bay (the fifth) is an island: along the seafront, up a clifftop
+along the track edges. Noosa Heads (the fifth) is an island: along the seafront, up a clifftop
 headland to a hairpin round the lighthouse, back down and over the start
 straight on a bridge, then through the palms past the village. Sand, palms,
-beach huts and umbrellas, and boats out at sea. The track's `sea` in
+beach huts and umbrellas, and boats out at sea. The bay by the start straight
+is a harbour (`buildHarbour` in `game.js`): a marina under the headland with
+boats moored at its pontoons, a swimming beach between red and yellow flags
+with a lifeguard tower, swimmers and buoys, jet skis, a parasail, gulls and a
+cruise ship on the horizon. The track's `sea` in
 `tracks.js` sets where the sea starts; you can drive into it (slowly), and
 buoys mark the edge of the map out on the water. It has no lake.
-Neon City (the sixth) is a street circuit at night: concrete walls down both
+Sydney CBD (the sixth) is a street circuit at night: concrete walls down both
 sides (`walls` in `tracks.js`), a hairpin at the end of the main straight, a
 flyover that crosses above it, and a chicane; office blocks with lit windows,
-neon signs and a skyline. A few side streets, always on the outside of the
+neon signs, lit billboards for made-up brands and a skyline, crowds behind the
+walls, and traffic going round the blocks out past the edge of the map. A few
+side streets, always on the outside of the
 circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
 the fairground and the radio mast.
 A track's look
