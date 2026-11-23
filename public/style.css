@@ -146,13 +146,13 @@ input:focus { border-color: var(--blue); }
 .hud-value { font-size: 28px; font-weight: 900; line-height: 1.1; }
 .hud-value small { font-size: 14px; color: var(--muted); }
 /* Polytrack mode's sector times, under the boxes */
-.sectors { position: absolute; left: 16px; top: 100px; display: flex; gap: 6px; }
+.sectors { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 6px; } /* low in the middle */
 .sectors span { min-width: 82px; padding: 3px 9px; border: 3px solid var(--ink); border-radius: 10px; background: var(--paper); font-weight: 900; font-size: 14px; font-variant-numeric: tabular-nums; box-shadow: 0 3px 0 var(--ink); text-align: center; }
 .sectors span.purple { background: #a259ff; color: #fff; }
 .sectors span.green { background: #2fbf55; color: #fff; }
 .sectors span.yellow { background: #ffd23f; }
 .sectors span.run { background: #fff; } /* the sector you're in, counting up */
-@media (max-width: 760px), (max-height: 520px) { .sectors { left: 8px; top: 66px; gap: 4px; } .sectors span { min-width: 0; font-size: 11px; padding: 2px 6px; } }
+@media (max-width: 760px), (max-height: 520px) { .sectors { bottom: 8px; gap: 4px; } .sectors span { min-width: 0; font-size: 11px; padding: 2px 6px; } }
 .mono { font-variant-numeric: tabular-nums; }
 .hud-right { position: absolute; right: 16px; top: 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 #minimap { width: 150px; height: 150px; background: rgba(29,34,48,.55); border: 3px solid var(--ink); border-radius: 12px; }
@@ -185,12 +185,12 @@ input:focus { border-color: var(--blue); }
 @keyframes pop { from { transform: scale(1.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .toast-race {
-  position: absolute; left: 50%; top: 20%; transform: translateX(-50%);
+  position: absolute; left: 50%; top: calc(12% + 104px); transform: translateX(-50%); /* under the start lights */
   background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 12px 22px;
   font-weight: 900; font-size: 24px; box-shadow: var(--shadow); white-space: nowrap;
 }
 .respawn-tip {
-  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); /* above the sector times */
   background: var(--ink); color: #fff; border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 14px;
 }
 .respawn-tip b { color: var(--orange); }
@@ -342,6 +342,8 @@ input:focus { border-color: var(--blue); }
   .dash-nav { top: 70px; }
   .lights { top: 70px; gap: 10px; padding: 10px 12px; }
   .lights span { width: 30px; height: 30px; }
+  .toast-race { top: 140px; font-size: 16px; padding: 8px 14px; white-space: normal; width: max-content; max-width: 74vw; text-align: center; } /* clear of the Menu button */
+  .respawn-tip { bottom: 44px; }
   /* menus scroll instead of running off the top and bottom */
   #screen-home, #screen-lobby { justify-content: flex-start; overflow-y: auto; pointer-events: auto; padding: 10px; gap: 10px; }
   .overlay, .results { align-items: flex-start; overflow-y: auto; }
@@ -367,7 +369,7 @@ input:focus { border-color: var(--blue); }
   .lights { top: 210px; gap: 10px; padding: 10px 12px; }
   .lights span { width: 30px; height: 30px; }
   .dash-nav { top: 210px; }
-  .toast-race { top: 30%; }
+  .toast-race { top: 280px; font-size: 16px; padding: 8px 14px; white-space: normal; width: max-content; max-width: 86vw; text-align: center; }
 }
 
 /* ---------- home screen: the box and the controls line, in the middle ---------- */

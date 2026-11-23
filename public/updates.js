@@ -10,6 +10,7 @@ export const UPDATES = [
       'The harbour at Noosa Heads is busy now: a marina full of boats, a swimming beach between the flags with a lifeguard tower, jet skis, a parasail, gulls and a cruise ship on the horizon.',
       'Sydney CBD has traffic in the streets, crowds behind the walls and lit-up billboards.',
       'The race number on the nose reads from in front, like on a real F1 car. The castles are gone, and the track cards in the lobby fill their row.',
+      'Polytrack sector times sit low in the middle of the screen, and a sector only goes purple when it really is the fastest. The message at the start no longer covers the start lights.',
     ],
   },
   {
