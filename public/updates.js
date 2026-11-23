@@ -11,6 +11,7 @@ export const UPDATES = [
       'Sydney CBD has traffic in the streets, crowds behind the walls and lit-up billboards.',
       'The race number on the nose reads from in front, like on a real F1 car. The castles are gone, and the track cards in the lobby fill their row.',
       'Polytrack sector times sit low in the middle of the screen, and a sector only goes purple when it really is the fastest. The message at the start no longer covers the start lights.',
+      'Tell us what you think: Feedback on the home screen, or Send feedback in the Esc menu.',
     ],
   },
   {
