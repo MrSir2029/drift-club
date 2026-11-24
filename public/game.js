@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import { TRACKS, buildTrack, locate, startSlot, CHECKPOINT_COUNT } from '/tracks.js';
 import { UPDATES } from '/updates.js';
 
+// Has this browser opened the game before? (Asked first thing, before the game
+// saves any settings of its own: What's new opens by itself after an update
+// for someone coming back, not for someone here for the first time.)
+const VISITED_BEFORE = (() => { try { return localStorage.getItem('dc-defaults') != null; } catch { return false; } })();
+
 // ---------------------------------------------------------------------------
 // constants
 // ---------------------------------------------------------------------------
@@ -5703,15 +5708,20 @@ function wireUI() {
   $('#btn-start').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'race' }); });
   $('#btn-quali').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'quali' }); });
   $('#btn-dash').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'dash' }); });
-  // what's new
-  const seen = (() => { try { return localStorage.getItem('dc-seen'); } catch { return null; } })();
-  $('#ver').textContent = 'v' + UPDATES[0].v;
-  $('#updates-dot').classList.toggle('hidden', seen === UPDATES[0].v);
-  $('#updates-list').innerHTML = UPDATES.map(u => `<h3><span class="tagv">v${esc(u.v)}</span>${esc(u.title)}<small>${esc(u.date)}</small></h3><ul>${u.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`).join('');
-  $('#btn-updates').addEventListener('click', () => {
-    $('#updates').classList.remove('hidden'); $('#updates-dot').classList.add('hidden');
-    try { localStorage.setItem('dc-seen', UPDATES[0].v); } catch {}
-  });
+  // what's new: it opens by itself when someone comes back after an update,
+  // once per update, with what's new since they last looked marked New.
+  // Someone here for the first time starts up to date.
+  const latest = UPDATES[0].v, store = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const seen = store('dc-seen'), back = VISITED_BEFORE;
+  const since = UPDATES.findIndex(u => u.v === seen); // entries newer than the one they saw (never looked: just the latest)
+  const fresh = (k) => seen !== latest && k < (since < 0 ? 1 : since);
+  $('#ver').textContent = 'v' + latest;
+  $('#updates-dot').classList.toggle('hidden', seen === latest);
+  $('#updates-list').innerHTML = UPDATES.map((u, k) => `<h3>${fresh(k) ? '<span class="tagnew">New</span>' : ''}<span class="tagv">v${esc(u.v)}</span>${esc(u.title)}<small>${esc(u.date)}</small></h3><ul>${u.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`).join('');
+  const markSeen = () => { $('#updates-dot').classList.add('hidden'); try { localStorage.setItem('dc-seen', latest); } catch {} };
+  const openUpdates = () => { $('#updates').classList.remove('hidden'); markSeen(); };
+  $('#btn-updates').addEventListener('click', openUpdates);
+  if (seen !== latest) { if (back) openUpdates(); else markSeen(); }
   $('#btn-updates-close').addEventListener('click', () => $('#updates').classList.add('hidden'));
   $('#updates').addEventListener('click', (e) => { if (e.target.id === 'updates') $('#updates').classList.add('hidden'); });
   $('#btn-endq').addEventListener('click', (e) => { e.currentTarget.blur(); send({ t: 'endquali' }); });

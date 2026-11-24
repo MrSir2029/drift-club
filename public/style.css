@@ -276,6 +276,7 @@ input:focus { border-color: var(--blue); }
 .updates-list h3 { margin: 12px 0 4px; font-size: 17px; font-weight: 900; }
 .updates-list h3 small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 6px; }
 .updates-list h3 .tagv { background: var(--orange); border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; margin-right: 6px; }
+.updates-list h3 .tagnew { background: var(--green); color: var(--ink); border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; margin-right: 6px; text-transform: uppercase; letter-spacing: .06em; }
 .updates-list ul { margin: 0; padding-left: 20px; font-weight: 600; font-size: 14px; line-height: 1.45; }
 .secrets { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
 .secrets .label { margin: 0; }
