@@ -34,7 +34,7 @@ const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // the first matches anywhere in a name, the second only as a whole word.
 const rot13 = (s) => s.replace(/[a-z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 84) % 26 + 97));
 const BLOCKED_ANYWHERE = rot13('shpx fuvg ovgpu phag avtt sntt jnax fyhg juber encvfg anmv uvgyre cbea cravf intva qvyqb obbo chffl ergneq qvpx cvff onfgneq crqbcu cnrqb nffubyr nefrubyr wvmm genaal puvax xvxr spx fulg').split(' ');
-const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb qvx nmm ubr avpxre').split(' '));
+const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb qvx nmm ubr').split(' '));
 const unleet = (s) => s.toLowerCase().replace(/0/g, 'o').replace(/[1!]/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/8/g, 'b').replace(/9/g, 'g');
 // Misspellings made to slip past (Fuker, Phuck, Fvck, Fuuuck): the name squashed
 // down, letters that sound alike made the same (ph is f; ck, q and a c that isn't
@@ -60,11 +60,21 @@ function spoonerisms(name) {
   for (const w of words) for (let k = 2; k <= w.length - 2; k++) out.push(swapStarts(w.slice(0, k), w.slice(k)));
   return out.filter(Boolean);
 }
+// The n-word with its gg swapped for ck, kk, cc, qq or bb, or one g (PhatNicker,
+// Nikka, Niger): not straight after an s or a k, so Snickers and Knickers are
+// fine, and not Nigeria. Checked on the name with its doubled vowels made single.
+const N_WORD = new RegExp(rot13('(^|[^fx])av(?:tt|xx|pp|dd|px|oo|t)(?:n|hu|re(?!vn))'));
+// Players renamed by hand, their times kept under the new name: the name they
+// raced under (rot13'd, lower case) and the one shown instead. Applied to saved
+// times, to copies browsers hand back, and when someone joins with that name.
+const RENAMED = new Map([[rot13('cungavpxre'), 'JacksonP'], [rot13('cungahpxre'), 'JacksonP']]);
+const renamed = (n) => RENAMED.get(String(n).toLowerCase()) || n;
 function nameAllowed(name) {
-  // (words break at a capital too, so a whole word hidden in PhatNicker is found)
+  // (words break at a capital too, so a word hidden in BigAss is found)
   const words = unleet(String(name).replace(/([a-z])([A-Z])/g, '$1 $2')).split(/[^a-z]+/).filter(Boolean), joined = words.join(''), squashed = squash(name);
   return !BLOCKED_ANYWHERE.some(w => joined.includes(w)) && !words.some(w => BLOCKED_WORDS.has(w)) && !BLOCKED_WORDS.has(joined)
-    && !BLOCKED_SQUASHED.some(w => squashed.includes(w)) && !spoonerisms(name).some(s => squash(s).includes(BLOCKED_SPOONER));
+    && !BLOCKED_SQUASHED.some(w => squashed.includes(w)) && !N_WORD.test(joined.replace(/([aeiou])\1+/g, '$1'))
+    && !spoonerisms(name).some(s => squash(s).includes(BLOCKED_SPOONER));
 }
 
 // The Cloudflare Web Analytics beacon for a token (letters and digits only).
@@ -174,10 +184,10 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   if (savedBoards && savedBoards.season === BOARD_SEASON) {
     for (const [k, list] of Object.entries(savedBoards.boards || {})) {
       const kv = readKey(k);
-      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(cleanName(e.n), kv[0], kv[1] || e.c, +e.ms);
+      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(renamed(cleanName(e.n)), kv[0], kv[1] || e.c, +e.ms);
     }
     for (const [k, list] of Object.entries(savedBoards.sec || {})) {
-      if (Array.isArray(list)) list.forEach((e, i) => { if (e && typeof e.n === 'string') addSector(+k, i, cleanName(e.n), +e.ms, 'open'); });
+      if (Array.isArray(list)) list.forEach((e, i) => { if (e && typeof e.n === 'string') addSector(+k, i, renamed(cleanName(e.n)), +e.ms, 'open'); });
     }
   }
 
@@ -196,7 +206,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   }
   // a name with a bad word in it (the same list the leaderboard uses) becomes Racer
   function safeName(raw) {
-    const n = cleanName(raw);
+    const n = renamed(cleanName(raw));
     return nameAllowed(n) ? n : 'Racer';
   }
   // the car number a player asked for: a whole number 0 to 99, or null for a random one
@@ -458,7 +468,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
             const c = oldCar || e.c;
             // a v2.5 copy (per car) was signed without the car on the end
             if (!CAR_CLASSES.includes(c) || e.s !== (oldCar ? sign(`${BOARD_SEASON}|${k}|${e.n}|${e.ms}`) : signature(k, e.n, e.ms, c))) continue;
-            if (addLap(e.n, t, c, e.ms)) changed.add(boardKey(t));
+            if (addLap(renamed(e.n), t, c, e.ms)) changed.add(boardKey(t));
           }
         }
         for (const k of changed) boardChanged(k);
@@ -468,7 +478,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
           let better = false;
           list.slice(0, 3).forEach((e, i) => {
             if (!e || typeof e.n !== 'string' || typeof e.s !== 'string' || !Number.isInteger(e.ms) || e.n !== cleanName(e.n) || e.s !== secSignature(k, i, e.n, e.ms)) return;
-            if (addSector(+k, i, e.n, e.ms, 'open')) better = true;
+            if (addSector(+k, i, renamed(e.n), e.ms, 'open')) better = true;
           });
           if (better) sectorsChanged(k);
         }
