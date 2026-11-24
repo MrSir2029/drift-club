@@ -4297,7 +4297,8 @@ const CAR_CLASSES = { open: {
   maxDrive: 9500,    // N, torque limit at low speed
   topSpeed: 71.2,    // m/s, soft rev limiter (~256 km/h; drag holds it to about 240 flat out)
   reverseSpeed: 10.5, // m/s (about 38 km/h)
-  brakeForce: 34000, // N, full pedal (ABS below keeps it within grip)
+  brakeForce: 39000, // N, full pedal (ABS below keeps it within grip)
+  brakeGrip: 1.15,   // the tyres' grip under braking, on top of the surface's: 15% more since 3.13, for the faster cars (corners and traction unchanged)
   hardHandbrake: true, // handbrake stops the car hard and only steps the tail out a little
   hbRearGrip: 0.72,  // sideways grip the rears keep under the handbrake (0.25 for the others)
   dive: 0.003,       // how far the body pitches per m/s^2 of braking or acceleration
@@ -4334,7 +4335,8 @@ const CAR_CLASSES = { open: {
   maxDrive: 12400,
   topSpeed: 61.7,
   reverseSpeed: 10.5,
-  brakeForce: 30000,
+  brakeForce: 34500,
+  brakeGrip: 1.15,
   dive: 0.007, maxDive: 0.06, rollGain: 0.008, maxRoll: 0.08, leanY: 0.45,
   brakeFront: 0.6,
   dragCoef: 0.8,
@@ -4360,7 +4362,8 @@ const CAR_CLASSES = { open: {
   maxDrive: 8050,
   topSpeed: 54.7,
   reverseSpeed: 9.5,
-  brakeForce: 25000,
+  brakeForce: 28750,
+  brakeGrip: 1.15,
   dive: 0.009, maxDive: 0.06, rollGain: 0.01, maxRoll: 0.1, leanY: 0.45,
   brakeFront: 0.65,
   dragCoef: 0.6,
@@ -4596,7 +4599,8 @@ function stepLocal(car, dt, canDrive) {
     // held to 60% so they always keep sideways grip. That makes hard braking
     // push the nose wide rather than swap ends, which is what you want with
     // an on/off brake key.
-    const frontLimit = capF * (0.94 - 0.3 * Math.abs(steerIn)), rearLimit = capR * 0.6;
+    const bg = brake && vLong > 0.6 ? (CAR.brakeGrip || 1) : 1; // braking grip: more than the tyres give for anything else
+    const frontLimit = capF * bg * (0.94 - 0.3 * Math.abs(steerIn)), rearLimit = capR * bg * 0.6;
     if (FbrakeF < -frontLimit) FbrakeF = -frontLimit;
     if (FbrakeR < -rearLimit) FbrakeR = -rearLimit;
     let FxF = FbrakeF + FdF, FxR = FdR + FbrakeR + Freverse;
@@ -4606,7 +4610,8 @@ function stepLocal(car, dt, canDrive) {
     let FyF = tyreForce(surf, Fzf, alphaF) * lg;
     let FyR = tyreForce(surf, Fzr, alphaR) * lgR;
     if (handbrake) { FyR *= CAR.hbRearGrip ?? 0.25; locked = true; } // locked rears can't hold the corner
-    const totF = Math.hypot(FxF, FyF / lg), totR = Math.hypot(FxR, FyR / lgR);
+    const bxF = FxF < 0 ? bg : 1, bxR = FxR < 0 ? bg : 1; // (the grip ellipse is wider along the car while braking)
+    const totF = Math.hypot(FxF / bxF, FyF / lg), totR = Math.hypot(FxR / bxR, FyR / lgR);
     if (totF > capF) { const s = capF / totF; FxF *= s; FyF *= s * 0.92; }
     if (totR > capR) { const s = capR / totR; FxR *= s; FyR *= s * 0.92; }
 
