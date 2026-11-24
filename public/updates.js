@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.13', date: '24 Nov 2026', title: 'Stronger brakes',
+    items: [
+      'Every car brakes about 15% harder, to go with the extra speed: 200 to 100 km/h takes 1.3 seconds instead of 1.5. Cornering and acceleration are the same.',
+    ],
+  },
+  {
     v: '3.12', date: '24 Nov 2026', title: 'Even faster cars',
     items: [
       'Every car has another 12% more power and a higher top speed: the open seater does about 240 km/h flat out now. Corners and braking are the same, so brake a little earlier.',
