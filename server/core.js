@@ -69,6 +69,11 @@ const N_WORD = new RegExp(rot13('(^|[^fx])av(?:tt|xx|pp|dd|px|oo|t)(?:n|hu|re(?!
 // times, to copies browsers hand back, and when someone joins with that name.
 const RENAMED = new Map([[rot13('cungavpxre'), 'JacksonP'], [rot13('cungahpxre'), 'JacksonP']]);
 const renamed = (n) => RENAMED.get(String(n).toLowerCase()) || n;
+// Times taken off the board by hand ('name|track|ms', and 'name|track|s<n>|ms'
+// for a sector), so the copies kept in browsers and in storage don't bring them
+// back; a new time by the same player still counts. LucaC's were set using the
+// walls to get round corners, before a lap with a hard wall hit was deleted.
+const DROPPED = new Set(['LucaC|1|44251', 'LucaC|3|30851', 'LucaC|4|33400', 'LucaC|5|36485', 'LucaC|5|s0|11484', 'LucaC|5|s1|11799', 'LucaC|5|s2|12600']);
 function nameAllowed(name) {
   // (words break at a capital too, so a word hidden in BigAss is found)
   const words = unleet(String(name).replace(/([a-z])([A-Z])/g, '$1 $2')).split(/[^a-z]+/).filter(Boolean), joined = words.join(''), squashed = squash(name);
@@ -184,10 +189,10 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   if (savedBoards && savedBoards.season === BOARD_SEASON) {
     for (const [k, list] of Object.entries(savedBoards.boards || {})) {
       const kv = readKey(k);
-      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string') addLap(renamed(cleanName(e.n)), kv[0], kv[1] || e.c, +e.ms);
+      if (kv && Array.isArray(list)) for (const e of list) if (e && typeof e.n === 'string' && !DROPPED.has(`${cleanName(e.n)}|${kv[0]}|${+e.ms}`)) addLap(renamed(cleanName(e.n)), kv[0], kv[1] || e.c, +e.ms);
     }
     for (const [k, list] of Object.entries(savedBoards.sec || {})) {
-      if (Array.isArray(list)) list.forEach((e, i) => { if (e && typeof e.n === 'string') addSector(+k, i, renamed(cleanName(e.n)), +e.ms, 'open'); });
+      if (Array.isArray(list)) list.forEach((e, i) => { if (e && typeof e.n === 'string' && !DROPPED.has(`${cleanName(e.n)}|${+k}|s${i}|${+e.ms}`)) addSector(+k, i, renamed(cleanName(e.n)), +e.ms, 'open'); });
     }
   }
 
@@ -412,6 +417,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         // about as long as the time since the player's last lap (or the start).
         const since = now - (player.lapAt || room.startAt);
         player.lapAt = now;
+        if (msg.deleted) return; // a hard hit on a wall: not a best lap, and not on the leaderboard
         if (room.mode === 'quali' && (player.best == null || time < player.best)) {
           player.best = Math.round(time);
           broadcast(room, { t: 'best', id: player.id, time: player.best });
@@ -468,6 +474,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
             const c = oldCar || e.c;
             // a v2.5 copy (per car) was signed without the car on the end
             if (!CAR_CLASSES.includes(c) || e.s !== (oldCar ? sign(`${BOARD_SEASON}|${k}|${e.n}|${e.ms}`) : signature(k, e.n, e.ms, c))) continue;
+            if (DROPPED.has(`${e.n}|${t}|${e.ms}`)) continue;
             if (addLap(renamed(e.n), t, c, e.ms)) changed.add(boardKey(t));
           }
         }
@@ -478,6 +485,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
           let better = false;
           list.slice(0, 3).forEach((e, i) => {
             if (!e || typeof e.n !== 'string' || typeof e.s !== 'string' || !Number.isInteger(e.ms) || e.n !== cleanName(e.n) || e.s !== secSignature(k, i, e.n, e.ms)) return;
+            if (DROPPED.has(`${e.n}|${+k}|s${i}|${e.ms}`)) return;
             if (addSector(+k, i, renamed(e.n), e.ms, 'open')) better = true;
           });
           if (better) sectorsChanged(k);

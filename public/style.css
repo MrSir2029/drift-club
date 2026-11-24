@@ -152,6 +152,9 @@ input:focus { border-color: var(--blue); }
 .sectors span.green { background: #2fbf55; color: #fff; }
 .sectors span.yellow { background: #ffd23f; }
 .sectors span.run { background: #fff; } /* the sector you're in, counting up */
+.sectors span.deleted { background: #8a8f99; color: #fff; text-decoration: line-through; } /* after a hard hit on a wall */
+.sectors span.run.deleted { background: #d9dce1; color: var(--ink); }
+.mylaps .lap.deleted { text-decoration: line-through; opacity: .55; }
 @media (max-width: 760px), (max-height: 520px) { .sectors { bottom: 8px; gap: 4px; } .sectors span { min-width: 0; font-size: 11px; padding: 2px 6px; } }
 .mono { font-variant-numeric: tabular-nums; }
 .hud-right { position: absolute; right: 16px; top: 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
