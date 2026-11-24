@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.10', date: '24 Nov 2026', title: 'Faster cars',
+    items: [
+      'Every car has 6% more power and a 6% higher top speed, so the times on the leaderboard can be beaten. Corners and braking are the same as before.',
+    ],
+  },
+  {
     v: '3.9', date: '24 Nov 2026', title: 'No wall-riding',
     items: [
       'Hit a wall (or anything solid) hard and that lap is deleted, like a lap deleted for track limits in F1: it won\'t go on the leaderboard or count as your best lap, and its sectors go grey. Brushing along a wall is fine, and races work the same as before.',
