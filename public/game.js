@@ -30,7 +30,9 @@ const THEMES = {
   // up, palms, islands offshore. lo is the sand, hi the grass.
   beach: { sky: 0x86d6f7, skyLight: 0xe4f7ff, bounce: 0xd8c08e, lo: 0xead49e, hi: 0x7fbf58, rock: 0xa89e86, verge: 0xe2cc95, gravelVerge: 0xe2cc95, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x5aa456, noise: 1 },
   // a city at night: dark streets, office blocks with lit windows, neon signs
-  city: { sky: 0x0a1028, skyLight: 0x56638f, bounce: 0x171a24, lo: 0x2b2f37, hi: 0x343943, rock: 0x474c57, verge: 0x7a7f89, gravelVerge: 0x7a7f89, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x10162a, noise: 0.12, night: true, hemiI: 0.95, sunI: 0.6, sunColor: 0xa9c0ff },
+  city: { sky: 0x0a1028, skyLight: 0x56638f, bounce: 0x171a24, lo: 0x2b2f37, hi: 0x343943, rock: 0x474c57, verge: 0x7a7f89, gravelVerge: 0x7a7f89, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x10162a, noise: 0.12, ease: 14, night: true, hemiI: 0.95, sunI: 0.6, sunColor: 0xa9c0ff },
+  // a shopping centre and the streets round it, by day: flat paved ground, no countryside
+  mall: { sky: 0x8ad4f5, skyLight: 0xdff1ff, bounce: 0x9aa0aa, lo: 0x8d939d, hi: 0x8d939d, rock: 0x7c8696, verge: 0x9aa0aa, gravelVerge: 0x9aa0aa, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x7aa070, noise: 0, ease: 14 },
 };
 // Typed on the keyboard by the host in the lobby, this opens the secrets
 // panel (and typing it again hides it). Letters and numbers only; change it
@@ -455,13 +457,17 @@ function buildTerrain(track) {
 
   const buckets = new Map();
   const bkey = (bx, bz) => bx * 8192 + bz;
+  // (a track can say that road above a certain height stands on piers, like a
+  // car park roof and its ramps: the ground takes no notice of that road)
+  const onPiers = (s) => track.def.deckAbove != null && s.p.y > track.def.deckAbove;
   for (const s of samples) {
     s.grade = s.t.y / Math.max(0.001, Math.hypot(s.t.x, s.t.z)); // rise per metre along the road
+    if (onPiers(s)) continue;
     const k = bkey(Math.floor(s.p.x / R), Math.floor(s.p.z / R));
     if (!buckets.has(k)) buckets.set(k, []);
     buckets.get(k).push(s);
   }
-  const coarse = samples.filter((_, i) => i % 4 === 0);
+  const coarse = samples.filter((s, i) => i % 4 === 0 && !onPiers(s));
   const amp = track.look?.noise ?? 1; // the desert's hills roll bigger
   const noise = (x, z) => (Math.sin(x * 0.011 + 0.3) * Math.cos(z * 0.009) * 8 + Math.sin(x * 0.027 + 1.7) * Math.sin(z * 0.023 + 0.4) * 3 + Math.sin(x * 0.06) * Math.cos(z * 0.07) * 0.8) * amp;
   const smooth = (t) => t * t * (3 - 2 * t);
@@ -494,7 +500,7 @@ function buildTerrain(track) {
       const dx = x - s.p.x, dz = z - s.p.z, d = dx * dx + dz * dz;
       if (d < best) { best = d; yN = s.p.y; }
     }
-    const far = smooth(clamp((Math.sqrt(best) - R) / (track.theme === 'city' ? 14 : 90), 0, 1)); // (a city's raised road drops straight to the street)
+    const far = smooth(clamp((Math.sqrt(best) - R) / (track.look?.ease ?? 90), 0, 1)); // (in a city, raised road drops straight to the street)
     H[j * n1 + i] = lerp(yN - ROAD_CLEARANCE - 0.3, sea ? noise(x, z) * (sea.hills ?? 0.7) + (sea.base ?? 2.5) : noise(x, z), far);
     if (sea) H[j * n1 + i] = lerp(H[j * n1 + i], sea.bed, smooth(clamp((Math.sqrt(best) - sea.shore) / 30, 0, 1)) * smooth(clamp((-z - sea.from) / 40, 0, 1)));
   }
@@ -532,6 +538,7 @@ function buildTerrain(track) {
       const y = terrainHeight(x, z);
       if (sea && y < sea.level + 1.2) continue; // not out at sea
       if (city && insideLoop(track, x, z)) continue; // the walls close off the middle of the city circuit
+      if ([...(track.def.blocks || []), ...(track.def.streets || [])].some(b => x > b[0] - r - 12 && x < b[2] + r + 12 && z > b[1] - r - 12 && z < b[3] + r + 12)) continue; // not on the track's own buildings or streets
       // 9LAT2 hides: as far from every road as the map allows, down in low
       // ground, so you won't spot it from the track. (Same candidates and random
       // numbers as before, so every other landmark stays where it was.)
@@ -1088,6 +1095,7 @@ function roadGap(track, x, z) {
 }
 function isFree(track, x, z, r, roadMargin) {
   if (TERRAIN.wet && wetAt(x, z)) return false; // nothing gets built in the sea
+  for (const b of track.def.blocks || []) if (x > b[0] - r && x < b[2] + r && z > b[1] - r && z < b[3] + r) return false; // nor on the track's own buildings
   for (const o of occupied) {
     const dx = o.x - x, dz = o.z - z, rr = o.r + r;
     if (dx * dx + dz * dz < rr * rr) return false;
@@ -1358,6 +1366,7 @@ function buildProps(track) {
   // origin sits from the centre line; it reaches `front` toward the road and
   // `back` away from it.
   const fit = (start, len, front, back, lat, sides, range = N >> 1, step = 5) => {
+    if (track.def.bare) return null; // (a track with no room for stands, pits and car parks)
     const halfD = (front + back) / 2, cLat = lat + (back - front) / 2;
     const nu = Math.ceil(len / 4), nv = Math.ceil(halfD * 2 / 4);
     for (let d = 0; d <= range; d += step) for (const dir of d ? [1, -1] : [1]) {
@@ -1726,7 +1735,13 @@ function buildStreetWalls(track) {
   const nearGate = (i) => cps.some(c => Math.min((i - c + N) % N, (c - i + N) % N) < 14);
   const gaps = track.gaps = [];
   let last = -999;
-  for (let i = 70; i < N - 60; i++) { // not on the grid, behind the line, or just after it
+  // (a track can say where they open instead, as [x, z, side, samples wide])
+  for (const [x, z, side, n] of track.def.gaps || []) {
+    let i = 0, best = Infinity;
+    samples.forEach((s, k) => { const d = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (d < best) { best = d; i = k; } });
+    gaps.push({ side, a: i - (n >> 1), b: i + (n >> 1) });
+  }
+  for (let i = 70; i < N - 60 && !track.def.gaps; i++) { // not on the grid, behind the line, or just after it
     if (i - last < 85 || !straight(i) || !straight(i + GAP) || nearGate(i) || nearGate(i + GAP)) continue;
     const s = samples[i + (GAP >> 1)];
     const out = [1, -1].find((side) => {
@@ -2759,6 +2774,7 @@ function buildScenery(track) {
   const rnd = mulberry32(1234 + app.trackId * 99);
   const desert = track.theme === 'desert', snow = track.theme === 'snow', forest = track.theme === 'forest', beach = track.theme === 'beach';
   if (track.theme === 'city') { buildCity(track, rnd); return; } // the city has a skyline of its own, and no countryside
+  if (track.theme === 'mall') { buildMall(track, rnd); return; }  // and so has the shopping centre
   const { hw, bounds } = track;
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const center = bounds.getCenter(new THREE.Vector3());
@@ -3117,6 +3133,319 @@ function buildScenery(track) {
     });
   }
 
+}
+
+// Westfield: a shopping centre you race through. The lap starts on the roof
+// of the car park, comes down the ramp, crosses Oxford Street, goes in through
+// the doors and along the mall between the shops (some real ones among them,
+// in plain lettering: the owner asked for local names here), round the food
+// court and back out, across Oxford Street again and up the other ramp. The
+// 333 waits at its stop, there are walkways over the street between the two
+// buildings, and the city and the Harbour Bridge are on the horizon from the
+// roof.
+function buildMall(track, rnd) {
+  const { samples, N, hw } = track, lim = track.limit, solids = track.solids, walls = track.walls;
+  const [A, B] = track.def.blocks; // the car park and the mall, each [x0, z0, x1, z1]
+  const mats = new Map();
+  const lam = (c, e = 0) => { const k = c + '|' + e; let m = mats.get(k); if (!m) mats.set(k, m = new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true })); return m; };
+  const add = (g, geo, c, x, y, z, e) => { const m = new THREE.Mesh(geo, lam(c, e)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const box = (g, w, h, d, c, x, y, z, e) => add(g, new THREE.BoxGeometry(w, h, d), c, x, y, z, e);
+  const at = (x, z, ry = 0, y = terrainHeight(x, z)) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; worldGroup.add(g); return g; };
+  const W = (g, lx, lz) => { const c = Math.cos(g.rotation.y), s = Math.sin(g.rotation.y); return [g.position.x + lx * c + lz * s, g.position.z - lx * s + lz * c]; }; // a group's local x, z in the world
+  const wrap = (i) => ((Math.round(i) % N) + N) % N;
+  const P = (i, lat) => { const s = samples[wrap(i)]; return [s.p.x + s.left.x * lat, s.p.z + s.left.z * lat]; };
+  const nearestI = (x, z) => { let b = 0, d = Infinity; for (let i = 0; i < N; i++) { const s = samples[i], e = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (e < d) { d = e; b = i; } } return b; };
+  const along = (i) => { const s = samples[wrap(i)]; return Math.atan2(s.th.x, s.th.z); };
+  const facing = (i, sd) => { const s = samples[wrap(i)]; return Math.atan2(-s.left.x * sd, -s.left.z * sd); }; // turned to face the road from side sd
+  const people = makePeople(460, rnd);
+  const C = (hex) => new THREE.Color(hex);
+  // three sheets of flat colour: lit (and casting no shadow: the mall isn't dark inside), glowing, and painted on the ground
+  const lit = { pos: [], col: [] }, glow = { pos: [], col: [] }, paint = { pos: [], col: [] };
+  const quad = (Q, a, b, c, d, color) => pushQuad(Q.pos, Q.col, V(...a), V(...b), V(...c), V(...d), color);
+  // a strip beside the road from sample i to the next: from lat0 (at y0 above the road) across to lat1 (at y1)
+  const ribbon = (Q, i, sd, lat0, lat1, y0, y1, color) => {
+    const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, sd * lat0), [bx, bz] = P(i + 1, sd * lat0), [cx, cz] = P(i + 1, sd * lat1), [dx, dz] = P(i, sd * lat1);
+    quad(Q, [ax, a.p.y + y0, az], [bx, b.p.y + y0, bz], [cx, b.p.y + y1, cz], [dx, a.p.y + y1, dz], color);
+  };
+  // an upright wall from (x0, z0) to (x1, z1), and a flat rectangle
+  const wallQ = (Q, x0, z0, x1, z1, y0, y1, color) => quad(Q, [x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0], color);
+  const flatQ = (Q, x0, z0, x1, z1, y, color) => quad(Q, [x0, y, z0], [x0, y, z1], [x1, y, z1], [x1, y, z0], color);
+  const blockQ = (Q, x0, z0, x1, z1, y0, y1, color, top = color) => { wallQ(Q, x0, z0, x1, z0, y0, y1, color); wallQ(Q, x1, z0, x1, z1, y0, y1, color); wallQ(Q, x1, z1, x0, z1, y0, y1, color); wallQ(Q, x0, z1, x0, z0, y0, y1, color); flatQ(Q, x0, z0, x1, z1, y1, top); };
+  // painted on the ground: it follows the ground, a few centimetres over it
+  const decal = (x0, z0, x1, z1, color, lift = 0.05) => {
+    const nx = Math.max(1, Math.ceil((x1 - x0) / 5)), nz = Math.max(1, Math.ceil((z1 - z0) / 5)), g = (x, z) => [x, terrainHeight(x, z) + lift, z];
+    for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) {
+      const xa = x0 + ((x1 - x0) * a) / nx, xb = x0 + ((x1 - x0) * (a + 1)) / nx, za = z0 + ((z1 - z0) * b) / nz, zb = z0 + ((z1 - z0) * (b + 1)) / nz;
+      quad(paint, g(xa, za), g(xa, zb), g(xb, zb), g(xb, za), color);
+    }
+  };
+  const solidRect = (x0, z0, x1, z1, y = 0) => { for (const [a, b, c, d] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) walls.push({ ax: a, az: b, bx: c, bz: d, y }); };
+  // a board with words on it
+  const sign = (g, text, bg, ink, w, h, x, y, z, ry = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: signTexture(text, bg, ink, 512, Math.max(32, Math.round(512 * h / w))), color: 0xf0f0f0 }));
+    m.position.set(x, y, z); m.rotation.y = ry; g.add(m); return m;
+  };
+  const world = at(0, 0, 0, 0);
+
+  const PAVE = -0.2, WALK = hw + 3.9, SHOPS = hw + 8.5, UP = SHOPS + 3, CEIL = 9.2, ROOF = 10.4, DECK = 9.7;
+  const indoors = (i) => samples[wrap(i)].p.z < B[3] - 0.5;
+  const i0 = samples.findIndex((_, i) => indoors(i)), i1 = N - 1 - [...samples].reverse().findIndex((_, i) => indoors(N - 1 - i)); // in through the east doors, out through the west ones
+  // the food court: the middle of the hairpin at the far end
+  const fc = (() => { let x = 0, z = 0, n = 0; for (let i = i0; i <= i1; i++) { const s = samples[i].p; if (s.z < -172) { x += s.x; z += s.z; n++; } } const mx = x / n; return { x: mx, z: -170 }; })();
+  const inU = (i) => { const s = samples[wrap(i)].p; return s.z < fc.z + 1 && Math.hypot(s.x - fc.x, s.z - fc.z) < 40; };
+
+  // ---- the shops' signs, all on one sheet ----
+  const MAIN = [['Myer', '#111318', '#ffffff'], ['Dingo Donuts', '#ff8fb0', '#ffffff'], ['Kmart', '#d62f2f', '#ffffff'], ['Galah Games', '#ff6bcb', '#2a1030'], ['David Jones', '#ffffff', '#111318'], ['Wombat Toys', '#ffd23f', '#3b2a1e'],
+    ['JB Hi-Fi', '#ffd400', '#111318'], ['Bondi Surf Co', '#2ec4b6', '#0f2f3a'], ['Coles', '#ffffff', '#d62f2f'], ['Kookaburra Kicks', '#3d8bff', '#ffffff'], ['Rebel', '#111318', '#e6453a'], ['Junction Books', '#8a5a2b', '#fff1d6'],
+    ['Woolworths', '#2f9e44', '#ffffff'], ['Platypus Phones', '#1d2230', '#9ad0ff'], ['Event Cinemas', '#16204a', '#ffffff'], ['Quokka Candy', '#ff8a3d', '#ffffff'], ['Roo Rides', '#7ed957', '#1d3b1f'], ['Emu Eyewear', '#f1e9d6', '#3b2a1e'],
+    ['Drift Club Store', '#1d2230', '#ff8a3d'], ['Possum Pets', '#9ad0ff', '#16204a'], ['Numbat News', '#ffffff', '#1f6fb5'], ['Turbo Tea', '#2f6b4a', '#f6e7c8']];
+  const FOOD = [["Chargrill Charlie's", '#e6453a', '#fff6dc'], ['Bilby Burgers', '#ffd23f', '#3b2a1e'], ['Oporto', '#ff8a3d', '#ffffff'], ['Koala Kebabs', '#7ed957', '#1d3b1f'], ['Boost Juice', '#8fd400', '#ffffff'],
+    ['Croc Crisps', '#2f6b4a', '#ffe9a8'], ['Guzman y Gomez', '#ffd400', '#111318'], ['Sunburnt Soda', '#3d8bff', '#ffffff'], ['Cockatoo Coffee', '#3b2a1e', '#f6e7c8'], ['Bandicoot Bakery', '#f1e9d6', '#8a5a2b']];
+  const NAMES = [...MAIN, ...FOOD], COLS = 2, ROWS = 16;
+  const atlas = document.createElement('canvas'); atlas.width = atlas.height = 1024;
+  const ax = atlas.getContext('2d'); ax.textAlign = 'center'; ax.textBaseline = 'middle';
+  NAMES.forEach(([name, bg, ink], k) => {
+    const x = (k % COLS) * 512, y = Math.floor(k / COLS) * 64;
+    ax.fillStyle = bg; ax.fillRect(x, y, 512, 64); ax.fillStyle = ink;
+    let size = 46; do { ax.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 3; } while (ax.measureText(name).width > 480 && size > 14);
+    ax.fillText(name, x + 256, y + 34);
+  });
+  const sp = [], suv = [];
+  // a sign that follows the wall from sample i for n samples (reading the right way from the road)
+  const signStrip = (i, n, sd, lat, y0, y1, cell) => {
+    const u0 = (cell % COLS) / COLS, v1 = 1 - Math.floor(cell / COLS) / ROWS, v0 = v1 - 1 / ROWS;
+    for (let j = 0; j < n; j++) {
+      const a = samples[wrap(i + j)], b = samples[wrap(i + j + 1)], [ax0, az0] = P(i + j, sd * lat), [bx0, bz0] = P(i + j + 1, sd * lat);
+      const ua = u0 + (sd > 0 ? j : n - j) / n / COLS, ub = u0 + (sd > 0 ? j + 1 : n - j - 1) / n / COLS;
+      const q = [[ax0, a.p.y + y0, az0, ua, v0], [bx0, b.p.y + y0, bz0, ub, v0], [bx0, b.p.y + y1, bz0, ub, v1], [ax0, a.p.y + y1, az0, ua, v1]];
+      for (const k of [0, 1, 2, 0, 2, 3]) { sp.push(q[k][0], q[k][1], q[k][2]); suv.push(q[k][3], q[k][4]); }
+    }
+  };
+
+  // ---- inside the mall: walkways behind the barriers, shopfronts, a gallery above them, and a roof with a skylight ----
+  {
+    const TILE = [C(0xe9e2cf), C(0xd9d2c0)], FASCIA = C(0xf6f2e8), SLAB = C(0xcfd6dc), UPPER = C(0xefe9da), CEILING = C(0xd3d9e1), RAIL = C(0xbfe3f5), SKY = C(0xbfe6ff), LAMP = C(0xffffff);
+    const GLASS = [0xfff3d6, 0xdff1ff, 0xffe9b8, 0xe6f7ee, 0xfde6ee, 0xf2ecff].map(C), SHOP = 8; // a shop every 8 samples (12 m)
+    let shop = [0, 0];
+    for (let i = i0; i < i1; i++) {
+      const s = samples[i], k = i - i0;
+      for (const sd of [1, -1]) {
+        ribbon(lit, i, sd, WALK, SHOPS, PAVE, PAVE, TILE[(k >> 1) % 2]);
+        if (sd === 1 && inU(i)) continue; // the food court is open on the inside of the hairpin
+        const kk = k + (sd > 0 ? 0 : 4), n = Math.floor(kk / SHOP), first = kk % SHOP === 0, food = inU(i) || inU(i + 20) || inU(i - 20);
+        ribbon(glow, i, sd, SHOPS, SHOPS + 0.02, PAVE, 3.4, GLASS[(n * 5 + (sd > 0 ? 0 : 3)) % GLASS.length]);
+        ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, 3.4, 4.9, FASCIA);
+        ribbon(glow, i, sd, SHOPS - 1.3, UP, 4.9, 4.9, SLAB);                   // the gallery's floor, sticking out over the walkway
+        ribbon(glow, i, sd, SHOPS - 1.3, SHOPS - 1.28, 4.9, 6.0, RAIL);         // its glass balustrade
+        ribbon(lit, i, sd, UP, UP + 0.02, 4.9, CEIL, UPPER);
+        ribbon(glow, i, sd, UP - 0.02, UP, 5.6, 7.6, GLASS[(n * 3 + 1) % GLASS.length]); // upstairs windows
+        if (first) {
+          const [x, z] = P(i, sd * (SHOPS - 0.15)), g = at(x, z, along(i), s.p.y + PAVE);
+          box(g, 0.5, 5.1, 0.7, 0xd9dde3, 0, 2.55, 0).castShadow = false;       // the pillar between two shops
+          if (i + SHOP <= i1 && !(sd === 1 && inU(i + SHOP))) signStrip(i + 1, SHOP - 2, sd, SHOPS - 0.06, 3.6, 4.7, food ? MAIN.length + (shop[1]++ % FOOD.length) : shop[0]++ % MAIN.length);
+        }
+        if (k % 4 === 0) { const [ax0, az0] = P(i, sd * SHOPS), [bx0, bz0] = P(Math.min(i + 4, i1), sd * SHOPS); walls.push({ ax: ax0, az: az0, bx: bx0, bz: bz0, y: s.p.y }); }
+        // shoppers, benches and plants along the walkway
+        if (rnd() < 0.3) { const [x, z] = P(i, sd * (WALK + 0.7 + rnd() * 3.2)); people.add(x, s.p.y + PAVE + 0.02, z, facing(i, sd) + (rnd() - 0.5) * 1.6); }
+        if (kk % 22 === 11) {
+          const [x, z] = P(i, sd * (SHOPS - 1.5)), g = at(x, z, facing(i, sd), s.p.y + PAVE);
+          if ((n + (sd > 0 ? 0 : 1)) % 2) { box(g, 1.3, 0.9, 1.3, 0xb5543c, 0, 0.45, 0).castShadow = false; add(g, new THREE.IcosahedronGeometry(0.95, 0), 0x3f9a4a, 0, 1.7, 0).castShadow = false; add(g, new THREE.IcosahedronGeometry(0.6, 0), 0x4fae54, 0.2, 2.6, 0.1).castShadow = false; }
+          else { box(g, 2.2, 0.12, 0.55, 0x8a5a2b, 0, 0.45, 0).castShadow = false; for (const lx of [-0.9, 0.9]) box(g, 0.1, 0.45, 0.5, 0x4a4f5a, lx, 0.22, 0).castShadow = false; }
+        }
+      }
+      // the roof: white either side, a skylight down the middle, lamps
+      ribbon(glow, i, 1, UP, 3.4, CEIL, CEIL, CEILING); ribbon(glow, i, -1, UP, 3.4, CEIL, CEIL, CEILING);
+      ribbon(glow, i, 1, 3.4, -3.4, CEIL, CEIL, SKY);
+      if (k % 6 === 0) for (const sd of [1, -1]) { ribbon(glow, i, sd, 7, 9.5, CEIL - 0.05, CEIL - 0.05, LAMP); ribbon(glow, i + 1, sd, 7, 9.5, CEIL - 0.05, CEIL - 0.05, LAMP); }
+    }
+    // boards hanging over the road
+    const hang = (i, text, bg, ink) => {
+      const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i) + Math.PI, s.p.y);
+      for (const lx of [-5.6, 5.6]) box(g, 0.08, CEIL - 7.6, 0.08, 0x8d93a0, lx, (CEIL + 7.6) / 2, 0).castShadow = false;
+      box(g, 12, 1.5, 0.16, 0x1d2230, 0, 6.9, 0).castShadow = false;
+      sign(g, text, bg, ink, 11.6, 1.2, 0, 6.9, 0.1);
+    };
+    hang(i0 + 16, 'WELCOME TO WESTFIELD', '#ffffff', '#d62f2f');
+    hang(nearestI(60, -100), 'FOOD COURT  AHEAD', '#1d2230', '#ffd23f');
+    hang(nearestI(-140, -140), 'FOOD COURT', '#e6453a', '#ffffff');
+    hang(nearestI(-190, -120), 'PARKING  ROOFTOP', '#1f6fb5', '#ffffff');
+    hang(i1 - 22, 'OXFORD ST EXIT', '#2f6b4a', '#ffffff');
+    // an escalator up to the gallery, here and there
+    for (const [x, z, sd] of [[100, -110, -1], [-40, -100, 1], [-190, -100, 1], [160, -70, -1]]) {
+      const i = nearestI(x, z), a = samples[i], b = samples[wrap(i + 7)], [ax0, az0] = P(i, sd * (SHOPS - 2.1)), [bx0, bz0] = P(i + 7, sd * (SHOPS - 2.1));
+      const m = strut(V(ax0, a.p.y, az0), V(bx0, b.p.y + 4.9, bz0), 1.5, 0.5, lam(0x5a6372)); worldGroup.add(m);
+      for (const off of [-0.75, 0.75]) { const [cx, cz] = P(i, sd * (SHOPS - 2.1 + off)), [dx, dz] = P(i + 7, sd * (SHOPS - 2.1 + off)); quad(glow, [cx, a.p.y + 0.2, cz], [dx, b.p.y + 5.1, dz], [dx, b.p.y + 6.0, dz], [cx, a.p.y + 1.1, cz], C(0xbfe3f5)); }
+    }
+  }
+
+  // ---- the food court: tables in the middle of the hairpin, a juice bar, palms in pots ----
+  {
+    const g = at(fc.x, fc.z, 0, PAVE - 0.3 + 0.32);
+    flatQ(lit, fc.x - 15, fc.z - 15, fc.x + 15, fc.z + 2, PAVE + 0.01, C(0xe2dccb));
+    add(g, new THREE.CylinderGeometry(2.6, 2.6, 1.1, 10), 0xf6f2e8, 0, 0.55, -1).castShadow = false; add(g, new THREE.CylinderGeometry(3.2, 3.2, 0.25, 10), 0x8fd400, 0, 2.9, -1).castShadow = false;
+    for (let k = 0; k < 5; k++) box(g, 0.12, 1.7, 0.12, 0xd9dde3, Math.cos(k * 1.257) * 2.4, 1.95, -1 + Math.sin(k * 1.257) * 2.4).castShadow = false;
+    sign(g, 'JUICE BAR', '#8fd400', '#ffffff', 3.6, 0.7, 0, 3.5, 2.25); sign(g, 'JUICE BAR', '#8fd400', '#ffffff', 3.6, 0.7, 0, 3.5, -4.25, Math.PI);
+    for (let k = 0, n = 0; k < 60 && n < 13; k++) {
+      const a = rnd() * 6.2832, d = 5.2 + rnd() * 7.2, lx = Math.cos(a) * d, lz = -1 + Math.sin(a) * d * 0.95;
+      if (lz > 1.5 || Math.hypot(lx, lz) > 12.6) continue;
+      add(g, new THREE.CylinderGeometry(0.85, 0.85, 0.08, 8), 0xf6f2e8, lx, 0.75, lz).castShadow = false; add(g, new THREE.CylinderGeometry(0.08, 0.25, 0.75, 6), 0x8d93a0, lx, 0.37, lz).castShadow = false;
+      for (let j = 0; j < 3; j++) { const b = a + j * 2.1, sx = lx + Math.cos(b) * 1.3, sz = lz + Math.sin(b) * 1.3; box(g, 0.4, 0.45, 0.4, [0xe6453a, 0x3d8bff, 0xffd23f][j], sx, 0.22, sz).castShadow = false; if (rnd() < 0.6) people.add(fc.x + sx, PAVE + 0.3, fc.z + sz, b + Math.PI, undefined, 0.85); }
+      n++;
+    }
+    for (const [lx, lz] of [[-10.5, -8], [10.5, -8], [-12, 0.5], [12, 0.5]]) { box(g, 1.4, 1, 1.4, 0xb5543c, lx, 0.5, lz).castShadow = false; box(g, 0.2, 2.6, 0.2, 0x7a5a3a, lx, 2.2, lz).castShadow = false; for (let k = 0; k < 5; k++) { const m = add(g, new THREE.ConeGeometry(0.5, 2.2, 4), 0x3f9a4a, lx + Math.cos(k * 1.257) * 0.9, 3.6, lz + Math.sin(k * 1.257) * 0.9); m.rotation.set(Math.sin(k * 1.257) * 1.1, 0, -Math.cos(k * 1.257) * 1.1); m.castShadow = false; } }
+  }
+
+  // ---- the mall from outside: walls with glass along the street, doors where the road goes in and out, a flat roof ----
+  {
+    const WALLC = C(0xe9e4d8), BASE = C(0x3b556e), TOP = C(0xf6f2e8), ROOFC = C(0xcfd6dc), doors = [samples[i0].p.x, samples[i1].p.x].sort((a, b) => a - b), HALF = SHOPS + 0.4;
+    const face = (x0, z0, x1, z1) => { wallQ(lit, x0, z0, x1, z1, -1, 3.6, BASE); wallQ(lit, x0, z0, x1, z1, 3.6, ROOF + 0.4, WALLC); wallQ(lit, x0, z0, x1, z1, ROOF + 0.4, ROOF + 1.2, TOP); walls.push({ ax: x0, az: z0, bx: x1, bz: z1, y: 0 }); };
+    face(B[0], B[1], B[0], B[3]); face(B[2], B[1], B[2], B[3]); face(B[0], B[1], B[2], B[1]);
+    let x = B[0];
+    for (const d of doors) { face(x, B[3], d - HALF, B[3]); x = d + HALF; }
+    face(x, B[3], B[2], B[3]);
+    flatQ(lit, B[0], B[1], B[2], B[3], ROOF, ROOFC);
+    for (const d of doors) { // each doorway: the wall over it, the name, and a porch
+      wallQ(lit, d - HALF, B[3], d + HALF, B[3], 6.6, ROOF + 1.2, TOP);
+      const g = at(d, B[3] + 0.3, 0, 0);
+      sign(g, 'WESTFIELD', '#ffffff', '#d62f2f', 22, 3.2, 0, 8.6, 0.1);
+      box(g, 2 * HALF + 2, 0.5, 7, 0xd62f2f, 0, 6.6, 3.2);
+      for (const lx of [-HALF - 0.4, HALF + 0.4]) { box(g, 1, 6.6, 1, 0xf6f2e8, lx, 3.3, 6); const [wx, wz] = W(g, lx, 6); solids.push({ x: wx, z: wz, r: 0.8, y: 0 }); }
+    }
+    // on the roof: glass over the mall, air-conditioners
+    for (let k = 0; k < 9; k++) blockQ(lit, -100 + k * 26, -112, -82 + k * 26, -92, ROOF, ROOF + 1.6, C(0x9ad0ff), C(0xbfe3f5));
+    for (let k = 0; k < 14; k++) { const ux = B[0] + 30 + rnd() * (B[2] - B[0] - 60), uz = B[1] + 14 + rnd() * 40; blockQ(lit, ux, uz, ux + 5, uz + 3, ROOF, ROOF + 1.8, C(0x9aa3ad)); }
+  }
+
+  // ---- the car park: a block under the roof the lap starts on, with the ramps down either side ----
+  {
+    const CONC = 0xcfd3d8, DARK = 0x3b4250, main = [A[0] + 29, A[1], A[2] - 29, 160], strip = [A[0], 160, A[2], A[3]];
+    for (const [x0, z0, x1, z1] of [main, strip]) {
+      box(world, x1 - x0, DECK + 1, z1 - z0, CONC, (x0 + x1) / 2, (DECK - 1) / 2, (z0 + z1) / 2);
+      solidRect(x0, z0, x1, z1);
+    }
+    // open decks: dark bands along the sides
+    for (const y of [2.6, 6.2]) {
+      box(world, main[2] - main[0] - 8, 1.7, 0.4, DARK, (main[0] + main[2]) / 2, y, main[1] - 0.1);
+      for (const x of [main[0] - 0.1, main[2] + 0.1]) box(world, 0.4, 1.7, 100, DARK, x, y, 105);
+      box(world, strip[2] - strip[0] - 8, 1.7, 0.4, DARK, (strip[0] + strip[2]) / 2, y, strip[3] + 0.1);
+      for (const x of [strip[0] - 0.1, strip[2] + 0.1]) box(world, 0.4, 1.7, strip[3] - strip[1] - 8, DARK, x, y, (strip[1] + strip[3]) / 2);
+    }
+    // a low wall round the edge of the roof
+    for (const [x0, z0, x1, z1] of [[strip[0], strip[3], strip[2], strip[3]], [strip[0], strip[1], strip[0], strip[3]], [strip[2], strip[1], strip[2], strip[3]], [main[0], main[1], main[2], main[1]], [main[0], main[1], main[0], main[3]], [main[2], main[1], main[2], main[3]]])
+      box(world, Math.abs(x1 - x0) + 0.5, 1.1, Math.abs(z1 - z0) + 0.5, 0xe9e4d8, (x0 + x1) / 2, DECK + 0.55, (z0 + z1) / 2);
+    // parked cars in marked bays, some under shade sails
+    const body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 4.2), new THREE.MeshLambertMaterial({ flatShading: true }), 420), cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.6, 2.1), lam(0x26303f), 420);
+    const M = new THREE.Matrix4(), col = new THREE.Color(), CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a, 0xf6f2e8, 0xb9c0cc];
+    let n = 0;
+    const white = C(0xf6f2e8);
+    for (const z of [62, 68, 96, 102, 130, 136, 166, 172, 204, 210]) for (let x = (z > 162 ? strip[0] : main[0]) + 8; x < (z > 162 ? strip[2] : main[2]) - 8; x += 3) {
+      if (z > 162 && z < 200 && (x > samples[i0].p.x - 34 || x < samples[i1].p.x + 34)) continue; // (the ramps come up through here)
+      flatQ(lit, x - 1.55, z - 2.6, x - 1.45, z + 2.6, DECK + 0.03, white);
+      if (rnd() < 0.42 || n >= 420 || (z < 162 && Math.abs(x + 15) < 9)) continue;
+      M.makeRotationY(rnd() < 0.5 ? 0 : Math.PI); M.setPosition(x, DECK + 0.6, z); body.setMatrixAt(n, M); M.setPosition(x, DECK + 1.25, z + (rnd() < 0.5 ? 0.3 : -0.3)); cab.setMatrixAt(n, M);
+      body.setColorAt(n++, col.set(CARS[Math.floor(rnd() * CARS.length)]));
+    }
+    body.count = cab.count = n; body.castShadow = true; worldGroup.add(body, cab);
+    const sail = new THREE.MeshLambertMaterial({ color: 0xf1e9d6, side: THREE.DoubleSide, flatShading: true });
+    for (let x = main[0] + 30; x < main[2] - 30; x += 36) for (const z of [99, 133]) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([x - 14, DECK + 4.6, z - 8, x + 14, DECK + 3.4, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 4.6, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 3.4, z + 8], 3)); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, sail); m.castShadow = true; worldGroup.add(m);
+      for (const [px, pz] of [[-14, -8], [14, -8], [14, 8], [-14, 8]]) box(world, 0.25, 4.8, 0.25, 0x8d93a0, x + px, DECK + 2.4, z + pz);
+    }
+    // the lifts, with the centre's name on them, and lamps along the roof
+    const lift = at(-15, 150, 0, DECK);
+    box(lift, 16, 7, 8, 0xe9e4d8, 0, 3.5, 0); box(lift, 16.6, 0.5, 8.6, 0xd62f2f, 0, 7.2, 0);
+    sign(lift, 'WESTFIELD', '#ffffff', '#d62f2f', 13, 2, 0, 4.9, 4.06); sign(lift, 'P  ROOFTOP PARKING', '#1f6fb5', '#ffffff', 13, 1.4, 0, 2.6, 4.06);
+    for (let x = strip[0] + 20; x < strip[2] - 10; x += 45) for (const z of [178, 203]) { box(world, 0.22, 7, 0.22, 0x8d93a0, x, DECK + 3.5, z); box(world, 1.6, 0.2, 0.5, 0xd9dde3, x, DECK + 7, z); }
+    // a height bar at the foot of each ramp
+    for (const x of [samples[i0].p.x, samples[i1].p.x]) {
+      const g = at(x, 46, 0, 0);
+      for (const lx of [-hw - 4.6, hw + 4.6]) { box(g, 0.4, 5.2, 0.4, 0xffd23f, lx, 2.6, 0); const [wx, wz] = W(g, lx, 0); solids.push({ x: wx, z: wz, r: 0.5, y: 0 }); }
+      box(g, 2 * hw + 9.6, 0.7, 0.3, 0xffd23f, 0, 5.2, 0); sign(g, 'CLEARANCE 2.2 m', '#ffd23f', '#111318', 9, 0.6, 0, 5.2, 0.17, 0); sign(g, 'CLEARANCE 2.2 m', '#ffd23f', '#111318', 9, 0.6, 0, 5.2, -0.17, Math.PI);
+    }
+  }
+
+  // ---- Oxford Street: tarmac, a centre line, footpaths, crossings, the 333 at its stop, walkways overhead ----
+  {
+    const ROAD = C(0x4f5661), PATH = C(0xc9ced6), LINE = C(0xf6f2e8), X0 = lim.x - lim.r - 180, X1 = lim.x + lim.r + 180;
+    decal(X0, -13, X1, 13, ROAD); decal(X0, 13, X1, 19, PATH, 0.07); decal(X0, -19, X1, -13, PATH, 0.07);
+    for (let x = X0 + 4; x < X1; x += 9) if (roadGap(track, x, 0) > hw + 6) decal(x, -0.15, x + 3.4, 0.15, LINE, 0.08);
+    for (const cx of [-60, 40]) for (let k = -5; k <= 5; k++) decal(cx - 2.2, k * 2.2 - 0.6, cx + 2.2, k * 2.2 + 0.6, LINE, 0.08); // zebra crossings
+    for (const d of [samples[i0].p.x, samples[i1].p.x]) decal(d - 34, B[3], d + 34, -19, C(0xe2dccb), 0.06); // paving outside the doors
+    // the walkways over the street, from the car park to the mall
+    for (const cx of [-60, 40]) {
+      const g = at(cx, (A[1] + B[3]) / 2, 0, 0), len = A[1] - B[3];
+      box(g, 6, 0.5, len, 0xd9dde3, 0, 5.2, 0); box(g, 6.2, 2.6, len - 0.4, 0x9ad0ff, 0, 6.75, 0); box(g, 6.6, 0.5, len, 0xf6f2e8, 0, 8.3, 0);
+      for (const lz of [-22, 22]) { box(g, 1.2, 5.2, 1.2, 0xb9bdc5, 0, 2.6, lz); const [wx, wz] = W(g, 0, lz); solids.push({ x: wx, z: wz, r: 1, y: 0 }); }
+    }
+    // the bus
+    const bus = at(-4, -9.2, Math.PI / 2, terrainHeight(-4, -9.2) + 0.05);
+    box(bus, 2.6, 2.7, 12, 0x1f6fb5, 0, 1.85, 0); box(bus, 2.64, 0.9, 11.2, 0x23303f, 0, 2.35, 0); box(bus, 2.66, 0.5, 12.04, 0xf6f2e8, 0, 3.05, 0);
+    for (const lz of [-3.8, 3.6]) for (const lx of [-1.2, 1.2]) add(bus, new THREE.CylinderGeometry(0.5, 0.5, 0.3, 8), 0x1d2230, lx, 0.5, lz).rotation.z = Math.PI / 2;
+    sign(bus, '333  BONDI BEACH', '#111318', '#ffb000', 2.2, 0.42, 0, 2.95, 6.04); sign(bus, '333  BONDI BEACH', '#111318', '#ffb000', 4.6, 0.42, -1.34, 2.95, 2.6, -Math.PI / 2);
+    for (const lz of [-4, 0, 4]) { const [wx, wz] = W(bus, 0, lz); solids.push({ x: wx, z: wz, r: 1.7, y: 0 }); }
+    const stop = at(-6, -16, 0, terrainHeight(-6, -16) + 0.07);
+    for (const lx of [-3, 3]) box(stop, 0.15, 2.6, 0.15, 0x8d93a0, lx, 1.3, -1); box(stop, 7, 0.15, 2.4, 0x1f6fb5, 0, 2.65, -0.2); box(stop, 6.6, 1.6, 0.08, 0x9ad0ff, 0, 1.3, -1.05); box(stop, 5, 0.12, 0.5, 0x8a5a2b, 0, 0.5, -0.6);
+    for (let k = 0; k < 6; k++) people.add(-8.5 + k * 1.1 + rnd() * 0.3, terrainHeight(-6, -16) + 0.1, -15.4 + rnd() * 0.8, 0);
+    const pole = at(-12, -16.5, 0, terrainHeight(-12, -16.5)); box(pole, 0.14, 3.6, 0.14, 0x8d93a0, 0, 1.8, 0); sign(pole, 'BONDI JUNCTION', '#ff8a3d', '#ffffff', 2.8, 0.5, 0, 3.4, 0.08); sign(pole, 'BONDI JUNCTION', '#ff8a3d', '#ffffff', 2.8, 0.5, 0, 3.4, -0.08, Math.PI);
+    // street signs on the corners where the lap crosses
+    for (const d of [samples[i0].p.x, samples[i1].p.x]) for (const sx of [-1, 1]) {
+      const g = at(d + sx * (hw + 13), -15.5 * sx, 0, terrainHeight(d + sx * (hw + 13), -15.5 * sx));
+      box(g, 0.12, 3.4, 0.12, 0x8d93a0, 0, 1.7, 0); sign(g, 'OXFORD ST', '#2f6b4a', '#ffffff', 2.2, 0.42, 0, 3.2, 0.07); sign(g, 'OXFORD ST', '#2f6b4a', '#ffffff', 2.2, 0.42, 0, 3.2, -0.07, Math.PI);
+    }
+  }
+
+  // ---- the streets round about: blocks of shops and flats, a few towers further off, trees ----
+  {
+    const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), 420), bands = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lam(0x3b556e), 900);
+    const M = new THREE.Matrix4(), col = new THREE.Color(), WALLS = [0xe8d9b5, 0xd9c6a5, 0xcfd6dc, 0xf1e9d6, 0xc9a98a, 0xb5543c, 0xe2cc95, 0xb9bdc5, 0xd9dde3];
+    let n = 0, nb = 0;
+    const treeGeo = (() => { const g = new THREE.Group(); add(g, new THREE.CylinderGeometry(0.3, 0.45, 3.4, 6), 0x7a6a58, 0, 1.7, 0); for (const [x, y, z, r, c] of [[0, 4.8, 0, 2.6, 0x4a9a44], [1.5, 4.3, 0.5, 1.9, 0x5aae4e], [-1.4, 4.4, -0.8, 2.0, 0x3f8a3c], [0.2, 6.1, -0.3, 1.8, 0x5aae4e]]) add(g, new THREE.IcosahedronGeometry(r, 0), c, x, y, z).scale.y = 0.75; mergeStatic(g); return g.children[0].geometry; })();
+    const trees = new THREE.InstancedMesh(treeGeo, mergedMat(THREE.FrontSide, 0), 260);
+    let nt = 0;
+    const tree = (x, z, sc, solid = true) => { if (nt >= 260) return; const y = terrainHeight(x, z); M.makeRotationY(rnd() * 6.28); M.scale(V(sc, sc, sc)); M.setPosition(x, y - 0.2, z); trees.setMatrixAt(nt++, M); if (solid) solids.push({ x, z, r: 0.5 * sc, y }); claim(x, z, 2.4 * sc); };
+    for (let x = lim.x - lim.r - 150; x < lim.x + lim.r + 150; x += 22) for (const z of [-16, 16]) if (roadGap(track, x, z) > hw + 14 && Math.abs(x + 6) > 10 && isFree(track, x, z, 1.5, hw + 10)) tree(x, z, 0.8 + rnd() * 0.3, Math.hypot(x - lim.x, z - lim.z) < lim.r);
+    const PITCH = 46;
+    for (let gx = -13; gx <= 13; gx++) for (let gz = -13; gz <= 13; gz++) {
+      const x = lim.x + gx * PITCH + (rnd() - 0.5) * 8, z = lim.z + gz * PITCH + (rnd() - 0.5) * 8, d = Math.hypot(x - lim.x, z - lim.z), w = 16 + rnd() * 14, dp = 16 + rnd() * 14, inside = d < lim.r - 22;
+      if (d > lim.r + 260 || Math.abs(d - lim.r) < 22 || Math.abs(z) < 32 || n >= 420) continue;
+      if (!isFree(track, x, z, Math.max(w, dp) * 0.6, hw + 26) || (track.def.blocks || []).some(b => x > b[0] - 22 && x < b[2] + 22 && z > b[1] - 22 && z < b[3] + 22)) continue;
+      if (rnd() < 0.2) { for (let k = 0; k < 3; k++) tree(x + (rnd() - 0.5) * 22, z + (rnd() - 0.5) * 22, 0.8 + rnd() * 0.6, inside); continue; } // a little park instead
+      const tower = !inside && z < 180 && rnd() < 0.09, h = tower ? 40 + rnd() * 40 : z > 230 ? 6 + rnd() * 3 : 7 + rnd() * (inside ? 9 : 16), y = terrainHeight(x, z);
+      M.makeScale(w, h + 2, dp); M.setPosition(x, y + h / 2 - 1, z); blocks.setMatrixAt(n, M); blocks.setColorAt(n++, col.set(WALLS[Math.floor(rnd() * WALLS.length)]));
+      for (let f = 0; f < Math.min(tower ? 9 : 3, Math.floor(h / 3.4)) && nb < 900; f++) { M.makeScale(w + 0.3, 1.3, dp + 0.3); M.setPosition(x, y + 2.1 + f * (tower ? h / 9.5 : 3.4), z); bands.setMatrixAt(nb++, M); }
+      claim(x, z, Math.max(w, dp) * 0.75);
+      if (inside) solidRect(x - w / 2, z - dp / 2, x + w / 2, z + dp / 2, y);
+    }
+    blocks.count = n; bands.count = nb; trees.count = nt; blocks.castShadow = trees.castShadow = true; worldGroup.add(blocks, bands, trees);
+  }
+
+  // ---- on the horizon from the roof: the harbour, the Bridge, the Opera House and the city; hills the other ways ----
+  {
+    const far = at(0, 0, 0, 0), TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196], WX = samples[i1].p.x;
+    flatQ(lit, WX - 900, 700, WX + 900, 1000, 0.4, C(0x3aa6c4));
+    for (let k = 0; k < 30; k++) { const w = 22 + rnd() * 22, h = 60 + rnd() * 150; box(far, w, h, w, TOWERS[k % TOWERS.length], WX - 600 + rnd() * 400, h / 2, 930 + rnd() * 110).castShadow = false; }
+    add(far, new THREE.CylinderGeometry(3, 4, 230, 8), 0xb9bdc5, WX - 380, 115, 950).castShadow = false; add(far, new THREE.CylinderGeometry(11, 11, 18, 12), 0xd9b44a, WX - 380, 222, 950).castShadow = false; add(far, new THREE.CylinderGeometry(0.8, 1.4, 50, 6), 0xb9bdc5, WX - 380, 256, 950).castShadow = false;
+    for (let k = 0; k < 12; k++) { const m = add(far, new THREE.IcosahedronGeometry(1, 1), [0x5f9c58, 0x6aa85e, 0x548f50][k % 3], WX - 760 + k * 140, -6, 1040 + rnd() * 40); m.scale.set(120, 26 + rnd() * 14, 80); m.castShadow = false; }
+    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14, h = 30 + rnd() * 60; box(far, w, h, w, TOWERS[k % TOWERS.length], WX + 190 + rnd() * 200, h / 2 + 8, 1010 + rnd() * 40).castShadow = false; }
+    buildSydneyIcons(WX, 850, 1, 0, 0.4, WX - 215, 770, 0.2, 1.4);
+    for (let i = 0; i < 20; i++) { // hazy hills all round
+      const a = (i / 20) * 6.2832 + rnd() * 0.25; if (Math.sin(a) > 0.55) continue;
+      const r = 1300 + rnd() * 800, h = (120 + rnd() * 170) * 0.5, w = 320 + rnd() * 320, m = add(far, new THREE.ConeGeometry(1, 1, 7), track.look.hills, lim.x + Math.cos(a) * r, h / 2 - 4, lim.z + Math.sin(a) * r); m.scale.set(w, h, w); m.castShadow = false;
+    }
+  }
+
+  // the sheets
+  const sheet = (Q, mat, shadow) => { if (!Q.pos.length) return; const m = flatMesh(Q.pos, Q.col, mat); m.userData.dyn = true; m.receiveShadow = !!shadow; worldGroup.add(m); };
+  sheet(lit, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
+  sheet(glow, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  sheet(paint, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), true);
+  if (sp.length) {
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2));
+    worldGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: cleanTexture(atlas), color: 0xf0f0f0, side: THREE.DoubleSide })));
+  }
+  people.finish();
 }
 
 // The Harbour Bridge and the Opera House, for a far shore. The bridge is
@@ -6131,6 +6460,7 @@ function buildTrackCards() {
     if (def.theme === 'night') cv.style.background = '#1b2442';
     if (def.theme === 'beach') cv.style.background = '#8fd6e6';
     if (def.theme === 'city') cv.style.background = '#141a33';
+    if (def.theme === 'mall') cv.style.background = '#aeb6c2';
     card._track = buildTrack(def);
     drawTrackPreview(cv, card._track);
     card.appendChild(cv);

@@ -53,7 +53,7 @@ export const TRACKS = [
     name: 'Mount Panorama Circuit',
     local: 'panorama',
     was: 'Switchback',
-    short: 'Mount Panorama',
+    short: 'Mt Panorama',
     blurb: 'Tight and technical, under the floodlights at night.',
     theme: 'night',
     width: 14,
@@ -124,6 +124,36 @@ export const TRACKS = [
       [-20, 6.5, 161], [-80, 5, 159.5], [-140, 4, 160.7], [-189, 3, 162.8], [-207.4, 2.6, 156], [-215, 2.2, 138],
       [-215, 1, 90], [-215, 0, 38], [-203.9, 0, 11.1], [-177, 0, 0], [-150, 0, 0],
       [-130, 0, -1], [-118, 0, -7], [-108, 0, -13.5], [-90, 0, -13.5], [-80, 0, -7], [-68, 0, -1], [-54, 0, 0], [0, 0, 0], [12, 0, 0],
+    ],
+  },
+  {
+    name: 'Westfield Mall Circuit',
+    local: 'westfield',
+    short: 'Westfield',
+    fresh: true,
+    blurb: 'Off the rooftop car park, down the ramp, across Oxford Street, flat out through the shops and round the food court.',
+    theme: 'mall',
+    urban: true,
+    walls: true,
+    bare: true,       // no grandstands, pits or paddock: it's a shopping centre
+    width: 14,
+    scale: 1,
+    deckAbove: 1.5,   // road higher than this stands on piers (the car park roof and its ramps): the ground stays flat under it
+    // the car park and the mall, as [x0, z0, x1, z1]: nothing else gets built on them
+    blocks: [[-205, 50, 175, 215], [-215, -215, 185, -40]],
+    // Oxford Street, and the view up the ramp to the Harbour Bridge: no landmark lands on them
+    streets: [[-700, -20, 700, 20], [-330, 215, -50, 420]],
+    // where the barriers open: both sides of the two crossings of Oxford Street, as [x, z, side, samples wide]
+    gaps: [[160, 0, 1, 14], [160, 0, -1, 14], [-190, 0, 1, 14], [-190, 0, -1, 14]],
+    points: [
+      [-60, 10, 190], [-20, 10, 190], [60, 10, 190], [118, 10, 190], [138, 10, 190], [146.4, 10, 188.3], [153.6, 10, 183.6], [158.3, 10, 176.4],
+      [160, 10, 168], [160, 10, 160], [160, 9.3, 150], [160, 5, 100], [160, 0.7, 50], [160, 0, 40], [160, 0, 28], [160, 0, -20],
+      [160, 0, -65], [160, 0, -85], [158.1, 0, -94.6], [152.7, 0, -102.7], [144.6, 0, -108.1], [135, 0, -110], [115, 0, -110], [95, 0, -110],
+      [72, 0, -106], [52, 0, -96.5], [32, 0, -88], [10, 0, -85], [-12, 0, -88], [-32, 0, -96.5], [-52, 0, -106], [-75, 0, -110],
+      [-98, 0, -110], [-118, 0, -110], [-126.4, 0, -111.7], [-133.6, 0, -116.4], [-138.3, 0, -123.6], [-140, 0, -132], [-140, 0, -150], [-140, 0, -170],
+      [-141.9, 0, -179.6], [-147.3, 0, -187.7], [-155.4, 0, -193.1], [-165, 0, -195], [-174.6, 0, -193.1], [-182.7, 0, -187.7], [-188.1, 0, -179.6], [-190, 0, -170],
+      [-190, 0, -150], [-190, 0, -65], [-190, 0, -20], [-190, 0, 28], [-190, 0, 40], [-190, 0.7, 50], [-190, 5, 100], [-190, 9.3, 150],
+      [-190, 10, 160], [-190, 10, 168], [-188.3, 10, 176.4], [-183.6, 10, 183.6], [-176.4, 10, 188.3], [-168, 10, 190], [-148, 10, 190], [-100, 10, 190],
     ],
   },
 ];

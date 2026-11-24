@@ -2,7 +2,7 @@
 
 A tiny multiplayer racing game you play in the browser with friends. One person
 hosts, gets a 4-letter room code, and everyone else joins with the code or the
-invite link. Up to 20 racers per room, 1 to 10 laps, seven tracks, two car
+invite link. Up to 20 racers per room, 1 to 10 laps, eight tracks, two car
 classes (open seater, plus a hidden rally car), Polytrack mode, low-poly 3D.
 
 No accounts, no chat, no ads, no cookies, no downloads. Everything the game
@@ -264,6 +264,24 @@ that no islands get dotted over the water (`clear`); `urban` keeps the
 landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
 card in the lobby. Side streets never open onto the sea, and nothing is built
 in the mouth of one.
+Westfield (the eighth) is a shopping centre you race through (`buildMall` in
+`game.js`, theme `mall`). The lap starts on the roof of the car park, comes
+down the ramp, crosses Oxford Street, goes in through the doors and along the
+mall between the shops, round the food court and back out, across Oxford
+Street again and up the other ramp, with the Harbour Bridge and the city dead
+ahead as you come back onto the roof. Inside: walkways behind the barriers,
+shopfronts with signs, a gallery above them, a skylight, boards hanging over
+the road, escalators, benches and shoppers; tables, a juice bar and palms in
+the middle of the food-court hairpin. Outside: parked cars, shade sails and
+the lifts on the roof, Oxford Street with its footpaths, zebra crossings,
+walkways overhead and the 333 at its stop, and blocks of shops and flats all
+round. The barriers open at both crossings of Oxford Street, which is the way
+out to the streets and to 9LAT2. As at Rose Bay, the signs are a mix of
+made-up names and real ones in plain lettering. In `tracks.js`: `deckAbove`
+puts road above that height on piers (the ground stays flat under the roof
+and the ramps), `blocks` are the two buildings' footprints and `streets` is
+Oxford Street (nothing else gets put on them), `gaps` says where the barriers
+open, and `bare` leaves out the grandstands, pits and paddock.
 Each track also has a bit of the real place it's named after (`local` in
 `tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
 match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
