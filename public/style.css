@@ -129,6 +129,7 @@ input:focus { border-color: var(--blue); }
 .trackcard .tblurb, .trackcard .twas { font-size: 12px; font-weight: 600; color: var(--muted); }
 .trackcard.on .tblurb, .trackcard.on .twas { color: var(--ink); }
 .trackcard .twas { font-size: 11px; line-height: 1.2; }
+.trackcard .tfresh { color: #15803d; font-weight: 800; } /* a track that has just been added */
 .trackcards.locked .trackcard { cursor: default; }
 .trackcards.locked .trackcard:hover { transform: none; }
 .lobby-actions { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }

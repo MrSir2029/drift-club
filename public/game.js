@@ -468,7 +468,9 @@ function buildTerrain(track) {
   // The sea (Noosa Heads): more than `shore` metres from any road, and past the
   // line `from` metres behind the start straight (z < -from), the ground runs
   // down to the sea bed. The road never comes that close, so the guarantee
-  // below holds. Inland the hills sit a little higher, so few hollows flood.
+  // below holds. Inland the hills sit a little higher, so few hollows flood
+  // (`base` and `hills` set how high and how rolling; `sand` and `fade`, how
+  // far above the water the sand goes before it turns to grass).
   const sea = track.sea = track.def.sea ? { ...track.def.sea, bed: track.def.sea.level - 5 } : null;
 
   for (let j = 0; j < n1; j++) for (let i = 0; i < n1; i++) {
@@ -493,7 +495,7 @@ function buildTerrain(track) {
       if (d < best) { best = d; yN = s.p.y; }
     }
     const far = smooth(clamp((Math.sqrt(best) - R) / (track.theme === 'city' ? 14 : 90), 0, 1)); // (a city's raised road drops straight to the street)
-    H[j * n1 + i] = lerp(yN - ROAD_CLEARANCE - 0.3, sea ? noise(x, z) * 0.7 + 2.5 : noise(x, z), far);
+    H[j * n1 + i] = lerp(yN - ROAD_CLEARANCE - 0.3, sea ? noise(x, z) * (sea.hills ?? 0.7) + (sea.base ?? 2.5) : noise(x, z), far);
     if (sea) H[j * n1 + i] = lerp(H[j * n1 + i], sea.bed, smooth(clamp((Math.sqrt(best) - sea.shore) / 30, 0, 1)) * smooth(clamp((-z - sea.from) / 40, 0, 1)));
   }
   // where the water is, before any landmark levels the ground: the same for
@@ -516,7 +518,7 @@ function buildTerrain(track) {
   };
   // The beach has the sea instead of a lake; the city keeps only what fits in
   // a city: 9LAT2, the radio mast and a fairground in a park.
-  const city = track.theme === 'city';
+  const city = track.theme === 'city' || !!track.def.urban; // (and any other track in a town)
   for (const [name, r, mode] of [['lake', 30, ''], ['lat9', 18, track.def.goalFar ? 'remote' : 'far'], ['castle', 23, 'high'], ['fair', 27, 'near'], ['village', 31, ''], ['stones', 12, ''], ['camp', 13, ''], ['windmill', 9, ''], ['mast', 7, 'high']]) {
     if ((sea || city) && name === 'lake') continue;
     if (city && !['lat9', 'mast', 'fair'].includes(name)) continue;
@@ -587,7 +589,7 @@ function buildTerrain(track) {
       Math.abs(y - H[Math.min(j + 1, T.seg) * n1 + i]), Math.abs(y - H[Math.max(j - 1, 0) * n1 + i])) / T.cell;
     // broad, gentle variation; a random shade per point turned into speckle in the distance
     // (on the beach: sand up to a couple of metres above the sea, grass above that)
-    c.copy(lo).lerp(hi, sea ? clamp((y - sea.level - 1.6) / 2.6, 0, 1) : clamp((y + 2) / 16, 0, 1)).multiplyScalar(0.96 + 0.05 * Math.sin(pos.getX(k) * 0.021 + 1.3) * Math.cos(pos.getZ(k) * 0.017));
+    c.copy(lo).lerp(hi, sea ? clamp((y - sea.level - (sea.sand ?? 1.6)) / (sea.fade ?? 2.6), 0, 1) : clamp((y + 2) / 16, 0, 1)).multiplyScalar(0.96 + 0.05 * Math.sin(pos.getX(k) * 0.021 + 1.3) * Math.cos(pos.getZ(k) * 0.017));
     c.lerp(rock, clamp((steep - 0.55) / 0.6, 0, 1));
     if (track.lake && y < track.lake.level + 0.25 && (pos.getX(k) - track.lake.x) ** 2 + (pos.getZ(k) - track.lake.z) ** 2 < 1100) c.set(0xd9c48a); // sandy lake bed
     if (sea && y < sea.level + 0.25) c.copy(SEA_SAND).lerp(SEA_DEEP, clamp((sea.level - y) / 4, 0, 1)); // wet sand, then the sea bed darkening with depth
@@ -1729,11 +1731,13 @@ function buildStreetWalls(track) {
     const s = samples[i + (GAP >> 1)];
     const out = [1, -1].find((side) => {
       const x = s.p.x + s.left.x * side * 30, z = s.p.z + s.left.z * side * 30;
-      return !insideLoop(track, x, z) && roadGap(track, x, z) > 25; // the outside, and not straight onto another bit of track
+      return !insideLoop(track, x, z) && roadGap(track, x, z) > 25 && !wetAt(x, z); // the outside, and not straight onto another bit of track or into the sea
     });
     if (!out) continue;
     gaps.push({ side: out, a: i, b: i + GAP });
     last = i;
+    // nothing gets put in the mouth of the street (the city keeps its own blocks out of them)
+    if (track.theme !== 'city') for (let lat = hw + 6; lat < hw + 46; lat += 6) claim(s.p.x + s.left.x * out * lat, s.p.z + s.left.z * out * lat, 8);
   }
   const inGap = (side, i) => gaps.some(g => g.side === side && i >= g.a && i <= g.b);
   const adCols = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0xff6bcb, 0x2ec4b6];
@@ -1811,6 +1815,17 @@ function buildSea(track) {
   worldGroup.add(water);
 }
 
+// Words on a sign: a texture of `text` in `ink` on `bg`, with a line round it.
+function signTexture(text, bg, ink, w = 512, h = 128) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, w, h); x.strokeStyle = ink; x.lineWidth = 8; x.strokeRect(12, 12, w - 24, h - 24);
+  x.fillStyle = ink; x.textAlign = 'center'; x.textBaseline = 'middle';
+  let size = 78; do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > w - 70 && size > 20);
+  x.fillText(text, w / 2, h / 2 + 4);
+  return cleanTexture(c);
+}
+
 // Something of the real place each track is named after (`local` in
 // tracks.js). Queens Park: a footy field (NSW blue against QLD maroon), a
 // cricket match and big Moreton Bay figs. Centennial Park: the Federation
@@ -1867,16 +1882,7 @@ function buildLocal(track) {
     quad(v(B, f), v(B, -f), v(C, -f), v(C, f)); quad(v(C, f), v(C, -f), v(A, -f), v(A, f)); quad(v(A, f), v(A, -f), v(B, -f), v(B, f));
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.computeVertexNormals(); return g;
   };
-  // words on a sign
-  const label = (text, bg, ink, w = 512, h = 128) => {
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const x = c.getContext('2d');
-    x.fillStyle = bg; x.fillRect(0, 0, w, h); x.strokeStyle = ink; x.lineWidth = 8; x.strokeRect(12, 12, w - 24, h - 24);
-    x.fillStyle = ink; x.textAlign = 'center'; x.textBaseline = 'middle';
-    let size = 78; do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > w - 70 && size > 20);
-    x.fillText(text, w / 2, h / 2 + 4);
-    return cleanTexture(c);
-  };
+  const label = signTexture; // words on a sign
 
   if (which === 'queens') {
     const crowd = makePeople(70, rnd);
@@ -2271,33 +2277,11 @@ function buildLocal(track) {
     water.position.set(hx, WL, hz); water.receiveShadow = true; worldGroup.add(water);
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(HR, HR, 12, 48, 1, true), lam(0x5b606a, 0, THREE.DoubleSide)); wall.position.set(hx, WL - 6, hz); worldGroup.add(wall);
     track.harbour = { x: hx, z: hz, r: HR }; claim(hx, hz, HR + 8);
-    // the bridge: a steel arch from pylon to pylon, the deck hanging under it
-    const px = -oz, pz = ox, cx = hx + ox * -(HR * 0.35), cz = hz + oz * -(HR * 0.35), DECK = WL + 48, SPAN = 140;
-    const bp = (u, across, y) => V(cx + px * u + ox * across, y, cz + pz * u + oz * across);
-    const steel = lam(0x6f7680), lit = lam(0xffe2a8, 0xffc070);
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(24, 3, 400), lam(0x4a4f5a)); deck.position.copy(bp(0, 0, DECK)); deck.rotation.y = Math.atan2(px, pz); worldGroup.add(deck);
-    for (const u of [-SPAN - 14, SPAN + 14]) for (const ac of [-13, 13]) {
-      const pyl = new THREE.Mesh(new THREE.BoxGeometry(14, DECK - WL + 36, 16), lam(0xc9b48c)); pyl.position.copy(bp(u, ac, WL + (DECK - WL + 36) / 2)); pyl.rotation.y = Math.atan2(px, pz); worldGroup.add(pyl);
-    }
-    const yTop = (u) => DECK + 10 + 54 * (1 - (u / SPAN) ** 2), yBot = (u) => DECK - 10 + 64 * (1 - (u / SPAN) ** 2), SEG = 20;
-    for (const ac of [-11, 11]) for (let k = 0; k < SEG; k++) {
-      const u0 = -SPAN + (2 * SPAN * k) / SEG, u1 = u0 + (2 * SPAN) / SEG;
-      worldGroup.add(strut(bp(u0, ac, yTop(u0)), bp(u1, ac, yTop(u1)), 1.6, 1.6, steel));
-      worldGroup.add(strut(bp(u0, ac, yBot(u0)), bp(u1, ac, yBot(u1)), 2.2, 2.2, steel));
-      worldGroup.add(strut(bp(u0, ac, k % 2 ? yTop(u0) : yBot(u0)), bp(u1, ac, k % 2 ? yBot(u1) : yTop(u1)), 0.8, 0.8, steel));
-      if (yBot(u0) > DECK + 2) worldGroup.add(strut(bp(u0, ac, yBot(u0)), bp(u0, ac, DECK + 1.5), 0.6, 0.6, steel));
-      if (k % 2 === 0) { const l = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), lit); l.position.copy(bp(u0, ac, yTop(u0) + 1.2)); worldGroup.add(l); }
-    }
-    for (let k = 0; k <= SEG; k += 2) worldGroup.add(strut(bp(-SPAN + (2 * SPAN * k) / SEG, -11, yTop(-SPAN + (2 * SPAN * k) / SEG)), bp(-SPAN + (2 * SPAN * k) / SEG, 11, yTop(-SPAN + (2 * SPAN * k) / SEG)), 0.7, 0.7, steel));
+    // the Harbour Bridge across it and the Opera House on the far side
+    const px = -oz, pz = ox, cx = hx + ox * -(HR * 0.35), cz = hz + oz * -(HR * 0.35);
+    const ohx = hx + ox * (HR * 0.3) + px * (HR * 0.45), ohz = hz + oz * (HR * 0.3) + pz * (HR * 0.45);
+    const DECK = buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, Math.atan2(px, pz) + 0.4);
     spots.push({ name: 'bridge', x: cx, z: cz, h: DECK });
-    // the Opera House: white shells on a stone podium, lit up at night
-    const ohx = hx + ox * (HR * 0.3) + px * (HR * 0.45), ohz = hz + oz * (HR * 0.3) + pz * (HR * 0.45), oh = at(ohx, ohz, Math.atan2(px, pz) + 0.4, WL);
-    box(oh, 84, 7, 52, 0xc9a98a, 0, 3.5, 0, 0x3a3026);
-    const shell = (r, x, z, lean) => {
-      const m = put(oh, new THREE.SphereGeometry(r, 10, 6, 0, Math.PI / 3, 0, Math.PI / 2), 0xf4f2ec, x, 7, z, 0xb4b2ac, THREE.DoubleSide); // lit up at night
-      m.rotation.set(0, Math.PI / 2 - Math.PI / 6, lean); return m;
-    };
-    for (const [row, zz] of [[0, -11], [1, 13]]) [32, 26, 18].forEach((r, k) => shell(r - row * 4, -28 + k * 20, zz, -0.35 - k * 0.05));
     spots.push({ name: 'opera', x: ohx, z: ohz, h: 30 });
   }
 }
@@ -2924,7 +2908,7 @@ function buildScenery(track) {
     }
     worldGroup.add(outer);
   } else if (beach) {
-    buildBeach(track, rnd, randIn);
+    if (track.def.local === 'rosebay') buildRoseBay(track, rnd, randIn); else buildBeach(track, rnd, randIn);
   } else {
   // trees: conifers and round broadleaf ones
   const areaK = clamp((lim.r / 360) ** 2, 1, 2.5); // a bigger map gets more trees, so it isn't bare
@@ -3024,6 +3008,7 @@ function buildScenery(track) {
     hill.scale.set(w, h, w);
     hill.position.set(center.x + Math.cos(ang) * r, h / 2 - 2, center.z + Math.sin(ang) * r);
     hill.rotation.y = rnd() * Math.PI;
+    if (track.sea?.clear && terrainHeight(hill.position.x, hill.position.z) < track.sea.level) continue; // (this track's own scenery puts what's wanted out in the water)
     worldGroup.add(hill);
   }
   // and bigger ones far off on the horizon: hazy on high, clear on max
@@ -3134,9 +3119,502 @@ function buildScenery(track) {
 
 }
 
-// Noosa Heads's seaside: palms (in a row along the road, and in clumps), beach
-// huts facing the sea, umbrellas and towels down by the water, a lighthouse
-// on the headland and boats out at sea.
+// The Harbour Bridge and the Opera House, for a far shore. The bridge is
+// centred on (cx, cz) and runs along the unit vector (px, pz), its deck 48 m
+// over the water at WL; the Opera House stands at (ohx, ohz), turned by ohRy.
+function buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, ohRy, ohScale = 1) {
+  const mats = new Map();
+  const lam = (c, e = 0, side = THREE.FrontSide) => { const k = `${c}|${e}|${side}`; let m = mats.get(k); if (!m) mats.set(k, m = new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true, side })); return m; };
+  const ax = -pz, az = px, DECK = WL + 48, SPAN = 140; // (ax, az): across the bridge
+  const bp = (u, across, y) => V(cx + px * u + ax * across, y, cz + pz * u + az * across);
+  const steel = lam(0x6f7680), lit = lam(0xffe2a8, 0xffc070);
+  // the bridge: a steel arch from pylon to pylon, the deck hanging under it
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(24, 3, 400), lam(0x4a4f5a)); deck.position.copy(bp(0, 0, DECK)); deck.rotation.y = Math.atan2(px, pz); worldGroup.add(deck);
+  for (const u of [-SPAN - 14, SPAN + 14]) for (const ac of [-13, 13]) {
+    const pyl = new THREE.Mesh(new THREE.BoxGeometry(14, DECK - WL + 36, 16), lam(0xc9b48c)); pyl.position.copy(bp(u, ac, WL + (DECK - WL + 36) / 2)); pyl.rotation.y = Math.atan2(px, pz); worldGroup.add(pyl);
+  }
+  const yTop = (u) => DECK + 10 + 54 * (1 - (u / SPAN) ** 2), yBot = (u) => DECK - 10 + 64 * (1 - (u / SPAN) ** 2), SEG = 20;
+  for (const ac of [-11, 11]) for (let k = 0; k < SEG; k++) {
+    const u0 = -SPAN + (2 * SPAN * k) / SEG, u1 = u0 + (2 * SPAN) / SEG;
+    worldGroup.add(strut(bp(u0, ac, yTop(u0)), bp(u1, ac, yTop(u1)), 1.6, 1.6, steel));
+    worldGroup.add(strut(bp(u0, ac, yBot(u0)), bp(u1, ac, yBot(u1)), 2.2, 2.2, steel));
+    worldGroup.add(strut(bp(u0, ac, k % 2 ? yTop(u0) : yBot(u0)), bp(u1, ac, k % 2 ? yBot(u1) : yTop(u1)), 0.8, 0.8, steel));
+    if (yBot(u0) > DECK + 2) worldGroup.add(strut(bp(u0, ac, yBot(u0)), bp(u0, ac, DECK + 1.5), 0.6, 0.6, steel));
+    if (k % 2 === 0) { const l = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), lit); l.position.copy(bp(u0, ac, yTop(u0) + 1.2)); worldGroup.add(l); }
+  }
+  for (let k = 0; k <= SEG; k += 2) { const u = -SPAN + (2 * SPAN * k) / SEG; worldGroup.add(strut(bp(u, -11, yTop(u)), bp(u, 11, yTop(u)), 0.7, 0.7, steel)); }
+  // the Opera House: white shells on a stone podium, lit up at night
+  const oh = new THREE.Group(); oh.position.set(ohx, WL, ohz); oh.rotation.y = ohRy; oh.scale.setScalar(ohScale); worldGroup.add(oh);
+  const podium = new THREE.Mesh(new THREE.BoxGeometry(84, 7, 52), lam(0xc9a98a, 0x3a3026)); podium.position.y = 3.5; podium.castShadow = true; oh.add(podium);
+  for (const [row, zz] of [[0, -11], [1, 13]]) [32, 26, 18].forEach((r, k) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r - row * 4, 10, 6, 0, Math.PI / 3, 0, Math.PI / 2), lam(0xf4f2ec, 0xb4b2ac, THREE.DoubleSide));
+    m.position.set(-28 + k * 20, 7, zz); m.rotation.set(0, Math.PI / 2 - Math.PI / 6, -0.35 - k * 0.05); m.castShadow = true; oh.add(m);
+  });
+  return DECK;
+}
+
+// Rose Bay: Sydney's own Monaco. Along the quay there's a sea wall with a wide
+// promenade, Norfolk pines, marquees and superyachts moored stern-on; then a
+// marina, the seaplanes, a ferry calling at the wharf and Catalina on its
+// stilts over the water. Shops line New South Head Road on the way down (a few
+// real ones among them, in plain lettering: the owner asked for local names
+// here), the road dives through a tunnel under the hotel on the corner, big
+// houses with pools climb Heartbreak Hill to the convent school at the top,
+// there's a golf course in the middle, and the city, the Opera House and the
+// Harbour Bridge stand across the water, dead ahead on the way down.
+function buildRoseBay(track, rnd, randIn) {
+  const { samples, N, hw } = track, sea = track.sea, L = sea.level, lim = track.limit, solids = track.solids, walls = track.walls;
+  const mats = new Map();
+  const lam = (c, e = 0) => { const k = c + '|' + e; let m = mats.get(k); if (!m) mats.set(k, m = new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true })); return m; };
+  const add = (g, geo, c, x, y, z, e) => { const m = new THREE.Mesh(geo, lam(c, e)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const box = (g, w, h, d, c, x, y, z, e) => add(g, new THREE.BoxGeometry(w, h, d), c, x, y, z, e);
+  const at = (x, z, ry = 0, y = terrainHeight(x, z)) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; worldGroup.add(g); return g; };
+  const W = (g, lx, lz) => { const c = Math.cos(g.rotation.y), s = Math.sin(g.rotation.y); return [g.position.x + lx * c + lz * s, g.position.z - lx * s + lz * c]; }; // a group's local x, z in the world
+  const wrap = (i) => ((Math.round(i) % N) + N) % N;
+  const P = (i, lat) => { const s = samples[wrap(i)]; return [s.p.x + s.left.x * lat, s.p.z + s.left.z * lat]; };
+  const nearestI = (x, z) => { let b = 0, d = Infinity; for (let i = 0; i < N; i++) { const s = samples[i], e = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (e < d) { d = e; b = i; } } return b; };
+  const facing = (i, sd) => { const s = samples[wrap(i)]; return Math.atan2(-s.left.x * sd, -s.left.z * sd); }; // turned to face the road from side sd
+  const outward = (i, sd) => { const s = samples[wrap(i)]; return Math.atan2(s.left.x * sd, s.left.z * sd); }; // turned to face away from it
+  const along = (i) => { const s = samples[wrap(i)]; return Math.atan2(s.th.x, s.th.z); };
+  const people = makePeople(200, rnd);
+  const quads = { pos: [], col: [] }, C = (hex) => new THREE.Color(hex); // every flat-coloured strip, in one mesh
+  const PAVE = -0.2; // paving lies this far under the road's own level: just over the ground beside it
+  // a strip beside the road from sample i to the next: from lat0 (at y0 above the road) across to lat1 (at y1)
+  const ribbon = (i, sd, lat0, lat1, y0, y1, color) => {
+    const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, sd * lat0), [bx, bz] = P(i + 1, sd * lat0), [cx, cz] = P(i + 1, sd * lat1), [dx, dz] = P(i, sd * lat1);
+    pushQuad(quads.pos, quads.col, V(ax, a.p.y + y0, az), V(bx, b.p.y + y0, bz), V(cx, b.p.y + y1, cz), V(dx, a.p.y + y1, dz), color);
+  };
+  const model = (build) => { const g = new THREE.Group(); build(g); mergeStatic(g); return g; };
+  // a board with words on it
+  const sign = (g, text, bg, ink, w, h, x, y, z, ry = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: signTexture(text, bg, ink, 512, Math.round(512 * h / w)), color: 0xe6e6e6 }));
+    m.position.set(x, y, z); m.rotation.y = ry; g.add(m); return m;
+  };
+
+  // which side the harbour is on, sample by sample (0: no water beside the road there)
+  const wet = samples.map((s, i) => [1, -1].find((sd) => wetAt(...P(i, sd * (hw + 26)))) || 0);
+  const QUAY = hw + 17; // the sea wall: far enough out that all the ground past it is under water
+  const onQuay = (i, n = 0) => { const sd = wet[wrap(i)]; for (let k = -n; k <= n; k++) if (wet[wrap(i + k)] !== sd) return 0; return sd; };
+  // the tunnel: round the corner onto the quay
+  const t0 = nearestI(-215, 52), t1 = nearestI(-170, 0), inTunnel = (i, pad = 3) => { const k = wrap(i); return k >= t0 - pad && k <= t1 + pad; };
+  const inGap = (i, sd, pad) => (track.gaps || []).some((g) => g.side === sd && wrap(i) >= g.a - pad && wrap(i) <= g.b + pad); // a side street out through the wall
+
+  // ---- trees, as instances: Norfolk pines (the ones along every Sydney beach) and big round figs ----
+  const pineGeo = model((g) => { add(g, new THREE.CylinderGeometry(0.22, 0.36, 11, 5), 0x6b5038, 0, 5.5, 0); for (let k = 0; k < 6; k++) add(g, new THREE.ConeGeometry(3.4 - k * 0.5, 1.5, 7), k % 2 ? 0x2f6b3f : 0x3a7a48, 0, 3.2 + k * 1.55, 0); }).children[0].geometry;
+  const figGeo = model((g) => { add(g, new THREE.CylinderGeometry(0.4, 0.62, 3.6, 6), 0x7a6a58, 0, 1.8, 0); for (const [x, y, z, r, c] of [[0, 5.2, 0, 2.9, 0x3f7a35], [1.8, 4.6, 0.6, 2.2, 0x4a8a3c], [-1.6, 4.7, -0.9, 2.3, 0x37702f], [0.2, 6.6, -0.4, 2.0, 0x4a8a3c]]) add(g, new THREE.IcosahedronGeometry(r, 0), c, x, y, z).scale.y = 0.75; }).children[0].geometry;
+  const PINES = 190, FIGS = 300, M = new THREE.Matrix4();
+  const pines = new THREE.InstancedMesh(pineGeo, mergedMat(THREE.FrontSide, 0), PINES), figs = new THREE.InstancedMesh(figGeo, mergedMat(THREE.FrontSide, 0), FIGS);
+  pines.castShadow = figs.castShadow = true;
+  let np = 0, nf = 0;
+  const tree = (pine, x, z, sc, solid = true, y = terrainHeight(x, z)) => {
+    if (pine ? np >= PINES : nf >= FIGS) return;
+    M.makeRotationY(rnd() * 6.28); M.scale(V(sc, sc, sc)); M.setPosition(x, y - 0.3, z);
+    if (pine) pines.setMatrixAt(np++, M); else figs.setMatrixAt(nf++, M);
+    if (solid) { solids.push({ x, z, r: 0.5 * sc, y }); claim(x, z, (pine ? 1.6 : 2.6) * sc); }
+  };
+
+  // ---- the tunnel, under the hotel ----
+  {
+    const TW = hw + 4.7, TH = 6.6, conc = C(0x9aa0aa), roof = C(0x6b7078), lp = [];
+    for (let i = t0; i < t1; i++) {
+      for (const sd of [1, -1]) ribbon(i, sd, TW, TW + 0.02, -0.5, TH, conc);
+      ribbon(i, 1, TW, -TW, TH, TH, roof);
+      if (i % 5 === 0) { // a strip light in the roof
+        const a = samples[wrap(i)], b = samples[wrap(i + 2)], y = TH - 0.06;
+        const c4 = [P(i, 1.4), P(i + 2, 1.4), P(i + 2, -1.4), P(i, -1.4)].map(([x, z], j) => [x, (j === 1 || j === 2 ? b : a).p.y + y, z]);
+        for (const j of [0, 1, 2, 0, 2, 3]) lp.push(...c4[j]);
+      }
+    }
+    if (lp.length) { const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); worldGroup.add(new THREE.Mesh(lg, new THREE.MeshBasicMaterial({ color: 0xfff1c9, side: THREE.DoubleSide }))); }
+    for (let i = t0 + 3; i < t1 - 2; i += 8) { // the hotel standing over it, in blocks that follow the bend
+      const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i), s.p.y + TH);
+      box(g, 2 * (hw + 9), 18, 15, 0xe8dcc0, 0, 9, 0);
+      for (const y of [3, 7.5, 12, 16]) box(g, 2 * (hw + 9) + 0.2, 1.3, 15.2, 0x3b556e, 0, y, 0);
+      box(g, 2 * (hw + 9) + 0.6, 0.6, 15.6, 0x8f949e, 0, 18.3, 0);
+    }
+    for (const i of [t0, t1]) { const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i), s.p.y); box(g, 2 * TW + 3, 1.8, 1.4, 0x6b7078, 0, TH + 0.5, 0); for (const lx of [-TW - 0.7, TW + 0.7]) box(g, 1.4, TH + 0.8, 1.4, 0x6b7078, lx, TH / 2, 0); }
+    { const s = samples[wrap(t0)], g = at(s.p.x - s.th.x * 3.3, s.p.z - s.th.z * 3.3, along(t0) + Math.PI, s.p.y); sign(g, 'HARBOURSIDE HOTEL', '#1d2b5c', '#f6e7c8', 13, 2.2, 0, TH + 4.2, 0); }
+    for (let i = t0 - 4; i < t1 + 4; i += 3) for (const sd of [1, -1]) for (const lat of [hw + 9, hw + 15]) { const [x, z] = P(i, sd * lat); claim(x, z, 4.5); }
+  }
+
+  // ---- the quay: a paved promenade, a sea wall down into the water, a white balustrade, pines, lamps and marquees ----
+  {
+    const paving = C(0xd9d2c0), stone = C(0xc9bfa6), white = lam(0xf6f2e8);
+    // the wall's line, QUAY metres out; where the inside of a bend folds that line back on itself the points are dropped and it cuts straight across
+    const edge = samples.map((s, i) => {
+      const sd = onQuay(i, 1); if (!sd) return null;
+      const [x, z] = P(i, sd * QUAY);
+      return roadGap(track, x, z) < QUAY - 0.5 ? null : { x, z, y: s.p.y, nx: -s.left.x * sd, nz: -s.left.z * sd };
+    });
+    const nearEdge = (i) => { for (let k = 0; k < 40; k++) { const e = edge[wrap(i - k)] || edge[wrap(i + k)]; if (e) return e; } return null; };
+    const start = Math.max(0, samples.findIndex((_, i) => !onQuay(i, 1)));
+    let run = [];
+    const flush = () => {
+      for (let j = 0; j + 1 < run.length; j++) { const a = run[j], b = run[j + 1]; pushQuad(quads.pos, quads.col, V(a.x, a.y + PAVE, a.z), V(b.x, b.y + PAVE, b.z), V(b.x, L - 3.4, b.z), V(a.x, L - 3.4, a.z), stone); }
+      for (let j = 0; j < run.length; j += 2) { // the balustrade: a post, and two rails on to the next
+        const a = run[j], b = run[Math.min(j + 2, run.length - 1)], pa = V(a.x + a.nx * 0.3, a.y + PAVE, a.z + a.nz * 0.3), pb = V(b.x + b.nx * 0.3, b.y + PAVE, b.z + b.nz * 0.3);
+        box(worldGroup, 0.2, 1.1, 0.2, 0xf6f2e8, pa.x, pa.y + 0.55, pa.z);
+        if (a !== b) for (const h of [0.55, 1.05]) worldGroup.add(strut(V(pa.x, pa.y + h, pa.z), V(pb.x, pb.y + h, pb.z), 0.1, 0.1, white));
+      }
+      run = [];
+    };
+    for (let k = 1; k <= N; k++) {
+      const i = wrap(start + k), sd = onQuay(i, 1), s = samples[i];
+      if (!sd) { flush(); continue; }
+      if (edge[i]) run.push(edge[i]);
+      if (onQuay(i + 1, 1) === sd) { // the paving, from behind the barrier out to the wall
+        const b = samples[wrap(i + 1)], [ax, az] = P(i, sd * (hw + 3.9)), [bx, bz] = P(i + 1, sd * (hw + 3.9)), ea = nearEdge(i), eb = nearEdge(i + 1);
+        if (ea && eb) pushQuad(quads.pos, quads.col, V(ax, s.p.y + PAVE, az), V(bx, b.p.y + PAVE, bz), V(eb.x, eb.y + PAVE, eb.z), V(ea.x, ea.y + PAVE, ea.z), paving);
+      }
+      if (inTunnel(i, 8) || !edge[i]) continue;
+      const y = s.p.y + PAVE;
+      if (i % 12 === 6) { const [x, z] = P(i, sd * (hw + 8.5)); if (isFree(track, x, z, 1.2, hw + 4.4)) tree(true, x, z, 0.85 + rnd() * 0.3, true, y + 0.3); }
+      if (i % 20 === 0) { // a lamp: a white post with two globes
+        const [x, z] = P(i, sd * (hw + 15.6)), g = at(x, z, along(i), y);
+        box(g, 0.16, 4.4, 0.16, 0xf6f2e8, 0, 2.2, 0); box(g, 0.1, 0.1, 1.3, 0xf6f2e8, 0, 4.3, 0);
+        for (const lz of [-0.6, 0.6]) add(g, new THREE.IcosahedronGeometry(0.28, 0), 0xfff4d6, 0, 4.1, lz, 0x8a7a50);
+      }
+      if (i % 24 === 18 && s.p.x > 6 && s.p.x < 165 && Math.abs(s.p.z) < 8) { // race day, along the start straight: a white marquee with a pennant
+        const [x, z] = P(i, sd * (hw + 12.5));
+        if (isFree(track, x, z, 3.4, hw + 4.4)) {
+          const g = at(x, z, along(i), y), pen = [0xe6453a, 0x1d6fb5, 0xffd23f][Math.floor(i / 24) % 3];
+          for (const [lx, lz] of [[-2.4, -2.4], [2.4, -2.4], [2.4, 2.4], [-2.4, 2.4]]) box(g, 0.14, 2.6, 0.14, 0xd9dde3, lx, 1.3, lz);
+          add(g, new THREE.ConeGeometry(3.9, 1.9, 4), 0xf6f2e8, 0, 3.5, 0).rotation.y = Math.PI / 4;
+          box(g, 0.08, 1.6, 0.08, 0xd9dde3, 0, 5.1, 0); box(g, 0.05, 0.4, 0.9, pen, 0, 5.6, 0.5);
+          box(g, 4.2, 0.9, 0.9, 0xf6f2e8, 0, 0.45, -1.6);
+          claim(x, z, 3.6);
+          for (let n = 0; n < 3; n++) { const [px, pz] = W(g, -1.6 + n * 1.6, 0.4); people.add(px, y + 0.02, pz, along(i) + Math.PI); }
+        }
+      }
+      if (rnd() < 0.2) { const [x, z] = P(i, sd * (hw + 5 + rnd() * 11)); if (isFree(track, x, z, 0.5, hw + 4.4)) people.add(x, y + 0.02, z, rnd() * 6.28); }
+    }
+    flush();
+  }
+
+  // ---- superyachts moored stern-on to the quay beside the start straight ----
+  const yacht = (i, len, hull) => {
+    const sd = onQuay(i, 6); if (!sd) return;
+    const [x, z] = P(i, sd * (QUAY + 4 + len / 2)); if (!wetAt(x, z)) return;
+    const g = at(x, z, outward(i, sd), L), k = len / 34; // bow out to sea
+    add(g, taperBox(7.2 * k, 4.2 * k, len, [0.18, 1, 1.4 * k], [0.92, 1, 0]), hull, 0, 1.0 * k, 0);
+    box(g, 7.3 * k, 0.5 * k, len * 0.8, hull === 0xf6f2e8 ? 0x1d2b5c : 0xc9a271, 0, -0.2 * k, -len * 0.08);                       // the boot stripe
+    for (const [w, h, d, y, zz] of [[6.2, 2.3, 0.56, 4.2, -0.07], [5.2, 2.1, 0.38, 6.3, -0.1], [3.6, 1.7, 0.2, 8.1, -0.13]]) {
+      box(g, w * k, h * k, len * d, 0xf6f2e8, 0, y * k, len * zz);
+      box(g, (w + 0.08) * k, h * 0.34 * k, len * d * 0.86, 0x23303f, 0, (y + 0.15) * k, len * zz);   // a band of dark glass
+    }
+    box(g, 0.3 * k, 2.6 * k, 0.3 * k, 0xd9dde3, 0, 10.2 * k, -len * 0.13); box(g, 2.2 * k, 0.2 * k, 0.5 * k, 0xd9dde3, 0, 10.6 * k, -len * 0.13);
+    box(g, 6.4 * k, 0.4 * k, 3.4 * k, 0xc9a271, 0, 0.5 * k, -len / 2 - 1.2 * k);                   // the swim platform, teak
+    box(g, 1.2, 0.2, 5.5, 0xd9dde3, 0, samples[wrap(i)].p.y - L + PAVE + 0.1, -len / 2 - 3.6);    // the gangway to the quay
+    for (const lz of [-len * 0.3, 0, len * 0.3]) { const [wx, wz] = W(g, 0, lz); solids.push({ x: wx, z: wz, r: 4.2 * k, y: L - WADE }); }
+  };
+  [[30, 0xf6f2e8], [38, 0x1d2b5c], [26, 0xf6f2e8], [44, 0xf6f2e8], [32, 0x23303f], [28, 0xf6f2e8], [40, 0xf6f2e8], [34, 0x1d2b5c]].forEach(([len, hull], k) => yacht(nearestI(15 + k * 18, 0), len, hull));
+
+  // ---- a marina pier with small boats, between the chicane and the start ----
+  {
+    const i = nearestI(-39, 0), sd = onQuay(i, 8);
+    if (sd) {
+      const LEN = 58, [x, z] = P(i, sd * (QUAY + LEN / 2)), g = at(x, z, outward(i, sd), L), top = samples[i].p.y - L + PAVE;
+      box(g, 3, 0.3, LEN, 0xc9a271, 0, top - 0.15, 0);
+      for (let d = -LEN / 2 + 3; d < LEN / 2; d += 7) for (const lx of [-1.3, 1.3]) add(g, new THREE.CylinderGeometry(0.16, 0.16, 5, 6), 0x6b4a2a, lx, -1.6, d);
+      for (const lx of [-1.5, 1.5]) { const a = W(g, lx, -LEN / 2), b = W(g, lx, LEN / 2); walls.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], y: L - WADE }); }
+      for (let d = -LEN / 2 + 12, n = 0; d < LEN / 2 - 3; d += 9, n++) for (const side of [-1, 1]) {
+        box(g, 9, 0.3, 1.1, 0xa8794a, side * 6, 0.6, d);
+        if (rnd() < 0.2) continue;
+        const b = new THREE.Group(); b.position.set(side * 6.5, 0, d + 4.3); b.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2; g.add(b); // bows in to the pier
+        if ((n + (side > 0 ? 1 : 0)) % 2) { // a yacht, sail furled on the boom
+          add(b, taperBox(2.5, 1.1, 7.6, [0.15, 1, 0.25], [0.8, 1, 0]), n % 3 ? 0xf6f2e8 : 0x1d2b5c, 0, 0.35, 0);
+          box(b, 1.6, 0.6, 2.8, 0xe9e2d0, 0, 1.1, -0.6); box(b, 0.13, 10, 0.13, 0xb9bdc5, 0, 6, 0.9); box(b, 0.3, 0.3, 3.2, 0x1d2b5c, 0, 2.1, -0.8);
+        } else { // a motor cruiser
+          add(b, taperBox(2.9, 1.3, 8.6, [0.2, 1, 0.35], [0.9, 1, 0]), 0xf6f2e8, 0, 0.4, 0);
+          box(b, 2.3, 1.0, 3.8, 0xf6f2e8, 0, 1.5, -0.7); box(b, 2.36, 0.38, 3.2, 0x26303f, 0, 1.6, -0.5); box(b, 1.8, 0.5, 2, 0xe9e2d0, 0, 2.25, -1.3);
+        }
+        const [wx, wz] = W(g, side * 6.5, d + 4.3); solids.push({ x: wx, z: wz, r: 2.3, y: L - WADE });
+      }
+    }
+  }
+
+  // ---- Catalina: the white restaurant on stilts over the water ----
+  {
+    const i = nearestI(168, -5), sd = onQuay(i, 10);
+    if (sd) {
+      const [x, z] = P(i, sd * (QUAY + 12)), g = at(x, z, facing(i, sd), L), top = samples[i].p.y - L + PAVE; // local +z looks back at the road
+      for (const lx of [-11, 0, 11]) for (const lz of [-5, 5]) add(g, new THREE.CylinderGeometry(0.3, 0.3, top + 3, 6), 0xd9dde3, lx, (top - 3) / 2, lz);
+      box(g, 28, 0.5, 15, 0xe9e2cf, 0, top - 0.2, 0);
+      box(g, 22, 4, 9, 0xf6f2e8, 0, top + 2.05, -1.5); box(g, 22.2, 2.3, 9.2, 0x3b6ea5, 0, top + 1.7, -1.5); box(g, 25, 0.4, 12, 0xf6f2e8, 0, top + 4.25, -1.5);
+      box(g, 3, 0.3, 6, 0xe9e2cf, 0, top - 0.1, 9.6);                                                   // the walkway back to the quay
+      sign(g, 'CATALINA', '#f6f2e8', '#1d2b5c', 8, 1.6, 0, top + 5.3, 3.1);
+      for (const lx of [-8, 0, 8]) { const [wx, wz] = W(g, lx, 0); solids.push({ x: wx, z: wz, r: 7, y: L - WADE }); }
+      for (let k = 0; k < 6; k++) { const [px, pz] = W(g, -10 + k * 4, 5.2); people.add(px, L + top + 0.07, pz, facing(i, sd) + 3.14); }
+    }
+  }
+
+  // ---- the ferry wharf, and a green and cream ferry that goes round the bay and calls at it ----
+  let FC = [204, -210], FR = [150, 130];
+  {
+    const i = nearestI(204, -10), sd = onQuay(i, 6);
+    if (sd) {
+      const [x, z] = P(i, sd * (QUAY + 19)), g = at(x, z, outward(i, sd), L), top = samples[i].p.y - L + PAVE;
+      box(g, 4.5, 0.4, 38, 0x9aa3ad, 0, top - 0.15, 0);
+      for (let d = -16; d <= 18; d += 8.5) for (const lx of [-2, 2]) add(g, new THREE.CylinderGeometry(0.2, 0.2, top + 3, 6), 0x6b7484, lx, (top - 3) / 2, d);
+      box(g, 9, 0.5, 9, 0x9aa3ad, 0, top - 0.2, 20);
+      for (const lx of [-3.6, 3.6]) box(g, 0.25, 3.2, 0.25, 0xf6f2e8, lx, top + 1.6, 18);
+      box(g, 9, 0.35, 5, 0x2f6b4a, 0, top + 3.3, 18);
+      sign(g, 'ROSE BAY', '#2f6b4a', '#ffffff', 5.5, 1.1, 0, top + 2.5, 15.6, Math.PI);
+      for (const lx of [-2.25, 2.25]) { const a = W(g, lx, -19), b = W(g, lx, 24); walls.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], y: L - WADE }); }
+      for (let k = 0; k < 4; k++) { const [px, pz] = W(g, -2.5 + k * 1.6, 17.5); people.add(px, L + top + 0.07, pz, outward(i, sd)); }
+      const [fx, fz] = W(g, 0, 33); FC = [fx, fz - FR[1]]; // the ferry comes alongside just off the end
+    }
+  }
+  // Shark Island, out in the bay: sand, grass, a few trees and a little white pavilion. The ferry goes round it.
+  const ISLE = [FC[0] - 8, FC[1] - 4];
+  {
+    const g = at(ISLE[0], ISLE[1], 0.3, L), top = (lx, lz) => 9 * Math.sqrt(Math.max(0, 1 - (lx / 40) ** 2 - (lz / 26) ** 2)) - 1.6;
+    add(g, new THREE.IcosahedronGeometry(1, 1), 0xe6d39a, 0, -1.2, 0).scale.set(50, 4, 34);
+    add(g, new THREE.IcosahedronGeometry(1, 1), 0x6aa85e, 0, -1.6, 0).scale.set(40, 9, 26);
+    for (let k = 0; k < 11; k++) { const a = rnd() * 6.2832, d = Math.sqrt(rnd()) * 0.75, lx = Math.cos(a) * d * 40, lz = Math.sin(a) * d * 26; if (Math.hypot(lx, lz) < 7) continue; const [x, z] = W(g, lx, lz); tree(k % 3 === 0, x, z, 0.7 + rnd() * 0.4, false, L + top(lx, lz) + 0.1); }
+    for (const [lx, lz] of [[-2, -2], [2, -2], [2, 2], [-2, 2]]) box(g, 0.25, 3, 0.25, 0xf6f2e8, lx, top(0, 0) + 1.3, lz);
+    add(g, new THREE.ConeGeometry(3.8, 1.8, 6), 0xf6f2e8, 0, top(0, 0) + 3.7, 0);
+  }
+  const ferry = model((g) => {
+    add(g, taperBox(7.6, 2.4, 30, [0.5, 1, 0.3], [0.5, 1, 0.3]), 0x1f6b4a, 0, 0.6, 0);
+    box(g, 6.6, 2.6, 22, 0xf1e6c4, 0, 3.0, 0); box(g, 6.7, 0.9, 20, 0x26303f, 0, 3.3, 0);
+    box(g, 5.6, 2.2, 14, 0xf1e6c4, 0, 5.4, 0); box(g, 5.7, 0.8, 12.6, 0x26303f, 0, 5.6, 0);
+    for (const lz of [-8.5, 8.5]) box(g, 3, 1.6, 3, 0xf1e6c4, 0, 7.3, lz);
+    box(g, 1.6, 2.2, 2.4, 0xe6b83a, 0, 7.6, 0);
+  });
+  ferry.userData.dyn = true; worldGroup.add(ferry);
+
+  // ---- the seaplanes: a pontoon and terminal by the chicane, two planes moored, one out flying ----
+  const planeModel = (stripe) => model((g) => {
+    add(g, taperBox(1.5, 1.6, 8.4, [0.5, 0.75, 0.15], [0.42, 0.6, 0.3]), 0xf6f2e8, 0, 0, 0);
+    box(g, 1.54, 0.3, 6.4, stripe, 0, 0.05, 0.2);
+    box(g, 13.4, 0.2, 1.9, 0xf6f2e8, 0, 1.0, 0.7); box(g, 13.5, 0.22, 0.5, stripe, 0, 1.0, 1.5);                // the high wing
+    box(g, 4.4, 0.14, 1.2, 0xf6f2e8, 0, 0.75, -3.8); box(g, 0.16, 1.8, 1.5, stripe, 0, 1.5, -3.7);              // tail
+    for (const lx of [-1.9, 1.9]) {
+      add(g, taperBox(0.85, 0.75, 6.8, [0.35, 0.8, 0.2], [0.6, 0.9, 0.1]), 0xd9dde3, lx, -1.75, 0.4);           // the floats
+      for (const lz of [-1.2, 1.6]) box(g, 0.1, 1.5, 0.1, 0x8d93a0, lx * 0.8, -0.9, lz);
+      box(g, 0.1, 1.6, 0.1, 0x8d93a0, lx * 1.6, 0.25, 0.8).rotation.z = lx > 0 ? 0.7 : -0.7;                     // wing struts
+    }
+    box(g, 0.5, 0.5, 0.5, 0x26303f, 0, 0, 4.3);
+  });
+  {
+    const i = nearestI(-99, -13.5), sd = onQuay(i, 5);
+    if (sd) {
+      const [x, z] = P(i, sd * (QUAY + 7)), g = at(x, z, outward(i, sd), L), top = samples[i].p.y - L + PAVE;
+      box(g, 26, 0.5, 9, 0x9aa3ad, 0, 0.75, 0); box(g, 3, 0.3, 5.4, 0x9aa3ad, 0, (top + 1) / 2, -5.6).rotation.x = Math.atan2(top - 1, 5);
+      box(g, 8, 3.2, 4.4, 0xf6f2e8, -7, 2.6, 0); box(g, 8.6, 0.35, 5, 0x1d6fb5, -7, 4.35, 0);
+      sign(g, 'SYDNEY SEAPLANES', '#1d6fb5', '#ffffff', 7.2, 1.1, -7, 3.3, -2.26, Math.PI);
+      for (const [lx, c] of [[3, 0xe6453a], [10.5, 0x1d6fb5]]) { const pl = planeModel(c); pl.position.set(lx, 2.4, 9.5); pl.rotation.y = 0.25; g.add(pl); }
+      for (const lx of [-9, 0, 9]) { const [wx, wz] = W(g, lx, 0); solids.push({ x: wx, z: wz, r: 5.5, y: L - WADE }); }
+      for (const lx of [3, 10.5]) { const [wx, wz] = W(g, lx, 9.5); solids.push({ x: wx, z: wz, r: 4.5, y: L - WADE }); }
+      for (let k = 0; k < 4; k++) { const [px, pz] = W(g, -1 + k * 1.3, -1.5); people.add(px, L + 1.0, pz, rnd() * 6.28); }
+    }
+  }
+  const flyer = planeModel(0xffd23f); flyer.userData.dyn = true; worldGroup.add(flyer);
+  const prop = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.16, 0.06), lam(0x26303f)); prop.position.set(0, 0, 4.6); prop.userData.dyn = true; flyer.add(prop);
+  flyer.rotation.order = 'YXZ'; // heading, then nose up or down, then bank
+  const PC = [-150, -250], PR = [300, 140]; // the seaplane's circuit: it lands and takes off along the near side
+
+  // ---- sailing boats and the odd motor boat going round out in the bay, clear of the ferry and the seaplane ----
+  const sailGeo = new THREE.BufferGeometry();
+  sailGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0.9, -1.2, 0, 0.9, 1.5, 0, 5.2, -1.0], 3)); sailGeo.computeVertexNormals();
+  const boats = [];
+  const busy = (x, z) => (z > -165 && x < PC[0] + 215) || Math.abs(Math.hypot((x - FC[0]) / FR[0], (z - FC[1]) / FR[1]) - 1) < 0.24 || Math.hypot(x - ISLE[0], z - ISLE[1]) < 64;
+  for (let t = 0; t < 900 && boats.length < 9; t++) {
+    const cx = lim.x + (rnd() - 0.5) * lim.r * 2.4, cz = -130 - rnd() * 300, r = 14 + rnd() * 24;
+    let clear = !busy(cx, cz);
+    for (let k = 0; k < 8 && clear; k++) { const x = cx + Math.cos(k * 0.785) * r, z = cz + Math.sin(k * 0.785) * r; clear = terrainHeight(x, z) < L - 2.5 && !busy(x, z); }
+    if (!clear || boats.some((o) => Math.hypot(o.cx - cx, o.cz - cz) < o.r + r + 12)) continue;
+    const b = new THREE.Group(), motor = boats.length % 4 === 3;
+    if (motor) { add(b, taperBox(2.2, 0.9, 6, [0.2, 1, 0.25], [0.95, 1, 0]), 0xf6f2e8, 0, 0.3, 0); box(b, 1.7, 0.9, 2, 0x3d8bff, 0, 1.1, -0.6); }
+    else {
+      add(b, taperBox(1.7, 0.8, 4.4, [0.25, 1, 0], [0.75, 1, 0]), [0xf6f2e8, 0x3d8bff, 0xe6453a][boats.length % 3], 0, 0.2, 0); box(b, 0.14, 5.4, 0.14, 0x7a4a2a, 0, 2.9, -1.1);
+      b.add(new THREE.Mesh(sailGeo, new THREE.MeshLambertMaterial({ color: [0xf6f2e8, 0xffd23f, 0xff8fb0][boats.length % 3], side: THREE.DoubleSide, flatShading: true })));
+    }
+    b.userData.dyn = true; mergeStatic(b); worldGroup.add(b);
+    boats.push({ b, cx, cz, r, sp: (motor ? 0.2 : 0.05 + rnd() * 0.05) * (rnd() < 0.5 ? 1 : -1), ph: rnd() * 6.28 });
+  }
+
+  // ---- shops down New South Head Road: both sides of the long run after the hairpins, and the hill down to the tunnel ----
+  const SHOPS = [["Chargrill Charlie's", '#e6453a', '#fff6dc'], ['Sonoma', '#f1e9d6', '#3b2a1e'], ['Sushi Train', '#1d2230', '#ff8a3d'], ['Woolworths Metro', '#2f9e44', '#ffffff'],
+    ['Rose Bay Pharmacy', '#ffffff', '#1f6fb5'], ['Rose Bay Newsagency', '#ffd23f', '#1d2230'], ['Bay Fruit Market', '#7ed957', '#1d3b1f'], ['Bay Gelato', '#ff8fb0', '#ffffff'],
+    ['Fish & Chips', '#3d8bff', '#ffffff'], ['Rose Bay Cellars', '#5c1f3a', '#f6e7c8'], ['The Bay Barber', '#26303f', '#f6f2e8'], ['Harbour Books', '#8a5a2b', '#fff1d6'],
+    ['Rose Bay Pizza', '#c0392b', '#ffe9a8'], ['Surf & Sail', '#2ec4b6', '#0f2f3a'], ['Heartbreak Hill Cafe', '#ff8a3d', '#2a1a10'], ['Rose Bay Hardware', '#9aa3ad', '#1d2230']];
+  const atlas = document.createElement('canvas'); atlas.width = atlas.height = 1024;
+  const ax = atlas.getContext('2d'); ax.textAlign = 'center'; ax.textBaseline = 'middle';
+  SHOPS.forEach(([name, bg, ink], k) => {
+    const x = (k % 2) * 512, y = Math.floor(k / 2) * 128;
+    ax.fillStyle = bg; ax.fillRect(x, y, 512, 128); ax.fillStyle = ink;
+    let size = 76; do { ax.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (ax.measureText(name).width > 470 && size > 20);
+    ax.fillText(name, x + 256, y + 68);
+  });
+  const sp = [], suv = [], WALLS = [0xf1e9d6, 0xe8d9b5, 0xd9c6a5, 0xcfd6dc, 0xf6f2e8, 0xc9a98a, 0xb5543c, 0xe2cc95], AWN = [0xe6453a, 0x1d6fb5, 0x2f6b4a, 0xffd23f, 0x26303f, 0xff8a3d];
+  let shopN = 0;
+  const footpath = C(0xb9bdc5), FRONT = hw + 8.8;
+  const shopRow = (i0, i1, sd) => {
+    for (let i = i0; i < i1;) {
+      const w = 9 + rnd() * 5, span = Math.round(w / 1.5), c = i + (span >> 1), s = samples[wrap(c)];
+      let D = 9;
+      const fits = (d) => { const [x, z] = P(c, sd * (FRONT + d / 2)), [bx, bz] = P(c, sd * (FRONT + d)); return roadGap(track, bx, bz) > hw + 5 && isFree(track, x, z, Math.max(w, d) / 2 - 0.5, hw + 5); };
+      if (inGap(i, sd, 3) || inGap(i + span, sd, 3) || inTunnel(i + span, 6)) { i += 2; continue; }
+      if (!fits(D)) { D = 6; if (!fits(D)) { i += 3; continue; } }
+      const [x, z] = P(c, sd * (FRONT + D / 2)), g = at(x, z, facing(c, sd), s.p.y), k = shopN++;
+      box(g, w - 0.5, 11.2, D, WALLS[Math.floor(rnd() * WALLS.length)], 0, 1.6, 0);                           // (sunk 4 m, for the hill it stands on)
+      box(g, w - 0.3, 0.5, D + 0.3, 0x8f949e, 0, 7.45, 0);
+      box(g, w - 1.2, 0.22, 1.9, AWN[k % AWN.length], 0, 3.15, D / 2 + 0.95).rotation.x = 0.1;
+      box(g, w - 2, 2.5, 0.1, 0x23303f, 0, 1.45, D / 2 + 0.03);
+      const nw = Math.max(2, Math.floor((w - 2) / 2.6));
+      for (let j = 0; j < nw; j++) box(g, 1.3, 1.2, 0.1, 0x3b556e, (j - (nw - 1) / 2) * 2.6, 6.2, D / 2 + 0.03);
+      // its sign, between the awning and the upstairs windows (all the signs are one mesh)
+      const sw = Math.min(w - 1.6, 6.4), sh = sw / 4, cell = k % SHOPS.length, u0 = (cell % 2) * 0.5, v1 = 1 - Math.floor(cell / 2) / 8, v0 = v1 - 1 / 8;
+      g.updateMatrixWorld();
+      const q = [[-sw / 2, 3.6], [sw / 2, 3.6], [sw / 2, 3.6 + sh], [-sw / 2, 3.6 + sh]].map(([lx, ly]) => V(lx, ly, D / 2 + 0.1).applyMatrix4(g.matrixWorld)), t = [[u0, v0], [u0 + 0.5, v0], [u0 + 0.5, v1], [u0, v1]];
+      for (const j of [0, 1, 2, 0, 2, 3]) { sp.push(q[j].x, q[j].y, q[j].z); suv.push(...t[j]); }
+      const corners = [[-w / 2, D / 2], [w / 2, D / 2], [w / 2, -D / 2], [-w / 2, -D / 2]].map(([lx, lz]) => W(g, lx, lz));
+      for (let j = 0; j < 3; j++) { const a = corners[(j + 3) % 4], b = corners[j]; walls.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], y: s.p.y }); } // its front and two sides are solid
+      claim(x, z, Math.max(w, D) / 2 + 0.5);
+      if (rnd() < 0.75) { const [px, pz] = P(c + (rnd() - 0.5) * span, sd * (hw + 5 + rnd() * 2.6)); people.add(px, s.p.y + PAVE + 0.02, pz, rnd() * 6.28); }
+      i += span;
+    }
+    for (let i = i0; i < i1; i++) if (!inGap(i, sd, 1)) ribbon(i, sd, hw + 3.9, FRONT, PAVE, PAVE, footpath);
+  };
+  const s0 = nearestI(40, 164), s1 = nearestI(-186, 163), s2 = nearestI(-215, 130), s3 = nearestI(-215, 60);
+  for (const sd of [1, -1]) shopRow(s0, s1, sd);
+  shopRow(s2, s3, -1);
+  // the outside of the hill down is left open: a lookout over the harbour, with benches
+  for (let i = s2; i < s3; i++) {
+    const s = samples[wrap(i)];
+    if (!inGap(i, 1, 1)) ribbon(i, 1, hw + 3.9, FRONT, PAVE, PAVE, footpath);
+    if (i % 9 === 4 && !inGap(i, 1, 2)) {
+      const [x, z] = P(i, FRONT - 0.9), g = at(x, z, outward(i, 1) - 0.5, s.p.y + PAVE); // looking out, and round towards the city
+      box(g, 1.9, 0.12, 0.5, 0x8a5a2b, 0, 0.45, 0); box(g, 1.9, 0.5, 0.1, 0x8a5a2b, 0, 0.75, -0.25); for (const lx of [-0.8, 0.8]) box(g, 0.1, 0.45, 0.45, 0x4a4f5a, lx, 0.22, 0);
+      if (rnd() < 0.7) { const [px, pz] = W(g, (rnd() - 0.5) * 1.2, 0.9); people.add(px, s.p.y + PAVE + 0.02, pz, outward(i, 1) - 0.5); }
+    }
+  }
+  { const i = wrap(s2 + 6), s = samples[i], [x, z] = P(i, FRONT + 0.4), g = at(x, z, facing(i, 1), s.p.y + PAVE); for (const lx of [-2.6, 2.6]) box(g, 0.16, 2.6, 0.16, 0x4a4f5a, lx, 1.3, 0); sign(g, 'HARBOUR LOOKOUT', '#2f6b4a', '#ffffff', 5.6, 1.1, 0, 2.3, 0.02); }
+  if (sp.length) {
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2));
+    worldGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: cleanTexture(atlas), color: 0xe6e6e6 })));
+  }
+
+  // ---- Heartbreak Hill (the City2Surf's): a banner over the climb ----
+  {
+    const i = nearestI(251, 82), s = samples[i], g = at(s.p.x, s.p.z, along(i), s.p.y), half = hw + 4.7;
+    for (const lx of [-half, half]) box(g, 0.5, 8, 0.5, 0x1d2b5c, lx, 4, 0);
+    box(g, 2 * half + 0.5, 1.9, 0.3, 0x1d2b5c, 0, 7.2, 0);
+    sign(g, 'HEARTBREAK HILL', '#1d6fb5', '#ffffff', 2 * half - 1, 1.6, 0, 7.2, -0.17, Math.PI); sign(g, 'HEARTBREAK HILL', '#1d6fb5', '#ffffff', 2 * half - 1, 1.6, 0, 7.2, 0.17);
+    for (const lx of [-half, half]) { const [x, z] = W(g, lx, 0); claim(x, z, 1.5); solids.push({ x, z, r: 0.5, y: s.p.y }); }
+  }
+
+  // ---- the convent school at the top of the hill: sandstone, with a tower ----
+  {
+    const i = nearestI(262, 224), sd = [1, -1].reduce((a, b) => (roadGap(track, ...P(i, a * (hw + 44))) > roadGap(track, ...P(i, b * (hw + 44))) ? a : b));
+    const [x, z] = P(i, sd * (hw + 44));
+    if (isFree(track, x, z, 26, hw + 14)) {
+      const g = at(x, z, facing(i, sd)), SAND = 0xdcc594, SLATE = 0x4a4f5a;
+      box(g, 50, 16, 13, SAND, 0, 5, 0); box(g, 51, 1, 14, SLATE, 0, 13.4, 0);
+      for (const lx of [-19, 19]) { box(g, 12, 18, 24, SAND, lx, 6, 4); box(g, 13, 1, 25, SLATE, lx, 15.4, 4); }
+      box(g, 8, 30, 8, SAND, 0, 12, 5); add(g, new THREE.ConeGeometry(6, 10, 4), SLATE, 0, 32, 5).rotation.y = Math.PI / 4;
+      for (const y of [3.5, 8.5]) box(g, 24, 1.8, 0.2, 0x3b4250, 0, y, 6.6);
+      for (const lx of [-19, 0, 19]) { const [wx, wz] = W(g, lx, 3); solids.push({ x: wx, z: wz, r: 11, y: g.position.y }); }
+      claim(x, z, 30);
+    }
+  }
+
+  // (nothing tall goes in the view from the hill down: out over the water to the bridge and the city)
+  const inView = (x, z) => x < -226 && z < 135 + 0.577 * (x + 215);
+
+  // ---- big houses with pools up the hill ----
+  for (let k = 0, n = 0; k < 700 && n < 20; k++) {
+    const [x, z] = randIn(24), y = terrainHeight(x, z), gap = roadGap(track, x, z);
+    if (y < 3.5 || gap > 85 || wetAt(x, z) || inView(x, z) || !isFree(track, x, z, 10, hw + 16)) continue;
+    const g = at(x, z, Math.PI + (rnd() - 0.5) * 1.2, y), roof = n % 3 ? 0xb5543c : 0xd9dde3;   // facing the water, more or less
+    box(g, 13, 10, 9, 0xf6f2e8, 0, 1, 0); box(g, 13.6, 0.4, 9.6, roof, 0, 6.2, 0);
+    box(g, 9, 3, 8, 0xf1e9d6, -1.5, 7.9, 0); box(g, 9.6, 0.4, 8.6, roof, -1.5, 9.6, 0);
+    box(g, 11, 1.3, 0.1, 0x3b556e, 0, 4, 4.55); box(g, 7, 1.2, 0.1, 0x3b556e, -1.5, 8, 4.05);
+    box(g, 8.4, 4, 5.6, 0xe9dec4, 2, -1.5, 8.4); box(g, 6, 0.1, 3.4, 0x3fb7e0, 2, 0.52, 8.4);            // the terrace and its pool
+    solids.push({ x, z, r: 7.5, y }); claim(x, z, 12); n++;
+  }
+
+  // ---- a golf course in the middle: greens with flags, and bunkers ----
+  for (let k = 0, n = 0; k < 400 && n < 5; k++) {
+    const x = -120 + rnd() * 320, z = 34 + rnd() * 96;
+    if (!isFree(track, x, z, 13, hw + 22)) continue;
+    const hx = (terrainHeight(x + 8, z) - terrainHeight(x - 8, z)) / 16, hz = (terrainHeight(x, z + 8) - terrainHeight(x, z - 8)) / 16;
+    if (Math.hypot(hx, hz) > 0.12) continue;
+    const g = at(x, z, 0, terrainHeight(x, z) + 0.25);
+    g.quaternion.setFromUnitVectors(V(0, 1, 0), V(-hx, 1, -hz).normalize());                              // lying on the slope
+    add(g, new THREE.CylinderGeometry(9, 9.6, 0.3, 16), 0x8fd46a, 0, -0.1, 0).castShadow = false;
+    add(g, new THREE.CylinderGeometry(3.6, 3.9, 0.3, 9), 0xf1e2b3, 11.5, -0.1, 2).castShadow = false; add(g, new THREE.CylinderGeometry(2.6, 2.9, 0.3, 8), 0xf1e2b3, -3, -0.1, -11.5).castShadow = false;
+    box(g, 0.08, 2.4, 0.08, 0xf6f2e8, 1.5, 1.2, 0.5); box(g, 0.8, 0.5, 0.04, 0xe6453a, 1.95, 2.15, 0.5);
+    claim(x, z, 14); n++;
+  }
+
+  // ---- trees: all over the land (not on the quay), and beyond the edge of the map ----
+  const nearWater = (x, z) => { for (let k = 0; k < 8; k++) if (wetAt(x + Math.cos(k * 0.785) * 12, z + Math.sin(k * 0.785) * 12)) return true; return false; };
+  for (let k = 0; k < 2600 && nf < FIGS - 60; k++) {
+    const [x, z] = randIn(8), sc = 0.8 + rnd() * 0.6;
+    if (!nearWater(x, z) && !inView(x, z) && terrainHeight(x, z) > L + 0.9 && isFree(track, x, z, 2.4 * sc, hw + 9)) tree(rnd() < 0.25, x, z, sc);
+  }
+  for (let k = 0; k < 700; k++) {
+    const a = rnd() * 6.2832, d = lim.r + 6 + rnd() * 110, x = lim.x + Math.cos(a) * d, z = lim.z + Math.sin(a) * d;
+    if (!nearWater(x, z) && !inView(x, z) && terrainHeight(x, z) > L + 0.9) tree(rnd() < 0.3, x, z, 0.9 + rnd() * 0.7, false);
+  }
+  pines.count = np; figs.count = nf; worldGroup.add(pines, figs);
+
+  // ---- across the water, to the north-west: the Harbour Bridge, the Opera House in front of its city end and the
+  // city behind; the north shore runs on to the right. All of it is placed as seen from the hill down to the tunnel. ----
+  {
+    const far = at(0, 0, 0, L), GREEN = [0x5f9c58, 0x6aa85e, 0x548f50], TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196], RAD = Math.PI / 180;
+    const pol = (deg, d) => [-215 - d * Math.sin(deg * RAD), 120 - d * Math.cos(deg * RAD)]; // `deg` left of straight down the hill, d metres away
+    const hill = (x, z, rx, ry, rz, c = GREEN[Math.floor(rnd() * 3)]) => { const m = add(far, new THREE.IcosahedronGeometry(1, 1), c, x, -ry * 0.3, z); m.scale.set(rx, ry, rz); m.castShadow = false; return m; };
+    const block = (x, z, w, h, c, y0 = 0) => { box(far, w, h, w, c, x, y0 + h / 2, z).castShadow = false; };
+    // the city
+    for (const deg of [29, 37, 45, 53, 61, 70]) hill(...pol(deg, 960 + rnd() * 50), 125, 15 + rnd() * 8, 105);
+    for (let k = 0; k < 32; k++) { const w = 22 + rnd() * 22; block(...pol(32 + rnd() * 23, 850 + rnd() * 130), w, 60 + rnd() * 150, TOWERS[k % TOWERS.length], 6); }
+    { const [x, z] = pol(41, 905); add(far, new THREE.CylinderGeometry(3, 4, 230, 8), 0xb9bdc5, x, 121, z).castShadow = false; add(far, new THREE.CylinderGeometry(11, 11, 18, 12), 0xd9b44a, x, 228, z).castShadow = false; add(far, new THREE.CylinderGeometry(0.8, 1.4, 50, 6), 0xb9bdc5, x, 262, z).castShadow = false; } // Sydney Tower
+    { const [x, z] = pol(38, 640); add(far, new THREE.CylinderGeometry(86, 94, 5, 12), 0xc9b48c, x, 0.5, z).castShadow = false; hill(...pol(39.5, 800), 70, 14, 60); } // Bennelong Point, under the Opera House
+    // the north shore: green heads, a few towers by the bridge
+    for (const deg of [13, 6, -2]) hill(...pol(deg, 900 + rnd() * 40), 120, 22 + rnd() * 10, 90);
+    for (let k = 0; k < 11; k++) hill(-190 + k * 125, -830 - rnd() * 40, 120, 20 + rnd() * 16, 80);
+    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14; block(...pol(4 + rnd() * 9, 880 + rnd() * 60), w, 30 + rnd() * 70, TOWERS[k % TOWERS.length], 8); }
+    // the head at the far end of the bay, with houses up it, and a hill behind the town
+    { const hx = lim.x + lim.r + 150, hz = -150, rx = 120, rz = 150;
+      hill(hx, hz, rx, 30, rz); hill(hx + rx * 0.4, hz + 90, rx * 0.8, 24, rz * 0.7);
+      for (let k = 0; k < 14; k++) { const a = rnd() * 6.2832, d = Math.sqrt(rnd()) * 0.62; block(hx + Math.cos(a) * d * rx, hz + Math.sin(a) * d * rz, 9 + rnd() * 6, 7 + rnd() * 5, k % 3 ? 0xf6f2e8 : 0xe8d9b5, 30 * 0.7 * Math.sqrt(1 - d * d) - 3); } }
+    hill(-590, 110, 120, 22, 120);
+    const [bx, bz] = pol(25, 780), [ox, oz] = pol(38, 640);
+    buildSydneyIcons(bx, bz, Math.cos(25 * RAD), -Math.sin(25 * RAD), L, ox, oz, 38 * RAD, 1.5);
+  }
+
+  // everything flat-coloured, in one mesh
+  if (quads.pos.length) {
+    const m = flatMesh(quads.pos, quads.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
+    m.castShadow = m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m);
+  }
+
+  // ---- things that move ----
+  const tick = (t) => {
+    // the ferry: round the bay, slowing right down as it comes alongside the wharf
+    const fu = (t / 150 + 0.35) % 1, a = Math.PI / 2 + fu * 6.2832 - 0.9 * Math.sin(fu * 6.2832), fx = FC[0] + Math.cos(a) * FR[0], fz = FC[1] + Math.sin(a) * FR[1];
+    ferry.position.set(fx, L - 0.5 + Math.sin(t * 0.9) * 0.05, fz); ferry.rotation.set(0, Math.atan2(-Math.sin(a) * FR[0], Math.cos(a) * FR[1]), Math.sin(t * 0.7) * 0.012);
+    for (const o of boats) {
+      const b = o.ph + t * o.sp;
+      o.b.position.set(o.cx + Math.cos(b) * o.r, L - 0.1 + Math.sin(t * 1.3 + o.ph) * 0.1, o.cz + Math.sin(b) * o.r);
+      o.b.rotation.set(Math.sin(t * 1.1 + o.ph) * 0.05, Math.atan2(-Math.sin(b) * o.sp, Math.cos(b) * o.sp), Math.sin(t * 0.9 + o.ph) * 0.07);
+    }
+    // the seaplane: down onto the water along the near side of its circuit, a run across the bay, and up again
+    const u = (t / 62) % 1, th = u * 6.2832, v = ((u - 0.25 + 0.5) % 1) - 0.5, k = clamp((Math.abs(v) - 0.11) / 0.17, 0, 1), up = k * k * (3 - 2 * k);
+    const px = PC[0] + Math.cos(th) * PR[0], pz = PC[1] + Math.sin(th) * PR[1], dx = -Math.sin(th) * PR[0], dz = Math.cos(th) * PR[1];
+    const climb = (Math.abs(v) > 0.11 && Math.abs(v) < 0.28 ? 0.2 : 0) * Math.sign(v) * Math.sin(Math.PI * k);
+    flyer.position.set(px, L + 2.2 + up * 46, pz); flyer.rotation.set(-climb, Math.atan2(dx, dz), 0.3 * up);
+    prop.rotation.z = t * 40;
+  };
+  tick(0); anim.push(tick);
+  people.finish();
+}
+
 // The harbour at Noosa Heads, in the bay beside the start straight: a marina
 // tucked under the headland (two piers, pontoons, boats moored between them),
 // a swimming beach between red and yellow flags with a lifeguard tower,
@@ -3356,6 +3834,9 @@ function buildHarbour(track, rnd, add, people) {
   return keep;
 }
 
+// Noosa Heads's seaside: palms (in a row along the road, and in clumps), beach
+// huts facing the sea, umbrellas and towels down by the water, a lighthouse
+// on the headland and boats out at sea.
 function buildBeach(track, rnd, randIn) {
   const { samples, N, hw } = track, sea = track.sea, lim = track.limit, solids = track.solids;
   const mats = new Map();
@@ -5653,7 +6134,7 @@ function buildTrackCards() {
     card._track = buildTrack(def);
     drawTrackPreview(cv, card._track);
     card.appendChild(cv);
-    card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div>${def.was ? `<div class="twas">Formerly ${def.was}</div>` : ''}<div class="tblurb">${def.blurb}</div>`);
+    card.insertAdjacentHTML('beforeend', `<div class="tname">${def.name}</div>${def.was ? `<div class="twas">Formerly ${def.was}</div>` : def.fresh ? '<div class="twas tfresh">New track</div>' : ''}<div class="tblurb">${def.blurb}</div>`);
     card.addEventListener('click', () => {
       if (app.room?.hostId !== app.myId) return;
       send({ t: 'track', trackId: i });

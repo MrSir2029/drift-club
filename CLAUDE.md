@@ -10,6 +10,8 @@
   asleep and doesn't answer, ship anyway: players' browsers hand their copies
   back.
 - The secret livery (colour 12) and its code stay out of What's new and the
-  README. Cars only carry made-up sponsor names, never real brands.
+  README. Cars only carry made-up sponsor names, never real brands. (Shop
+  signs at Rose Bay and Westfield are the one exception, at the owner's
+  request: real local names in plain lettering, never logos.)
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
