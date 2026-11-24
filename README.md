@@ -158,7 +158,11 @@ board pops up a message.
 
 There are no accounts: it goes by the name you race with, one line per name. Names with a
 bad word in them (a short blocklist in `server/core.js`) are swapped for
-"Racer" everywhere, not just on the board.
+"Racer" everywhere, not just on the board. The blocklist also catches
+misspellings made to sneak past it, and two words with their first letters
+swapped over. To take a name off the board, add it (or the word in it) to the
+list and deploy: the server checks every saved time against the list when it
+starts, so theirs drop off.
 The server keeps the boards in memory, so on a host that restarts or sleeps
 (Render's free plan) they would be lost; instead every player's browser keeps
 a copy, signed by the server so it can't be edited, and hands it back when it
