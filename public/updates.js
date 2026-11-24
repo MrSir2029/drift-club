@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.15', date: '24 Nov 2026', title: 'Wall hits slow you down',
+    items: [
+      'Laps aren\'t deleted for hitting a wall any more. Instead a big hit on a wall slows you down for a second, like driving on the grass. Brushing a wall doesn\'t.',
+    ],
+  },
+  {
     v: '3.14', date: '24 Nov 2026', title: 'Only crashes delete laps',
     items: [
       'Clipping a checkpoint post, or brushing or tapping a wall, no longer deletes your lap. Only a real crash into a wall does: going into it hard, at an angle.',
