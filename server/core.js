@@ -34,7 +34,7 @@ const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // the first matches anywhere in a name, the second only as a whole word.
 const rot13 = (s) => s.replace(/[a-z]/g, (ch) => String.fromCharCode((ch.charCodeAt(0) - 84) % 26 + 97));
 const BLOCKED_ANYWHERE = rot13('shpx fuvg ovgpu phag avtt sntt jnax fyhg juber encvfg anmv uvgyre cbea cravf intva qvyqb obbo chffl ergneq qvpx cvff onfgneq crqbcu cnrqb nffubyr nefrubyr wvmm genaal puvax xvxr spx fulg').split(' ');
-const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb qvx nmm ubr').split(' '));
+const BLOCKED_WORDS = new Set(rot13('nff nefr pbpx pbpxf phz gvg gvgf gjng nahf nany frk frkl encr encre crqb xlf pbba snt fcnm ubzb qvx nmm ubr avpxre').split(' '));
 const unleet = (s) => s.toLowerCase().replace(/0/g, 'o').replace(/[1!]/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/8/g, 'b').replace(/9/g, 'g');
 // Misspellings made to slip past (Fuker, Phuck, Fvck, Fuuuck): the name squashed
 // down, letters that sound alike made the same (ph is f; ck, q and a c that isn't
@@ -43,10 +43,28 @@ const unleet = (s) => s.toLowerCase().replace(/0/g, 'o').replace(/[1!]/g, 'i').r
 // say, would squash to pis and catch Episode.
 const squash = (s) => unleet(s).replace(/[^a-z]/g, '').replace(/ph/g, 'f').replace(/ck|c(?!h)|q/g, 'k').replace(/v/g, 'u').replace(/(.)\1+/g, '$1');
 const BLOCKED_SQUASHED = rot13('shpx phag ovngpu chffl sphx').split(' ').map(squash);
+// Spoonerisms (PhatNucker): the first sounds of two words side by side swapped
+// over. Words break at spaces and the like and where a capital starts one; a
+// word is also tried split at every letter, in case it's all run together
+// (phatnucker). Only the -ucker word is checked after the swap: a short one like
+// -uck would catch ordinary names (LuckyFox swaps to Fucky Lox).
+const BLOCKED_SPOONER = squash(rot13('shpxre'));
+const swapStarts = (a, b) => {
+  const [, ca, ra] = a.match(/^([^aeiou]*)(.*)$/), [, cb, rb] = b.match(/^([^aeiou]*)(.*)$/);
+  return ca && cb && ra && rb ? cb + ra + ca + rb : '';
+};
+function spoonerisms(name) {
+  const words = String(name).replace(/[0-9!]/g, (d) => unleet(d)).replace(/([a-z])([A-Z])/g, '$1 $2').split(/[^A-Za-z]+/).filter(Boolean).map(w => w.toLowerCase());
+  const out = [];
+  for (let i = 0; i + 1 < words.length; i++) out.push(swapStarts(words[i], words[i + 1]));
+  for (const w of words) for (let k = 2; k <= w.length - 2; k++) out.push(swapStarts(w.slice(0, k), w.slice(k)));
+  return out.filter(Boolean);
+}
 function nameAllowed(name) {
-  const words = unleet(name).split(/[^a-z]+/).filter(Boolean), joined = words.join(''), squashed = squash(name);
+  // (words break at a capital too, so a whole word hidden in PhatNicker is found)
+  const words = unleet(String(name).replace(/([a-z])([A-Z])/g, '$1 $2')).split(/[^a-z]+/).filter(Boolean), joined = words.join(''), squashed = squash(name);
   return !BLOCKED_ANYWHERE.some(w => joined.includes(w)) && !words.some(w => BLOCKED_WORDS.has(w)) && !BLOCKED_WORDS.has(joined)
-    && !BLOCKED_SQUASHED.some(w => squashed.includes(w));
+    && !BLOCKED_SQUASHED.some(w => squashed.includes(w)) && !spoonerisms(name).some(s => squash(s).includes(BLOCKED_SPOONER));
 }
 
 // The Cloudflare Web Analytics beacon for a token (letters and digits only).
