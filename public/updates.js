@@ -4,6 +4,13 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.9', date: '24 Nov 2026', title: 'No wall-riding',
+    items: [
+      'Hit a wall (or anything solid) hard and that lap is deleted, like a lap deleted for track limits in F1: it won\'t go on the leaderboard or count as your best lap, and its sectors go grey. Brushing along a wall is fine, and races work the same as before.',
+      'Times set by using the walls to get round corners have come off the leaderboard.',
+    ],
+  },
+  {
     v: '3.8', date: '24 Nov 2026', title: 'The real places',
     items: [
       'Every track has a bit of the real place now. Queens Park: a footy field (NSW against QLD), a cricket match and big Moreton Bay figs. Centennial Park: the Federation Pavilion, horses in a paddock and black swans on the pond.',
