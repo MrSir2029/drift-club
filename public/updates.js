@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.12', date: '24 Nov 2026', title: 'Even faster cars',
+    items: [
+      'Every car has another 12% more power and a higher top speed: the open seater does about 240 km/h flat out now. Corners and braking are the same, so brake a little earlier.',
+    ],
+  },
+  {
     v: '3.11', date: '24 Nov 2026', title: 'Fairer wall rule',
     items: [
       'Brushing along a wall no longer deletes your lap, even flat out. Only a proper hit does: going into the wall at an angle, not just scraping it.',
