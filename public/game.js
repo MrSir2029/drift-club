@@ -1114,7 +1114,7 @@ function collideWalls(car) {
   const T = app.track, solids = T.solids, lim = T.limit;
   const R = 1.0;
   const fx = Math.sin(car.h), fz = Math.cos(car.h);
-  let hit = 0, off = 0;
+  let hit = 0, off = 0, isWall = false; // (car.wallHit: the hardest hit on a wall, not a post, tree or the map's edge)
   // only the walls whose box the car is in (a wall without a box always counts)
   const walls = nearWalls; walls.length = 0;
   const cx = car.pos.x, cz = car.pos.z;
@@ -1129,6 +1129,7 @@ function collideWalls(car) {
     // a hit on the nose or tail swings the car round, away from whatever it hit
     car.yawRate += clamp(off * (fz * nx - fx * nz) * -vn * 0.05, -2, 2);
     hit = Math.max(hit, -vn);
+    if (isWall && -vn > (car.wallHit || 0)) car.wallHit = -vn;
   };
   for (off of [2.1, 0, -1.9]) {
     for (const w of walls) {
@@ -1140,7 +1141,7 @@ function collideWalls(car) {
       const d2 = dx * dx + dz * dz;
       if (d2 >= R * R || d2 < 1e-6) continue;
       const d = Math.sqrt(d2);
-      push(dx / d, dz / d, R - d);
+      isWall = true; push(dx / d, dz / d, R - d); isWall = false;
     }
     for (const o of solids) {
       const rr = o.r + R, dx = car.pos.x + fx * off - o.x;
@@ -4404,15 +4405,16 @@ function tyreForce(surf, Fz, alpha) {
 }
 
 // Using the walls to get round corners (in flat out, and let the wall turn you)
-// is quicker than braking. So a lap with a hard hit on a wall, a tree or
-// anything else solid is deleted, like a lap deleted for track limits in F1:
+// is quicker than braking. So a lap with a crash into a wall is deleted, like
+// a lap deleted for track limits in F1:
 // it isn't your best lap or your ghost, its sectors don't count, and it doesn't
 // go on the leaderboard. Races aren't changed.
-// A hit counts when the car goes at least 10 m/s straight into it and at a
-// steep enough angle: at least a quarter of its speed (about 15 degrees).
-// Brushing along a wall, even flat out, doesn't: a 7 degree graze at full
-// speed is already 7 m/s into the wall, which is what 3.9 deleted laps for.
-const LAP_DELETE_HIT = 10, LAP_DELETE_ANGLE = 0.25;
+// Only a real crash into a wall counts: at least 18 m/s (65 km/h) straight
+// into it, and at a steep angle, at least 30% of the car's speed (about 17
+// degrees). Brushing or tapping a wall doesn't, nor does clipping a gate post,
+// a tree or anything else that isn't a wall (posts are round, so even a scrape
+// on one comes out as a hard hit, which is what 3.11 deleted laps for).
+const LAP_DELETE_HIT = 18, LAP_DELETE_ANGLE = 0.3;
 function noteWallHit(car, impact, speed) {
   if (impact < LAP_DELETE_HIT || impact < LAP_DELETE_ANGLE * speed || car !== app.local || car.lapDeleted || car.armed || app.finished || app.phase !== 'racing' || (app.mode !== 'quali' && app.mode !== 'race')) return;
   car.lapDeleted = true;
@@ -4658,12 +4660,13 @@ function stepLocal(car, dt, canDrive) {
   const steps = clamp(Math.ceil(Math.hypot(car.vx, car.vz) * dt / 0.8), 1, 5);
   let bump = 0;
   const vIn = Math.hypot(car.vx, car.vz); // speed going into anything this step
+  car.wallHit = 0;
   for (let k = 0; k < steps; k++) {
     car.pos.x += car.vx * dt / steps;
     car.pos.z += car.vz * dt / steps;
     bump = Math.max(bump, collideWalls(car));
   }
-  noteWallHit(car, bump, vIn); // (a knock from another car doesn't count)
+  noteWallHit(car, car.wallHit, vIn); // (walls only: not posts, trees or other cars)
   bump = Math.max(bump, collideCars(car));
   if (bump > 0) {
     car.speed = car.vx * fx2 + car.vz * fz2;
