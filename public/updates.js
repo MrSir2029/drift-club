@@ -6,8 +6,10 @@
 // where things ended up that day, not every step on the way.
 export const UPDATES = [
   {
-    v: '3.17', date: '25 Nov 2026', title: 'Under the chairlift',
+    v: '3.18', date: '25 Nov 2026', title: 'Rose Bay Harbour Circuit',
     items: [
+      'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the hotel.',
+      'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
       'The chairlift at Thredbo crosses over the track now: you drive under the chairs just after the start.',
     ],
   },

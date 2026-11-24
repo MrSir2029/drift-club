@@ -2,7 +2,7 @@
 
 A tiny multiplayer racing game you play in the browser with friends. One person
 hosts, gets a 4-letter room code, and everyone else joins with the code or the
-invite link. Up to 20 racers per room, 1 to 10 laps, six tracks, two car
+invite link. Up to 20 racers per room, 1 to 10 laps, seven tracks, two car
 classes (open seater, plus a hidden rally car), Polytrack mode, low-poly 3D.
 
 No accounts, no chat, no ads, no cookies, no downloads. Everything the game
@@ -245,6 +245,25 @@ walls, and traffic going round the blocks out past the edge of the map. A few
 side streets, always on the outside of the
 circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
 the fairground and the radio mast.
+Rose Bay (the seventh) is Sydney's own Monaco, by day (`buildRoseBay` in
+`game.js`): a walled street circuit along a harbour quay, up Heartbreak Hill,
+round two hairpins, down a street of shops and through a tunnel under a hotel
+back onto the quay. Along the quay there's a sea wall with a wide promenade,
+Norfolk pines and marquees, superyachts moored stern-on, a marina, the seaplane
+base (one plane flies a circuit and lands in the bay), a ferry that calls at
+the wharf, Catalina on its stilts and Shark Island. Up the hill: big houses
+with pools, the convent school with its tower, and a golf course in the
+middle. Across the water to the north-west, placed so they're in view on the
+way down the hill (whose outer side is left open as a lookout): the city, the
+Opera House and the Harbour Bridge (`buildSydneyIcons`, shared with Sydney
+CBD). The shops' signs are made-up local names plus a few real Rose Bay ones in
+plain lettering, which the owner asked for; cars still only carry made-up
+names. Its `sea` in `tracks.js` also says how high the land sits inland
+(`base`, `hills`), how far above the water the sand goes (`sand`, `fade`) and
+that no islands get dotted over the water (`clear`); `urban` keeps the
+landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
+card in the lobby. Side streets never open onto the sea, and nothing is built
+in the mouth of one.
 Each track also has a bit of the real place it's named after (`local` in
 `tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
 match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and

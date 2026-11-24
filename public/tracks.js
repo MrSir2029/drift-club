@@ -103,6 +103,29 @@ export const TRACKS = [
       [-130, 0, -9], [-127.4, 0, -2.6], [-121, 0, 0],
     ],
   },
+  {
+    name: 'Rose Bay Harbour Circuit',
+    local: 'rosebay',
+    short: 'Rose Bay',
+    fresh: true,   // 'New track' on its card in the lobby
+    blurb: 'Monaco on Sydney Harbour: along the quay, up Heartbreak Hill, two hairpins, down past the shops and through the tunnel.',
+    theme: 'beach',
+    urban: true,   // only the landmarks that fit in a town, and none inside the walled-in middle
+    walls: true,
+    width: 13,
+    scale: 1,
+    // the harbour: water right up to the sea wall along the quay (z < 0), none inland
+    sea: { level: -1.2, shore: 6, from: -20, base: 6.5, hills: 0.5, sand: 0.2, fade: 0.5, clear: true },
+    points: [
+      [24, 0, 0], [80, 0, 0], [120, 0, -1.4], [160, 0, -4.6], [218, 0, -11.5], [234, 0, -6.8], [241.4, 0.5, 8],
+      [243.5, 3, 40], [250, 6, 79], [262, 9, 112], [270, 12, 141], [271, 15, 175], [266, 18, 206], [254.5, 19, 228], [232, 19, 238],
+      [170, 18.5, 242.5], [120, 18, 244], [70, 17.5, 243], [-23, 16, 237], [-35.7, 15.5, 231.2], [-41, 14.5, 218.5], [-35.7, 13.5, 205.8], [-23, 13, 200],
+      [53, 11, 200], [65.7, 10.5, 194.7], [71, 9.5, 182], [65.7, 8.5, 169.3], [53, 8, 164],
+      [-20, 6.5, 161], [-80, 5, 159.5], [-140, 4, 160.7], [-189, 3, 162.8], [-207.4, 2.6, 156], [-215, 2.2, 138],
+      [-215, 1, 90], [-215, 0, 38], [-203.9, 0, 11.1], [-177, 0, 0], [-150, 0, 0],
+      [-130, 0, -1], [-118, 0, -7], [-108, 0, -13.5], [-90, 0, -13.5], [-80, 0, -7], [-68, 0, -1], [-54, 0, 0], [0, 0, 0], [12, 0, 0],
+    ],
+  },
 ];
 
 export const CHECKPOINT_COUNT = 6;
