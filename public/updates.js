@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.14', date: '24 Nov 2026', title: 'Only crashes delete laps',
+    items: [
+      'Clipping a checkpoint post, or brushing or tapping a wall, no longer deletes your lap. Only a real crash into a wall does: going into it hard, at an angle.',
+    ],
+  },
+  {
     v: '3.13', date: '24 Nov 2026', title: 'Stronger brakes',
     items: [
       'Every car brakes about 15% harder, to go with the extra speed: 200 to 100 km/h takes 1.3 seconds instead of 1.5. Cornering and acceleration are the same.',
