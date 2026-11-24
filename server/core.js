@@ -27,7 +27,7 @@ const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1423, 1429];
 // Each track's layout, as 'v' in tracks.js. A new layout starts its board again:
 // the layout goes into each time's signature, so old copies don't come back.
 const TRACK_VERSION = [1, 1, 1, 1, 2, 2];
-const TOP_SPEED = { open: 60, rally: 52, camry: 46 };
+const TOP_SPEED = { open: 63.6, rally: 55.1, camry: 48.8 };
 const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // Names with these in them stay off the leaderboard (everyone sees it, not
 // just the room). The lists are rot13'd so the code isn't full of swear words:

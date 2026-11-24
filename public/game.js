@@ -4291,9 +4291,11 @@ const CAR_CLASSES = { open: {
   a: 1.45, b: 1.55,  // distance from centre of mass to front / rear axle (m)
   h: 0.33,           // centre of mass height (m), drives weight transfer
   inertia: 1150,     // yaw inertia (kg m^2): light and low, so it changes direction quickly
-  power: 210000,     // W, engine power at the wheels
-  maxDrive: 8000,    // N, torque limit at low speed
-  topSpeed: 60,      // m/s, soft rev limiter (~215 km/h)
+  // (every car's power, drive and top speed went up 6% in 3.10, so the
+  // leaderboard's times can be beaten; the server's TOP_SPEED went up with them)
+  power: 223000,     // W, engine power at the wheels
+  maxDrive: 8500,    // N, torque limit at low speed
+  topSpeed: 63.6,    // m/s, soft rev limiter (~229 km/h)
   reverseSpeed: 10.5, // m/s (about 38 km/h)
   brakeForce: 34000, // N, full pedal (ABS below keeps it within grip)
   hardHandbrake: true, // handbrake stops the car hard and only steps the tail out a little
@@ -4328,9 +4330,9 @@ const CAR_CLASSES = { open: {
   a: 1.2, b: 1.35,
   h: 0.5,
   inertia: 1900,
-  power: 235000,
-  maxDrive: 10500,
-  topSpeed: 52,
+  power: 249000,
+  maxDrive: 11100,
+  topSpeed: 55.1,
   reverseSpeed: 10.5,
   brakeForce: 30000,
   dive: 0.007, maxDive: 0.06, rollGain: 0.008, maxRoll: 0.08, leanY: 0.45,
@@ -4354,9 +4356,9 @@ const CAR_CLASSES = { open: {
   a: 1.25, b: 1.5,
   h: 0.55,
   inertia: 2400,
-  power: 140000,
-  maxDrive: 6800,
-  topSpeed: 46,
+  power: 148000,
+  maxDrive: 7200,
+  topSpeed: 48.8,
   reverseSpeed: 9.5,
   brakeForce: 25000,
   dive: 0.009, maxDive: 0.06, rollGain: 0.01, maxRoll: 0.1, leanY: 0.45,
