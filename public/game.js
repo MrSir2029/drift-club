@@ -4404,10 +4404,14 @@ function tyreForce(surf, Fz, alpha) {
 // is quicker than braking. So a lap with a hard hit on a wall, a tree or
 // anything else solid is deleted, like a lap deleted for track limits in F1:
 // it isn't your best lap or your ghost, its sectors don't count, and it doesn't
-// go on the leaderboard. Brushing along a wall is fine; races aren't changed.
-const LAP_DELETE_HIT = 7; // m/s, straight into it
-function noteWallHit(car, impact) {
-  if (impact < LAP_DELETE_HIT || car !== app.local || car.lapDeleted || car.armed || app.finished || app.phase !== 'racing' || (app.mode !== 'quali' && app.mode !== 'race')) return;
+// go on the leaderboard. Races aren't changed.
+// A hit counts when the car goes at least 10 m/s straight into it and at a
+// steep enough angle: at least a quarter of its speed (about 15 degrees).
+// Brushing along a wall, even flat out, doesn't: a 7 degree graze at full
+// speed is already 7 m/s into the wall, which is what 3.9 deleted laps for.
+const LAP_DELETE_HIT = 10, LAP_DELETE_ANGLE = 0.25;
+function noteWallHit(car, impact, speed) {
+  if (impact < LAP_DELETE_HIT || impact < LAP_DELETE_ANGLE * speed || car !== app.local || car.lapDeleted || car.armed || app.finished || app.phase !== 'racing' || (app.mode !== 'quali' && app.mode !== 'race')) return;
   car.lapDeleted = true;
   raceToast(app.mode === 'quali' ? 'Lap deleted: you hit the wall' : 'You hit the wall: this lap won\'t go on the leaderboard', 2200);
 }
@@ -4648,12 +4652,13 @@ function stepLocal(car, dt, canDrive) {
   car.speed = vLong;
   const steps = clamp(Math.ceil(Math.hypot(car.vx, car.vz) * dt / 0.8), 1, 5);
   let bump = 0;
+  const vIn = Math.hypot(car.vx, car.vz); // speed going into anything this step
   for (let k = 0; k < steps; k++) {
     car.pos.x += car.vx * dt / steps;
     car.pos.z += car.vz * dt / steps;
     bump = Math.max(bump, collideWalls(car));
   }
-  noteWallHit(car, bump); // (a knock from another car doesn't count)
+  noteWallHit(car, bump, vIn); // (a knock from another car doesn't count)
   bump = Math.max(bump, collideCars(car));
   if (bump > 0) {
     car.speed = car.vx * fx2 + car.vz * fz2;

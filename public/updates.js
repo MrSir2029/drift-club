@@ -4,6 +4,12 @@
 // short: fold small changes into the next big entry.
 export const UPDATES = [
   {
+    v: '3.11', date: '24 Nov 2026', title: 'Fairer wall rule',
+    items: [
+      'Brushing along a wall no longer deletes your lap, even flat out. Only a proper hit does: going into the wall at an angle, not just scraping it.',
+    ],
+  },
+  {
     v: '3.10', date: '24 Nov 2026', title: 'Faster cars',
     items: [
       'Every car has 6% more power and a 6% higher top speed, so the times on the leaderboard can be beaten. Corners and braking are the same as before.',
