@@ -170,12 +170,12 @@ The server keeps the boards in memory, so on a host that restarts or sleeps
 a copy, signed by the server so it can't be edited, and hands it back when it
 next connects, which fills the boards in again. Laps quicker than any car
 could manage, or that don't match the server's own clock, are ignored, and
-names on a short blocklist stay off the board. So does a lap with a crash into
-a wall (hard, at an angle; brushing a wall or clipping a post doesn't count):
-the game deletes it (`noteWallHit` in
-`game.js`), because going into a corner flat out and letting the wall turn you
-is quicker than braking. To take particular times off by hand, list them in
-`DROPPED` in `server/core.js`. To wipe the boards and start a
+names on a short blocklist stay off the board. A big hit on a wall (hard, at
+an angle; brushing it doesn't count) slows the car for a second, like driving
+on the grass (`noteWallHit` in `game.js`), because going into a corner flat
+out and letting the wall turn you was quicker than braking. To take
+particular times off the board by hand, list them in `DROPPED` in
+`server/core.js`. To wipe the boards and start a
 new season, bump `BOARD_SEASON` in `server/core.js`. Set `LB_SECRET` on the
 host for a signing key of your own (changing it also wipes the boards).
 

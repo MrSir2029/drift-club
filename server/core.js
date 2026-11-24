@@ -418,7 +418,6 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         // about as long as the time since the player's last lap (or the start).
         const since = now - (player.lapAt || room.startAt);
         player.lapAt = now;
-        if (msg.deleted) return; // a hard hit on a wall: not a best lap, and not on the leaderboard
         if (room.mode === 'quali' && (player.best == null || time < player.best)) {
           player.best = Math.round(time);
           broadcast(room, { t: 'best', id: player.id, time: player.best });

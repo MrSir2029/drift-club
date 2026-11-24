@@ -4404,21 +4404,16 @@ function tyreForce(surf, Fz, alpha) {
   return -surf.mu * Fz * Math.sin(surf.C * Math.atan(surf.B * alpha));
 }
 
-// Using the walls to get round corners (in flat out, and let the wall turn you)
-// is quicker than braking. So a lap with a crash into a wall is deleted, like
-// a lap deleted for track limits in F1:
-// it isn't your best lap or your ghost, its sectors don't count, and it doesn't
-// go on the leaderboard. Races aren't changed.
-// Only a real crash into a wall counts: at least 18 m/s (65 km/h) straight
-// into it, and at a steep angle, at least 30% of the car's speed (about 17
-// degrees). Brushing or tapping a wall doesn't, nor does clipping a gate post,
-// a tree or anything else that isn't a wall (posts are round, so even a scrape
-// on one comes out as a hard hit, which is what 3.11 deleted laps for).
-const LAP_DELETE_HIT = 18, LAP_DELETE_ANGLE = 0.3;
+// Going into a corner flat out and letting the wall turn you was quicker than
+// braking. So a big hit on a wall slows the car for a second, like driving on
+// the grass: the grass's rolling resistance, and the engine pulling only 60%
+// as hard. A big hit is at least 18 m/s (65 km/h) straight into the wall, at
+// a steep angle (at least 30% of the car's speed, about 17 degrees): brushing
+// or tapping a wall isn't, and posts, trees and the like don't count.
+// (3.9 to 3.14 deleted the lap instead; that was too harsh.)
+const WALL_SLOW_HIT = 18, WALL_SLOW_ANGLE = 0.3, WALL_SLOW_MS = 1000, WALL_SLOW_PULL = 0.6;
 function noteWallHit(car, impact, speed) {
-  if (impact < LAP_DELETE_HIT || impact < LAP_DELETE_ANGLE * speed || car !== app.local || car.lapDeleted || car.armed || app.finished || app.phase !== 'racing' || (app.mode !== 'quali' && app.mode !== 'race')) return;
-  car.lapDeleted = true;
-  raceToast(app.mode === 'quali' ? 'Lap deleted: you hit the wall' : 'You hit the wall: this lap won\'t go on the leaderboard', 2200);
+  if (impact >= WALL_SLOW_HIT && impact >= WALL_SLOW_ANGLE * speed) car.slowUntil = performance.now() + WALL_SLOW_MS;
 }
 
 // Sector times in Polytrack mode: the lap in three, split at gates 2 and 4.
@@ -4430,13 +4425,12 @@ function sectorDone(n, t) {
   const S = app.sec; t = Math.round(t); // whole milliseconds, as the server keeps them
   if (!S || !(t > 0)) return;
   S.cur[n] = t;
-  S.off[n] = !!app.local?.lapDeleted; // after a hard hit on a wall it doesn't count
-  if (!S.off[n] && (S.session[n] == null || t < S.session[n])) { S.session[n] = t; send({ t: 'sector', n, time: t }); }
+  if (S.session[n] == null || t < S.session[n]) { S.session[n] = t; send({ t: 'sector', n, time: t }); }
 }
 function newLapSectors(finished) {
   const S = app.sec; if (!S) return;
-  S.prev = finished ? [...S.cur] : [null, null, null]; S.prevOff = finished ? [...S.off] : [false, false, false]; S.prevUntil = finished ? performance.now() + 2500 : 0;
-  S.cur = [null, null, null]; S.off = [false, false, false];
+  S.prev = finished ? [...S.cur] : [null, null, null]; S.prevUntil = finished ? performance.now() + 2500 : 0;
+  S.cur = [null, null, null];
 }
 function sectorColour(n, t) {
   // purple only for the fastest anyone has done: the record kept on the server,
@@ -4451,9 +4445,9 @@ function renderSectors(now) {
   const at = S.cur[0] == null ? 0 : S.cur[1] == null ? 1 : 2; // the sector you're in
   [...el.children].forEach((pill, n) => {
     let text = '--', cls = '';
-    if (S.cur[n] != null) { text = (S.cur[n] / 1000).toFixed(2); cls = S.off[n] ? 'deleted' : sectorColour(n, S.cur[n]); }
-    else if (running && n === at) { text = (Math.max(0, now - car.lapStart - (S.cur[0] ?? 0) - (S.cur[1] ?? 0)) / 1000).toFixed(1); cls = car.lapDeleted ? 'run deleted' : 'run'; }
-    else if (now < S.prevUntil && S.prev[n] != null) { text = (S.prev[n] / 1000).toFixed(2); cls = S.prevOff?.[n] ? 'deleted' : sectorColour(n, S.prev[n]); }
+    if (S.cur[n] != null) { text = (S.cur[n] / 1000).toFixed(2); cls = sectorColour(n, S.cur[n]); }
+    else if (running && n === at) { text = (Math.max(0, now - car.lapStart - (S.cur[0] ?? 0) - (S.cur[1] ?? 0)) / 1000).toFixed(1); cls = 'run'; }
+    else if (now < S.prevUntil && S.prev[n] != null) { text = (S.prev[n] / 1000).toFixed(2); cls = sectorColour(n, S.prev[n]); }
     text = `S${n + 1} ${text}`;
     if (pill.textContent !== text) pill.textContent = text;
     if (pill.className !== cls) pill.className = cls;
@@ -4566,12 +4560,13 @@ function stepLocal(car, dt, canDrive) {
 
     // longitudinal forces
     let Fdrive = 0;
+    const slowed = performance.now() < (car.slowUntil || 0); // just had a big hit on a wall
     if (throttle) {
       // the engine pushes forward whichever way the car is rolling, so going
       // from reverse back to forward is quick (it used to do nothing until the
       // car had coasted to a stop on its own)
       const powerLimited = CAR.power / Math.max(speedAbs, 4);
-      Fdrive = Math.min(CAR.maxDrive, powerLimited) * clamp((CAR.topSpeed - vLong) / 6, 0, 1);
+      Fdrive = Math.min(CAR.maxDrive, powerLimited) * clamp((CAR.topSpeed - vLong) / 6, 0, 1) * (slowed ? WALL_SLOW_PULL : 1);
     }
     let FbrakeF = 0, FbrakeR = 0, Freverse = 0;
     if (brake) {
@@ -4618,7 +4613,7 @@ function stepLocal(car, dt, canDrive) {
     if (totR > capR) { const s = capR / totR; FxR *= s; FyR *= s * 0.92; }
 
     // resistances and gravity along the slope
-    const Froll = -surf.roll * m * g * clamp(vLong / 2, -1, 1);
+    const Froll = -(slowed ? Math.max(surf.roll, CAR.surf.grass.roll) : surf.roll) * m * g * clamp(vLong / 2, -1, 1);
     const Fdrag = -CAR.dragCoef * vLong * Math.abs(vLong);
     const Fslope = -m * g * slopeAlong * (car.airborne ? 0 : 1);
 
@@ -4750,22 +4745,21 @@ function stepLocal(car, dt, canDrive) {
         }
         if (car.nextCp === 0) {
           const nowP = performance.now();
-          const lapTime = nowP - (car.lapStart || raceStartPerf()), deleted = !!car.lapDeleted;
+          const lapTime = nowP - (car.lapStart || raceStartPerf());
           if (app.mode === 'quali' && app.sec?.cur[0] != null && app.sec.cur[1] != null) sectorDone(2, lapTime - app.sec.cur[0] - app.sec.cur[1]);
-          const lapSec = !deleted && app.mode === 'quali' && app.sec?.cur.every(x => x != null) ? [...app.sec.cur] : null;
+          const lapSec = app.mode === 'quali' && app.sec?.cur.every(x => x != null) ? [...app.sec.cur] : null;
           newLapSectors(true);
-          car.lapStart = nowP; car.lapDeleted = false; // the next lap starts clean
-          if (!deleted && (!app.bestLap || lapTime < app.bestLap)) app.bestLap = lapTime;
-          app.myLaps.push(lapTime); if (deleted) app.myLapsOff.add(app.myLaps.length - 1);
-          if (!deleted && lapTime === app.bestLap) app.ghostLap = app.rec;
+          car.lapStart = nowP;
+          if (!app.bestLap || lapTime < app.bestLap) app.bestLap = lapTime;
+          app.myLaps.push(lapTime);
+          if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          send({ t: 'lap', time: Math.round(lapTime), sec: lapSec, ...(deleted && { deleted: true }) }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
-          if (!deleted) notePersonalBest(lapTime);
-          const tag = deleted ? '  deleted' : '';
-          if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${tag || (lapTime === app.bestLap ? '  ★ best' : '')}`, 2500);
+          send({ t: 'lap', time: Math.round(lapTime), sec: lapSec }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
+          notePersonalBest(lapTime);
+          if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
-          else raceToast(`Lap ${car.lap - 1}  ${fmtTime(lapTime)}${tag || (lapTime === app.bestLap && car.lap > 2 ? '  ★ best' : '')}`, 2200);
+          else raceToast(`Lap ${car.lap - 1}  ${fmtTime(lapTime)}${lapTime === app.bestLap && car.lap > 2 ? '  ★ best' : ''}`, 2200);
         }
         car.nextCp = (car.nextCp + 1) % CHECKPOINT_COUNT;
       }
@@ -5098,7 +5092,7 @@ function beginRace(msg) {
   app.mode = msg.mode === 'quali' ? 'quali' : msg.mode === 'dash' && app.track?.goal !== undefined ? 'dash' : 'race';
   app.myPlace = 0;
   app.bests = new Map();
-  app.myLaps = []; app.myLapsOff = new Set(); // laps, and which of them were deleted
+  app.myLaps = [];
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
   app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Lap time' : 'Time';
@@ -5111,7 +5105,7 @@ function beginRace(msg) {
   const slot = Math.max(0, gridOrder(msg.grid).findIndex(p => p.id === app.myId));
   spawnLocal(slot, app.mode === 'quali');
   if (app.mode === 'quali') { app.local.armed = true; app.local.lastCpIdx = app.local.idx; } // the clock starts at the line
-  app.sec = { cur: [null, null, null], off: [false, false, false], prev: [null, null, null], prevOff: [false, false, false], prevUntil: 0, session: (msg.sectors || [null, null, null]).map(b => (b ? b.time : null)) };
+  app.sec = { cur: [null, null, null], prev: [null, null, null], prevUntil: 0, session: (msg.sectors || [null, null, null]).map(b => (b ? b.time : null)) };
   for (const p of app.room.players) if (p.id !== app.myId) ensureRemote(p);
   app.phase = 'countdown';
   app.bestLap = 0;
@@ -5268,8 +5262,8 @@ function showResults(results, quali, dash) {
   if (me && me.time != null) sub = quali ? `Your best lap ${fmtTime(me.time)} — ${ordinal(mine + 1)} fastest` : `You finished ${ordinal(mine + 1)} — ${fmtTime(me.time)}`;
   else if (me) sub = quali ? 'No lap time set' : app.spectate ? 'You joined part-way through' : 'Did not finish';
   $('#results-sub').textContent = sub;
-  const laps = app.myLaps || [], off = app.myLapsOff || new Set(), best = Math.min(...laps.filter((t, i) => !off.has(i)));
-  $('#results-laps').innerHTML = laps.length ? '<span class="lbl">Your laps</span>' + laps.map((t, i) => `<span class="lap${off.has(i) ? ' deleted" title="Deleted: you hit a wall' : t === best ? ' best' : ''}">L${i + 1} ${fmtTime(t)}</span>`).join('') : '';
+  const laps = app.myLaps || [], best = Math.min(...laps);
+  $('#results-laps').innerHTML = laps.length ? '<span class="lbl">Your laps</span>' + laps.map((t, i) => `<span class="lap${t === best ? ' best' : ''}">L${i + 1} ${fmtTime(t)}</span>`).join('') : '';
   resultsButtons();
   // after a race: the top three on the podium first, then the results
   const podiumTop = quali ? [] : results.filter(r => r.time != null).slice(0, 3);
@@ -6155,7 +6149,7 @@ function frame(now) {
       const c = app.local;
       if (app.recFrom == null && c.idx < app.track.N / 2) {
         app.recFrom = now; app.rec = [];
-        if (c.armed) { c.armed = false; c.lapDeleted = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); newLapSectors(false); } // a fresh run starts here
+        if (c.armed) { c.armed = false; c.lapStart = app.recFrom = performance.now(); send({ t: 'restart' }); newLapSectors(false); } // a fresh run starts here
       }
       if (app.recFrom != null) {
         const r = app.rec, t = now - app.recFrom;
