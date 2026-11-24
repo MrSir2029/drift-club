@@ -6,6 +6,12 @@
 // where things ended up that day, not every step on the way.
 export const UPDATES = [
   {
+    v: '3.17', date: '25 Nov 2026', title: 'Under the chairlift',
+    items: [
+      'The chairlift at Thredbo crosses over the track now: you drive under the chairs just after the start.',
+    ],
+  },
+  {
     v: '3.16', date: '24 Nov 2026', title: 'Aussie tracks, faster cars',
     items: [
       'Every track has an Australian name, with its old one under it in the lobby: Queens Park GP, Centennial Park Raceway, Thredbo Alpine Circuit, Mount Panorama Circuit, Noosa Heads Circuit and Sydney CBD Street Circuit.',

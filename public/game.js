@@ -1815,7 +1815,7 @@ function buildSea(track) {
 // tracks.js). Queens Park: a footy field (NSW blue against QLD maroon), a
 // cricket match and big Moreton Bay figs. Centennial Park: the Federation
 // Pavilion, horses in a paddock and black swans on the pond. Thredbo: a
-// chairlift up the mountain with skiers coming down, and A-frame lodges.
+// chairlift across the track with skiers coming down beside it, and A-frame lodges.
 // Mount Panorama: the real corner names on signs round the lap, and campers
 // round their fires on the mountain. Noosa Heads: surfers riding the waves in
 // along the headland, koalas in the gum trees on it. Sydney: Sydney Tower at
@@ -1984,31 +1984,76 @@ function buildLocal(track) {
   }
 
   if (which === 'thredbo') {
-    // a chairlift up the mountain: the steepest clear line we can find
+    // A chairlift across the track, so everyone drives under it: a line through a
+    // straight bit of road (not by a gate, the start or the bridge), its pylons
+    // well clear of the road and the cable lifted high enough over it. The
+    // steeper the hill it climbs and the longer the run-up to it, the better.
+    const PYLON = 9, CLEAR = 7.2; // a pylon's height, and how far the cable stays above any road under it
+    const lineUp = (bx, bz, tx, tz, dc) => {
+      const len = Math.hypot(tx - bx, tz - bz), ux = (tx - bx) / len, uz = (tz - bz) / len, P = (d) => [bx + ux * d, bz + uz * d];
+      if ([P(0), P(len)].some(([x, z]) => Math.hypot(x - lim.x, z - lim.z) > lim.r - 20 || !isFree(track, x, z, 7, hw + 10))) return null;
+      // pylons about 32 m apart; where the line crosses the road (dc along it), one 19 m either side of the crossing
+      const ds = [0];
+      if (dc == null) { const n = Math.max(2, Math.round(len / 32)); for (let k = 1; k < n; k++) ds.push(len * k / n); }
+      else { for (let d = dc - 19; d > 24; d -= 32) ds.push(d); for (let d = dc + 19; d < len - 24; d += 32) ds.push(d); }
+      ds.push(len); ds.sort((p, q) => p - q);
+      if (ds.slice(1, -1).some((d) => !isFree(track, ...P(d), 3, hw + 6))) return null;
+      const H = ds.map(() => PYLON), base = ds.map((d) => terrainHeight(...P(d)));
+      const cable = (d) => { let k = 0; while (k < ds.length - 2 && d >= ds[k + 1]) k++; const u = (d - ds[k]) / (ds[k + 1] - ds[k]); return [lerp(base[k] + H[k], base[k + 1] + H[k + 1], u) + 0.4 - Math.sin(Math.PI * u) * 0.8, k]; };
+      // taller pylons either side of any road the cable passes over
+      let crossings = 0;
+      for (let pass = 0; pass < 3; pass++) {
+        crossings = 0;
+        for (const q of samples) {
+          const rx = q.p.x - bx, rz = q.p.z - bz, d = rx * ux + rz * uz;
+          if (d < -3 || d > len + 3 || Math.abs(rx * uz - rz * ux) > hw + 3.4) continue;
+          crossings++;
+          const [y, k] = cable(clamp(d, 0, len)), short = q.p.y + CLEAR - y;
+          if (short > 0) { H[k] += short + 0.2; H[k + 1] += short + 0.2; }
+        }
+      }
+      if (H.some((h) => h > 17)) return null;
+      return { bx, bz, tx, tz, len, ds, H, crossings, climb: Math.abs(base[base.length - 1] - base[0]) };
+    };
+    const runUp = (i) => { let n = 0; const h = samples[i].th; while (n < 90) { const t = samples[(i - n - 1 + N) % N].th; if (t.x * h.x + t.z * h.z < 0.985) break; n++; } return n; }; // how long the road has been straight
     let lift = null;
-    for (let k = 0; k < 300; k++) {
+    for (let k = 0; k < 600; k++) {
+      const i = Math.floor(rnd() * N), s = samples[i], near = (j, n) => Math.min((i - j + N) % N, (j - i + N) % N) < n;
+      if (track.vergeDrop[i] > 1.5 || near(0, 45) || track.cps.some((c) => near(c, 16))) continue;
+      const run = runUp(i);
+      if (run < 24) continue;
+      const a = Math.atan2(s.th.x, s.th.z) + Math.PI / 2 + (rnd() - 0.5) * 0.8, cx = Math.sin(a), cz = Math.cos(a);
+      let d1 = 50 + rnd() * 90, d2 = 50 + rnd() * 90, lo = [s.p.x - cx * d1, s.p.z - cz * d1], hi = [s.p.x + cx * d2, s.p.z + cz * d2];
+      if (terrainHeight(...hi) < terrainHeight(...lo)) { [lo, hi] = [hi, lo]; d1 = d2; } // it runs uphill
+      const L = lineUp(lo[0], lo[1], hi[0], hi[1], d1);
+      if (!L || L.climb < 5) continue;
+      L.score = L.climb * 2 + run * 0.6 + (near(0, 160) ? 18 : 0); L.cross = [s.p.x, s.p.z, i];
+      if (!lift || L.score > lift.score) lift = L;
+    }
+    if (!lift) for (let k = 0; k < 300; k++) { // nowhere to cross it: the steepest clear line beside the track instead
       const [tx, tz] = randIn(20), a = rnd() * 6.2832, len = 150 + rnd() * 80, bx = tx + Math.cos(a) * len, bz = tz + Math.sin(a) * len;
       if (Math.hypot(bx - lim.x, bz - lim.z) > lim.r - 20) continue;
       const climb = terrainHeight(tx, tz) - terrainHeight(bx, bz);
       if (climb < 12 || (lift && climb <= lift.climb)) continue;
       let ok = true;
       for (let d = 0; d <= len && ok; d += 6) ok = isFree(track, bx + (tx - bx) * d / len, bz + (tz - bz) * d / len, 3, hw + 9);
-      if (ok) lift = { bx, bz, tx, tz, len, climb };
+      if (ok) lift = lineUp(bx, bz, tx, tz) || lift;
     }
     if (lift) {
-      const { bx, bz, len } = lift, ux = (lift.tx - bx) / len, uz = (lift.tz - bz) / len, sx = uz, sz = -ux, ry = Math.atan2(ux, uz);
-      const n = Math.max(2, Math.round(len / 32)), H = 9, tops = [], steel = 0x5b606a;
+      const { bx, bz, len, ds, H } = lift, ux = (lift.tx - bx) / len, uz = (lift.tz - bz) / len, sx = uz, sz = -ux, ry = Math.atan2(ux, uz);
+      const n = ds.length - 1, tops = [], steel = 0x5b606a;
       for (let k = 0; k <= n; k++) {
-        const px = bx + ux * len * k / n, pz = bz + uz * len * k / n, y = terrainHeight(px, pz), g = at(px, pz, ry, y), end = k === 0 || k === n;
-        if (!end) { box(g, 0.6, H + 0.6, 0.6, steel, 0, (H + 0.6) / 2, 0); box(g, 5.4, 0.35, 0.35, steel, 0, H + 0.4, 0); solids.push({ x: px, z: pz, r: 0.5, y }); claim(px, pz, 3); }
+        const px = bx + ux * ds[k], pz = bz + uz * ds[k], y = terrainHeight(px, pz), g = at(px, pz, ry, y), end = k === 0 || k === n, h = H[k];
+        if (!end) { box(g, 0.6, h + 0.6, 0.6, steel, 0, (h + 0.6) / 2, 0); box(g, 5.4, 0.35, 0.35, steel, 0, h + 0.4, 0); solids.push({ x: px, z: pz, r: 0.5, y }); claim(px, pz, 3); }
         else {
           const back = k ? 3 : -3; // the station hut sits behind the big wheel
           box(g, 7, 3.4, 5, k ? 0x8f3a2e : 0x6b4a2a, 0, 1.7, back); box(g, 7.8, 0.5, 5.8, 0xf6f2e8, 0, 3.6, back);
-          box(g, 0.8, H, 0.8, steel, 0, H / 2, 0); cyl(g, 2.4, 2.4, 0.5, 16, 0x3b4250, 0, H, 0);
+          box(g, 0.8, h, 0.8, steel, 0, h / 2, 0); cyl(g, 2.4, 2.4, 0.5, 16, 0x3b4250, 0, h, 0);
           solids.push({ x: px + ux * back, z: pz + uz * back, r: 3.5, y }); claim(px, pz, 7);
         }
-        tops.push(V(px, y + H, pz));
+        tops.push(V(px, y + h, pz));
       }
+      for (let d = 8; d < len; d += 8) { const x = bx + ux * d, z = bz + uz * d; if (roadGap(track, x, z) > hw + 4) claim(x, z, 4); } // nothing grows up into the chairs
       const wire = lam(0x26303f);
       for (const side of [2.2, -2.2]) for (let k = 0; k < n; k++) {
         const a = tops[k].clone().add(V(sx * side, 0.4, sz * side)), b = tops[k + 1].clone().add(V(sx * side, 0.4, sz * side));
@@ -2027,25 +2072,38 @@ function buildLocal(track) {
       for (let i = 0; i < count; i++) riders.setColorAt(i, new THREE.Color(jackets[i % jackets.length]));
       const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), up = V(0, 1, 0), Z = V(0, 0, 0), ONE = V(1, 1, 1), P = V(0, 0, 0);
       // skiers coming down beside it, turning from side to side; the run is kept clear of trees
-      const off = (rnd() < 0.5 ? 1 : -1) * 20, SKI = 7;
-      for (let d = 0; d <= len; d += 10) claim(bx + ux * d + sx * off, bz + uz * d + sz * off, 9);
+      // (on whichever side, and along whichever stretch, a run beside the lift stays longest clear of the road)
+      const clearRun = (off) => {
+        let best = [0, 0], from = null;
+        for (let d = 0; d <= len; d += 4) {
+          const ok = [off - 8, off + 8].every((l) => { const x = bx + ux * d + sx * l, z = bz + uz * d + sz * l; return roadGap(track, x, z) > hw + 9 && Math.hypot(x - lim.x, z - lim.z) < lim.r - 6; });
+          if (ok && from == null) from = d;
+          if (from != null && (!ok || d + 4 > len)) { const to = ok ? d : d - 4; if (to - from > best[1] - best[0]) best = [from, to]; from = null; }
+        }
+        return best;
+      };
+      const [runA, runB] = [20, -20].map((off) => ({ off, r: clearRun(off) })), pick = runA.r[1] - runA.r[0] >= runB.r[1] - runB.r[0] ? runA : runB;
+      const off = pick.off, r0 = pick.r[0], r1 = pick.r[1], RL = r1 - r0, SKI = RL >= 40 ? 7 : 0;
+      for (let d = r0; d <= r1; d += 10) claim(bx + ux * d + sx * off, bz + uz * d + sz * off, 9);
       const skierG = new THREE.Group();
       for (const s of [-0.16, 0.16]) box(skierG, 0.1, 0.05, 1.7, 0xffffff, s, 0.03, 0);
       box(skierG, 0.46, 0.8, 0.32, 0xffffff, 0, 0.8, 0).rotation.x = 0.25; box(skierG, 0.3, 0.3, 0.3, 0xffffff, 0, 1.35, 0.12);
       mergeStatic(skierG);
-      const skiers = new THREE.InstancedMesh(skierG.children[0].geometry, mergedMat(THREE.FrontSide, 0), SKI);
+      const skiers = new THREE.InstancedMesh(skierG.children[0].geometry, mergedMat(THREE.FrontSide, 0), Math.max(1, SKI)); skiers.count = SKI;
       skiers.frustumCulled = false; skiers.userData.dyn = true; skiers.castShadow = true; worldGroup.add(skiers);
       for (let i = 0; i < SKI; i++) skiers.setColorAt(i, new THREE.Color(jackets[(i + 3) % jackets.length]));
       const run = (t) => {
         for (let i = 0; i < count; i++) {
-          const d = (i * SP + t * 2.4) % (2 * len), goingUp = d < len, f = (goingUp ? d : 2 * len - d) / len * n, k = Math.min(n - 1, Math.floor(f)), u = f - k, side = goingUp ? 2.2 : -2.2;
+          const d = (i * SP + t * 2.4) % (2 * len), goingUp = d < len, x = goingUp ? d : 2 * len - d, side = goingUp ? 2.2 : -2.2;
+          let k = 0; while (k < n - 1 && x >= ds[k + 1]) k++;
+          const u = (x - ds[k]) / (ds[k + 1] - ds[k]);
           const a = tops[k], b = tops[k + 1];
           P.set(a.x + (b.x - a.x) * u + sx * side, a.y + (b.y - a.y) * u - Math.sin(Math.PI * u) * 0.8 + 0.4, a.z + (b.z - a.z) * u + sz * side);
           Q.setFromAxisAngle(up, ry + (goingUp ? 0 : Math.PI));
           chairs.setMatrixAt(i, M.compose(P, Q, ONE)); riders.setMatrixAt(i, M.compose(P, Q, goingUp ? ONE : Z));
         }
         for (let i = 0; i < SKI; i++) {
-          const p = (t * 7 + (i * len) / SKI) % len, d = len - p, w = 0.11 + i * 0.01, lat = off + Math.sin(p * w + i) * 7, slope = Math.cos(p * w + i) * 7 * w;
+          const p = (t * 7 + (i * RL) / SKI) % RL, d = r1 - p, w = 0.11 + i * 0.01, lat = off + Math.sin(p * w + i) * 7, slope = Math.cos(p * w + i) * 7 * w;
           const x = bx + ux * d + sx * lat, z = bz + uz * d + sz * lat;
           P.set(x, terrainHeight(x, z), z); Q.setFromAxisAngle(up, ry + Math.PI - Math.atan(slope));
           skiers.setMatrixAt(i, M.compose(P, Q, ONE));
@@ -2053,7 +2111,7 @@ function buildLocal(track) {
         chairs.instanceMatrix.needsUpdate = riders.instanceMatrix.needsUpdate = skiers.instanceMatrix.needsUpdate = true;
       };
       run(0); anim.push(run);
-      spots.push({ name: 'chairlift', x: bx + ux * len / 2, z: bz + uz * len / 2 });
+      spots.push({ name: 'chairlift', x: bx + ux * len / 2, z: bz + uz * len / 2, cross: lift.cross || null, crossings: lift.crossings, H, ds, line: [bx, bz, lift.tx, lift.tz], run: [off, r0, r1] });
       // A-frame lodges round the bottom of it
       for (let k = 0, made = 0; k < 40 && made < 6; k++) {
         const f = spot(5, hw + 9, 2.5, [bx - ux * 24, bz - uz * 24, 28], 30); if (!f) continue;
