@@ -248,7 +248,7 @@ the fairground and the radio mast.
 Each track also has a bit of the real place it's named after (`local` in
 `tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
 match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
-black swans at Centennial Park; a chairlift, skiers and A-frame lodges at
+black swans at Centennial Park; a chairlift across the track, skiers and A-frame lodges at
 Thredbo; the real corner names on signs and campers round their fires at Mount
 Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD.
