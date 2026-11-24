@@ -152,7 +152,9 @@ shows on the minimap.
 
 Every lap anyone drives, in races and in qualifying, counts for the
 leaderboard: the ten fastest names on each track, in any car (each time shows
-the car it was set in). Open it from the home screen or the lobby; the lobby
+the car it was set in, and the race number it was set with: times from
+before numbers were kept take the player's number the next time they join a
+room). Open it from the home screen or the lobby; the lobby
 also shows the lap time record for the track that's picked, and setting a time on the
 board pops up a message.
 

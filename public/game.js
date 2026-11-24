@@ -5215,7 +5215,7 @@ function renderBoard() {
   const list = boardList(board.track);
   const me = (app.room ? app.name : $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer').toLowerCase();
   $('#board-list').innerHTML = list.length
-    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="name">${esc(e.n)}</span><span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
+    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="rnum" title="Race number">${Number.isInteger(e.num) ? e.num : ''}</span><span class="name">${esc(e.n)}</span><span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
     : '<li class="empty">No laps yet. Set the first one!</li>';
   const pb = app.pbs[String(board.track)];
   $('#board-pb').textContent = pb ? `Your best here: ${fmtTime(pb)}` : '';
