@@ -6,11 +6,12 @@
 // where things ended up that day, not every step on the way.
 export const UPDATES = [
   {
-    v: '3.19', date: '25 Nov 2026', title: 'Rose Bay and Westfield',
+    v: '3.20', date: '25 Nov 2026', title: 'Rose Bay and Westfield',
     items: [
       'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the hotel.',
       'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
       'And another, Westfield Mall Circuit: start on the roof of the car park, down the ramp, across Oxford Street, in through the doors and flat out between the shops, round the food court and back up the other ramp, with the Harbour Bridge dead ahead. The 333 is waiting at its stop.',
+      'Both have proper race barriers: white, with a red band along the top and banners for the sponsors.',
       'The leaderboard has a tab for each of the eight tracks, in two rows.',
       'The chairlift at Thredbo crosses over the track now: you drive under the chairs just after the start.',
     ],

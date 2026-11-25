@@ -4,10 +4,17 @@
     "0": [
       {
         "n": "JacksonP",
-        "ms": 33284,
+        "ms": 32290,
         "c": "open",
-        "num": 79,
-        "s": "5iZhYguiyGlC"
+        "num": 69,
+        "s": "M8yM07_P9SjF"
+      },
+      {
+        "n": "speewandker",
+        "ms": 33073,
+        "c": "open",
+        "num": 8,
+        "s": "BDjSJMe58Xjc"
       },
       {
         "n": "Luca",
@@ -23,6 +30,13 @@
         "s": "IbpJU2Ix75do"
       },
       {
+        "n": "lvnaryx",
+        "ms": 33667,
+        "c": "open",
+        "num": 17,
+        "s": "BFfnbJqUZy-G"
+      },
+      {
         "n": "oj",
         "ms": 33782,
         "c": "open",
@@ -30,10 +44,11 @@
         "s": "nUS6nyETVDr0"
       },
       {
-        "n": "speewandker",
-        "ms": 33937,
+        "n": "hi",
+        "ms": 34068,
         "c": "open",
-        "s": "TkpIEy0G1b2t"
+        "num": 12,
+        "s": "uHOibrdhpH2k"
       },
       {
         "n": "Racer",
@@ -53,22 +68,16 @@
         "ms": 34401,
         "c": "open",
         "s": "JOs-bOwq4f_4"
-      },
-      {
-        "n": "iulius",
-        "ms": 34434,
-        "c": "open",
-        "num": 22,
-        "s": "uXfgCe91DpgD"
-      },
-      {
-        "n": "DEVIOUSOWEN4",
-        "ms": 34436,
-        "c": "open",
-        "s": "PCvfZ_-RcZd0"
       }
     ],
     "1": [
+      {
+        "n": "speewandker",
+        "ms": 37313,
+        "c": "open",
+        "num": 8,
+        "s": "FiGx0L5WCeIc"
+      },
       {
         "n": "DeviousOwenJ",
         "ms": 38167,
@@ -76,10 +85,11 @@
         "s": "jZACjYjCWeax"
       },
       {
-        "n": "speewandker",
-        "ms": 38296,
+        "n": "JacksonP",
+        "ms": 40001,
         "c": "open",
-        "s": "IGOVui_zeBm6"
+        "num": 59,
+        "s": "Qi_s7FLN7oRj"
       },
       {
         "n": "TheBearKing",
@@ -96,9 +106,11 @@
         "s": "xFjauwjqlA3m"
       },
       {
-        "n": "JacksonP",
-        "ms": 44033,
-        "c": "open"
+        "n": "dew",
+        "ms": 42967,
+        "c": "open",
+        "num": 40,
+        "s": "s-9tTLoPoGMk"
       },
       {
         "n": "BigLouis",
@@ -123,19 +135,22 @@
         "ms": 46534,
         "c": "open",
         "s": "kskWQUpvl4WK"
-      },
-      {
-        "n": "Yo",
-        "ms": 48166,
-        "c": "open",
-        "s": "qlA4DEl5mDq6"
       }
     ],
     "2": [
       {
+        "n": "Luca",
+        "ms": 33901,
+        "c": "open",
+        "num": 39,
+        "s": "Qp8MneE1-dcd"
+      },
+      {
         "n": "JacksonP",
-        "ms": 37811,
-        "c": "open"
+        "ms": 34360,
+        "c": "open",
+        "num": 69,
+        "s": "V9l85EUeZ-aX"
       },
       {
         "n": "DEVIOUSOWENJ",
@@ -180,16 +195,11 @@
         "s": "zQQ2UklVCosx"
       },
       {
-        "n": "hi",
-        "ms": 40519,
+        "n": "HarryR",
+        "ms": 40501,
         "c": "open",
-        "s": "unKl9EfXDCyx"
-      },
-      {
-        "n": "Harry",
-        "ms": 40734,
-        "c": "open",
-        "s": "bdryB57bEhVS"
+        "num": 1,
+        "s": "cgGaOfo97u_z"
       }
     ],
     "3": [
@@ -263,11 +273,11 @@
         "s": "z2lvYjfPvy_3"
       },
       {
-        "n": "DEVIOUSOWENJ",
-        "ms": 30968,
+        "n": "DeviousOwenJ",
+        "ms": 30504,
         "c": "open",
-        "num": 58,
-        "s": "D9bPNwohKEx0"
+        "num": 1,
+        "s": "m80H1UX_Ox4n"
       },
       {
         "n": "speewandker",
@@ -295,28 +305,30 @@
         "s": "ahKy8KmpYrhd"
       },
       {
+        "n": "Barangaroo",
+        "ms": 34018,
+        "c": "open",
+        "num": 52,
+        "s": "TuQOVwURKXiJ"
+      },
+      {
         "n": "BigLouis",
         "ms": 34135,
         "c": "open",
         "s": "jotZHjcYHND-"
       },
       {
+        "n": "HarryR",
+        "ms": 34367,
+        "c": "open",
+        "num": 1,
+        "s": "y7_VJbkLkodg"
+      },
+      {
         "n": "dew",
         "ms": 34800,
         "c": "open",
         "s": "jtDvPt8lYnSK"
-      },
-      {
-        "n": "rocco",
-        "ms": 34826,
-        "c": "open",
-        "s": "WnAmaKpya1WY"
-      },
-      {
-        "n": "hi",
-        "ms": 34990,
-        "c": "open",
-        "s": "zn9MYGdOuiMs"
       }
     ],
     "5": [
@@ -329,10 +341,17 @@
       },
       {
         "n": "JacksonP",
-        "ms": 36400,
+        "ms": 36163,
         "c": "open",
-        "num": 88,
-        "s": "fF0jy9orJaf2"
+        "num": 69,
+        "s": "zsyZTTHmKJRI"
+      },
+      {
+        "n": "dew",
+        "ms": 36248,
+        "c": "open",
+        "num": 54,
+        "s": "ekmZhgYEU0C3"
       },
       {
         "n": "oj",
@@ -342,6 +361,20 @@
         "s": "peUtWPIVICtb"
       },
       {
+        "n": "rocco",
+        "ms": 37889,
+        "c": "open",
+        "num": 30,
+        "s": "72EEPq_0zB8g"
+      },
+      {
+        "n": "eddie",
+        "ms": 38102,
+        "c": "open",
+        "num": 96,
+        "s": "Li-glGRCBQXR"
+      },
+      {
         "n": "DEVIOUSOWENJ",
         "ms": 38205,
         "c": "open",
@@ -349,10 +382,10 @@
       },
       {
         "n": "Patrick",
-        "ms": 38533,
+        "ms": 38517,
         "c": "open",
-        "num": 11,
-        "s": "UHcMSLk_ujhM"
+        "num": 5,
+        "s": "78H-YKXMOpAX"
       },
       {
         "n": "iulius",
@@ -366,24 +399,136 @@
         "ms": 39134,
         "c": "open",
         "s": "885eqy5TLU_Y"
+      }
+    ],
+    "6": [
+      {
+        "n": "Luca",
+        "ms": 38435,
+        "c": "open",
+        "num": 10,
+        "s": "hpGnjF4v6UfO"
+      },
+      {
+        "n": "JacksonP",
+        "ms": 40667,
+        "c": "open",
+        "num": 69,
+        "s": "JRnk5lry9Azz"
+      },
+      {
+        "n": "HarryR",
+        "ms": 42517,
+        "c": "open",
+        "num": 1,
+        "s": "An30sJzLLOHb"
+      },
+      {
+        "n": "DeviousOwenJ",
+        "ms": 42800,
+        "c": "open",
+        "num": 1,
+        "s": "X1Vjj0DQjS2m"
       },
       {
         "n": "hi",
-        "ms": 39281,
+        "ms": 42914,
         "c": "open",
-        "s": "hefPirWDpnIZ"
+        "num": 29,
+        "s": "_DYzEShn7eKg"
       },
       {
-        "n": "ali",
-        "ms": 39377,
+        "n": "Daddy Sholl",
+        "ms": 43118,
         "c": "open",
-        "s": "x2PHRhAqLjIN"
+        "num": 69,
+        "s": "W-A3WPWHwgXo"
       },
       {
-        "n": "rocco",
-        "ms": 39378,
+        "n": "Hugorunning",
+        "ms": 43486,
         "c": "open",
-        "s": "bO9mU16kaP7o"
+        "num": 14,
+        "s": "cBHJNwUpth9F"
+      },
+      {
+        "n": "BigLouis",
+        "ms": 45694,
+        "c": "open",
+        "num": 18,
+        "s": "Gn3jAoXQNiuh"
+      },
+      {
+        "n": "a",
+        "ms": 51345,
+        "c": "open",
+        "num": 80,
+        "s": "AXmqpqve5BJf"
+      },
+      {
+        "n": "Patrick",
+        "ms": 56396,
+        "c": "open",
+        "num": 5,
+        "s": "l4O8fyNy2yvL"
+      }
+    ],
+    "7": [
+      {
+        "n": "JacksonP",
+        "ms": 33283,
+        "c": "open",
+        "num": 69,
+        "s": "4XZpMRn5NChJ"
+      },
+      {
+        "n": "Luca",
+        "ms": 33450,
+        "c": "open",
+        "num": 68,
+        "s": "W7BJOoOLE5C2"
+      },
+      {
+        "n": "zac",
+        "ms": 33755,
+        "c": "open",
+        "num": 11,
+        "s": "sqLy26MVDvWA"
+      },
+      {
+        "n": "Patrick",
+        "ms": 33783,
+        "c": "open",
+        "num": 5,
+        "s": "ANi1vxId-nXj"
+      },
+      {
+        "n": "HarryR",
+        "ms": 34850,
+        "c": "open",
+        "num": 1,
+        "s": "0rEvphLYjy_k"
+      },
+      {
+        "n": "DeviousOwenJ",
+        "ms": 36117,
+        "c": "open",
+        "num": 1,
+        "s": "eFxf2myjcsAz"
+      },
+      {
+        "n": "hi",
+        "ms": 36435,
+        "c": "open",
+        "num": 69,
+        "s": "xEJeio98esDd"
+      },
+      {
+        "n": "BigLouis",
+        "ms": 37183,
+        "c": "open",
+        "num": 18,
+        "s": "AAJFubipXbhv"
       }
     ]
   },
@@ -412,9 +557,9 @@
         "s": "PS76bZLpt2Ym"
       },
       {
-        "n": "DeviousOwenJ",
-        "ms": 13800,
-        "s": "cyL5CpRyTqyO"
+        "n": "speewandker",
+        "ms": 13619,
+        "s": "xrH8KRWTArQp"
       },
       {
         "n": "DEVIOUSOWENJ",
@@ -429,14 +574,14 @@
         "s": "E2DMb2as94XV"
       },
       {
-        "n": "LucaC",
-        "ms": 11683,
-        "s": "fxTUvRbn0TTP"
+        "n": "Luca",
+        "ms": 11250,
+        "s": "la_KWEadlqJL"
       },
       {
-        "n": "LucaC",
-        "ms": 12268,
-        "s": "V8ZJU1WLC09N"
+        "n": "Luca",
+        "ms": 11415,
+        "s": "ohtQX8Q8rtsq"
       }
     ],
     "3": [
@@ -458,19 +603,19 @@
     ],
     "4": [
       {
-        "n": "iulius",
-        "ms": 8995,
-        "s": "mxdNonoT81pu"
+        "n": "Barangaroo",
+        "ms": 8684,
+        "s": "LAJchKxuQawp"
       },
       {
-        "n": "DEVIOUSOWENJ",
-        "ms": 10789,
-        "s": "n0XXERp8DIja"
+        "n": "DeviousOwenJ",
+        "ms": 10594,
+        "s": "tI_azkqqtLFV"
       },
       {
-        "n": "DEVIOUSOWENJ",
-        "ms": 10573,
-        "s": "KLBF7G4U9JSU"
+        "n": "DeviousOwenJ",
+        "ms": 10510,
+        "s": "uXZn1_IPC5Pz"
       }
     ],
     "5": [
@@ -480,14 +625,48 @@
         "s": "yyjj5RPXo1X5"
       },
       {
-        "n": "LucaC",
-        "ms": 12599,
-        "s": "Zqp3dif6aN7h"
+        "n": "dew",
+        "ms": 12301,
+        "s": "XcFrYBA08PgP"
       },
       {
         "n": "LucaC",
         "ms": 11934,
         "s": "9e0pB_vg_IAx"
+      }
+    ],
+    "6": [
+      {
+        "n": "Luca",
+        "ms": 11449,
+        "s": "LVqFuocgb58C"
+      },
+      {
+        "n": "Luca",
+        "ms": 15317,
+        "s": "Fp-P5nbzfxu7"
+      },
+      {
+        "n": "Luca",
+        "ms": 11434,
+        "s": "nIEkQ9ptcmgD"
+      }
+    ],
+    "7": [
+      {
+        "n": "JacksonP",
+        "ms": 9950,
+        "s": "zi5ZY4eDpvyG"
+      },
+      {
+        "n": "Luca",
+        "ms": 12583,
+        "s": "3C9eDnVAnWkG"
+      },
+      {
+        "n": "Luca",
+        "ms": 10450,
+        "s": "RAgTRFgL6n3x"
       }
     ]
   }
