@@ -1882,6 +1882,7 @@ function buildProps(track) {
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(52.1, 0.32, 0.44), lam(0xe6453a)); stripe.position.set(0, 0.86, 2); pit.add(stripe); // top 2 cm above the wall's
       put(pit, spot, hw + 8);
       wallRect(pit, -26.5, 26.5, -10.6, 2.3);
+      track.pitWall = { i: spot.i, side: spot.side, lat: hw + 6, half: 26, top: spot.y + 1.02 }; // (for a track whose own barriers join it: Rose Bay's)
       // sponsors' banners along the pit wall, under its red stripe: a proper barrier, and the place for them on a circuit
       // (not where street walls stand in front of it, as at Sydney CBD: those carry their own)
       if (!track.def.walls) for (let k = 0; k < 6; k++) { const x = -20 + k * 8, a = toWorld(pit, x - 1.6, 0, 2.3), b = toWorld(pit, x + 1.6, 0, 2.3), t = toWorld(pit, x, 0, 30); addBanner(k, a, b, 0.07, 0.67, 0, 1, t.x, t.z); }
@@ -3483,6 +3484,11 @@ function buildScenery(track) {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(7.1, 7.1, 2.6, 8), lam(c2)); g.add(band);
     const skirt = new THREE.Mesh(new THREE.ConeGeometry(4.2, 5, 8, 1, true), lam(c1)); skirt.rotation.x = Math.PI; skirt.position.y = -8.2; g.add(skirt);
     const basket = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.8), lam(0x7a4a2a)); basket.position.y = -12.5; g.add(basket);
+    // The basket hangs from the envelope: four ropes from its corners up to the skirt, and the burner between them.
+    // (There used to be nothing joining the two: a balloon, and a box floating a metre under it.)
+    const rope = lam(0x3b2a1e);
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) g.add(strut(V(sx * 0.8, -11.9, sz * 0.8), V(sx * 1.9, -7.6, sz * 1.9), 0.22, 0.22, rope));
+    const burner = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.7), lam(0x8d93a0)); burner.position.y = -10.6; g.add(burner);
     g.userData.dyn = true; mergeStatic(g);
     worldGroup.add(g);
     const a0 = rnd() * 6.28, r = spread * (0.2 + 0.12 * k), h = 55 + k * 14, ph = rnd() * 6;
@@ -4220,6 +4226,7 @@ function buildRoseBay(track, rnd, randIn) {
   const along = (i) => { const s = samples[wrap(i)]; return Math.atan2(s.th.x, s.th.z); };
   const people = makePeople(200, rnd);
   const quads = { pos: [], col: [] }, C = (hex) => new THREE.Color(hex); // every flat-coloured strip, in one mesh
+  const wires = { pos: [], col: [] }; // the catch fences' posts and wires: a mesh of their own, which casts no shadow (a wire's would only flicker)
   const PAVE = -0.2; // paving lies this far under the road's own level: just over the ground beside it
   // a strip beside the road from sample i to the next: from lat0 (at y0 above the road) across to lat1 (at y1)
   const ribbon = (i, sd, lat0, lat1, y0, y1, color) => {
@@ -4629,6 +4636,111 @@ function buildRoseBay(track, rnd, randIn) {
     for (const lx of [-half, half]) { const [x, z] = W(g, lx, 0); claim(x, z, 1.5); solids.push({ x, z, r: 0.5, y: s.p.y }); }
   }
 
+  // ---- Race barriers, the kind Westfield has: a block with a wire catch fence on top and the crowd behind it.
+  // Here the block is the bay's sandstone, like the harbour wall, whose line it carries on. The owner asked for
+  // more of them at Rose Bay, so they line the straights that had nothing beside them: the land side of the
+  // start straight (run in to the pit wall at each end, which carries the fence past the garages), the outside
+  // of Heartbreak Hill, both sides of the straight along the top and of the shops' street, and the shops' side
+  // of the hill down, run in to the tunnel's wall. Corners keep their rails: a barrier overlaps the rail it
+  // meets by a few metres, so neither looks cut off. The water and the lookout keep their view. Behind the
+  // barriers on the grass the crowd stands on two stone steps, to see over the block (and be seen over it). ----
+  {
+    const STONE = C(0xcdb88a), COPE = C(0xb9a878), STEEL = C(0x8d93a0), TREAD = C(0xd9d2c0), RISER = C(0xbfb394);
+    const TH = 0.5, FACE = hw + 2.7 - TH / 2, TOP = 1.0, RUN = 6, rndC = mulberry32(6102); // (its middle is on the harbour wall's line, hw + 2.7)
+    const fans = makePeople(900, rndC); // the crowd behind them: a set of its own with its own random numbers, so the rest of the bay stays where it was
+    const pt = (i, sd, lat, h) => { const a = samples[wrap(i)]; return V(a.p.x + a.left.x * sd * lat, a.p.y + h, a.p.z + a.left.z * sd * lat); };
+    const part = (i, f, sd, lat, h) => pt(i, sd, lat, h).lerp(pt(i + 1, sd, lat, h), f); // f of the way on from sample i to the next
+    // a strip from sample i to sample i + m: one edge `a` metres out at height y0 (b at the far end), the other a1 out at y1 (b1 at the far end)
+    const strip = (Q, i, m, sd, a, b, a1, b1, y0, y1, color) => pushQuad(Q.pos, Q.col, pt(i, sd, a, y0), pt(i + m, sd, b, y0), pt(i + m, sd, b1, y1), pt(i, sd, a1, y1), color);
+    const post = (i, sd, lat, y0) => {
+      const a = samples[wrap(i)], x = a.p.x + a.left.x * sd * lat, z = a.p.z + a.left.z * sd * lat, r = 0.05;
+      const c = [[-r, -r], [r, -r], [r, r], [-r, r]].map(([u, v]) => [x + a.th.x * u + a.left.x * v, z + a.th.z * u + a.left.z * v]);
+      for (let k = 0; k < 4; k++) { const [ax, az] = c[k], [bx, bz] = c[(k + 1) % 4]; pushQuad(wires.pos, wires.col, V(ax, a.p.y + y0, az), V(bx, a.p.y + y0, bz), V(bx, a.p.y + 3.56, bz), V(ax, a.p.y + 3.56, az), STEEL); }
+    };
+    // What already stands behind where a barrier goes, sample by sample and side by side (braking boards, light
+    // poles, marshals' stands, the spectators' own fences, grandstands): the crowd's steps keep clear of it all.
+    const taken = { 1: new Uint8Array(N), [-1]: new Uint8Array(N) }, stood = { 1: new Uint8Array(N), [-1]: new Uint8Array(N) }; // (stood: just the things with a foot on the ground there, which people on a footpath step round)
+    const mark = (map, x, z, r, y, far) => {
+      const i = nearestI(x, z), a = samples[i], lat = (x - a.p.x) * a.left.x + (z - a.p.z) * a.left.z, d = Math.abs(lat) - hw, n = Math.ceil(r / 1.5) + 1;
+      if (Math.abs(y - a.p.y) < 4 && d + r > 3.3 && d - r < far) for (let k = -n; k <= n; k++) map[lat > 0 ? 1 : -1][wrap(i + k)] = 1;
+    };
+    for (const c of solids) { mark(taken, c.x, c.z, c.r, c.y ?? 0, 7.4); mark(stood, c.x, c.z, c.r, c.y ?? 0, 7.4); }
+    for (const w of walls) { const n = Math.max(1, Math.ceil(Math.hypot(w.bx - w.ax, w.bz - w.az) / 1.5)); for (let k = 0; k <= n; k++) mark(taken, w.ax + ((w.bx - w.ax) * k) / n, w.az + ((w.bz - w.az) * k) / n, 0.3, w.y ?? 0, 9.2); }
+    let nb = 0;
+    // A barrier from sample i0 to i1 on side sd, in bays of three samples (4.5 m): a post at each end of a bay.
+    // from/to: how far out its face is at each end, where it runs in to meet something (the pit wall, the tunnel)
+    // over its first or last RUN samples. block: false is the fence alone, standing on a wall that's already
+    // there (its top `foot` above the road). crowd: 'steps' on grass, 'path' where there's a footpath behind
+    // (out to `deep`), or none.
+    const barrier = (i0, i1, sd, { from, to, lat = FACE, block = true, foot = TOP, crowd = 'steps', deep = 0 } = {}) => {
+      const n = i1 - i0, o = (j) => (from != null && j < RUN ? from + ((lat - from) * j) / RUN : to != null && j > n - RUN ? to + ((lat - to) * (n - j)) / RUN : lat), mid = TH / 2;
+      for (let j = 0; j < n; j += 3) {
+        const i = i0 + j, m = Math.min(3, n - j), a = o(j), b = o(j + m);
+        if (block) {
+          strip(quads, i, m, sd, a, b, a, b, -0.6, TOP, STONE); strip(quads, i, m, sd, a + TH, b + TH, a + TH, b + TH, -0.6, TOP, STONE);                                  // its two faces
+          strip(quads, i, m, sd, a - 0.07, b - 0.07, a - 0.07, b - 0.07, TOP - 0.12, TOP, COPE); strip(quads, i, m, sd, a + TH + 0.07, b + TH + 0.07, a + TH + 0.07, b + TH + 0.07, TOP - 0.12, TOP, COPE); // the coping's edges
+          strip(quads, i, m, sd, a - 0.07, b - 0.07, a + TH + 0.07, b + TH + 0.07, TOP, TOP, COPE);                                                                          // and its top
+          const p = pt(i, sd, a + mid, 0), q = pt(i + m, sd, b + mid, 0); walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 });
+        }
+        for (const h of [1.5, 2.0, 2.5, 3.0]) strip(wires, i, m, sd, a + mid, b + mid, a + mid, b + mid, h, h + 0.04, STEEL); // the catch fence: four wires
+        strip(wires, i, m, sd, a + mid, b + mid, a + mid, b + mid, 3.46, 3.54, STEEL);                                            // and a rail along the top
+        post(i, sd, a + mid, foot);
+      }
+      post(i1, sd, o(n) + mid, foot);
+      if (!block) return;
+      for (const j of [0, n]) { const q = pt(i0 + j, sd, o(j) + mid, 0); box(worldGroup, 0.66, 1.9, 0.66, 0xcdb88a, q.x, q.y + 0.35, q.z); } // a pier at each end, like the harbour wall's
+      // a sponsor's banner every 40 m or so, on the road side (not where it runs in at an end, nor behind a gate's post)
+      for (let j = 12; j + 3 <= n - 8; j += 27) {
+        if (track.cps.some((c) => Math.abs(((i0 + j + 1 - c) % N + N + N / 2) % N - N / 2) < 5)) continue;
+        for (let k = 0; k < 3; k++) { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, k / 3, (k + 1) / 3, a.p.x, a.p.z); }
+        nb++;
+      }
+      if (crowd === 'path') { // people along the footpath behind it
+        for (let j = RUN; j < n - RUN; j++) if (rndC() < 0.45 && !stood[sd][wrap(i0 + j)]) { const q = part(i0 + j, rndC(), sd, lat + TH + 0.7 + rndC() * (deep - lat - TH - 0.7), PAVE + 0.02); fans.add(q.x, q.y, q.z, facing(i0 + j, sd) + (rndC() - 0.5) * 0.9); }
+        return;
+      }
+      if (crowd !== 'steps') return;
+      // the crowd's steps, wherever there's room for a length of them: two, each 1.4 m deep and half a metre up
+      const S0 = lat + TH + 0.9, D = 1.4, room = (j) => j >= RUN && j <= n - RUN && !taken[sd][wrap(i0 + j)];
+      for (let j = 0; j < n;) {
+        if (!room(j)) { j++; continue; }
+        let e = j; while (e - j < 24 && room(e + 1)) e++;
+        if (e - j >= 6) {
+          const a = i0 + j, b = i0 + e;
+          for (let i = a; i < b; i += 3) {
+            const m = Math.min(3, b - i);
+            for (const k of [0, 1]) { const l = S0 + k * D, h = 0.5 * (k + 1); strip(quads, i, m, sd, l, l, l, l, k ? h - 0.5 : -0.7, h, RISER); strip(quads, i, m, sd, l, l, l + D, l + D, h, h, TREAD); }
+            strip(quads, i, m, sd, S0 + 2 * D, S0 + 2 * D, S0 + 2 * D, S0 + 2 * D, -0.7, 1.0, RISER);                                              // the back
+          }
+          for (let i = a; i < b; i++) for (const k of [0, 1]) for (const chance of [0.9, 0.35]) if (rndC() < chance) { const q = part(i, rndC(), sd, S0 + k * D + 0.35 + rndC() * 0.7, 0.5 * (k + 1)); fans.add(q.x, q.y, q.z, facing(i, sd) + (rndC() - 0.5) * 0.5); }
+          for (const i of [a, b]) { // the two ends, and all of it solid from behind
+            pushQuad(quads.pos, quads.col, pt(i, sd, S0, -0.7), pt(i, sd, S0 + D, -0.7), pt(i, sd, S0 + D, 0.5), pt(i, sd, S0, 0.5), RISER);
+            pushQuad(quads.pos, quads.col, pt(i, sd, S0 + D, -0.7), pt(i, sd, S0 + 2 * D, -0.7), pt(i, sd, S0 + 2 * D, 1.0), pt(i, sd, S0 + D, 1.0), RISER);
+            const p = pt(i, sd, S0, 0), q = pt(i, sd, S0 + 2 * D, 0); walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: p.y });
+          }
+          for (let i = a; i < b; i += 3) { const p = pt(i, sd, S0 + 2 * D, 0), q = pt(Math.min(i + 3, b), sd, S0 + 2 * D, 0); walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 }); }
+        }
+        j = e + 5; // (a gap before the next length)
+      }
+    };
+    // the start straight's land side: out of the chicane, in to the pit wall, the fence along the top of that, and on to the first corner
+    const pit = track.pitWall && track.pitWall.side === -1 ? track.pitWall : null, T1 = N + 113, CH = 992;
+    if (pit) {
+      const pi = pit.i < N / 2 ? pit.i + N : pit.i, half = Math.floor(pit.half / 1.5), PL = pit.lat - TH / 2;
+      barrier(CH, pi - half, -1, { to: PL });
+      barrier(pi - half, pi + half, -1, { lat: PL, block: false, foot: pit.top - samples[wrap(pi)].p.y });
+      barrier(pi + half, T1, -1, { from: PL });
+    } else barrier(CH, T1, -1);
+    barrier(153, 288, 1);                                   // up Heartbreak Hill, on from the end of the harbour wall
+    // along the top: the inside whole, the outside in three lengths with two ways through (Race to 9LAT2 leaves the road here, and there's the fairground beyond)
+    barrier(322, 476, -1);
+    barrier(309, 388, 1); barrier(396, 446, 1); barrier(454, 487, 1);
+    // the shops' street, both footpaths, and the shops' side of the hill down, in to the tunnel's wall
+    barrier(609, 768, -1, { crowd: 'path', deep: FRONT - 2.6 }); barrier(622, 771, 1, { crowd: 'path', deep: FRONT - 2.6 });
+    barrier(806, t0, -1, { to: TUN - TH / 2, crowd: 'path', deep: hw + 6.4 });
+    fans.finish();
+  }
+
   // ---- the convent school at the top of the hill: sandstone, with a tower ----
   {
     const i = nearestI(262, 224), sd = [1, -1].reduce((a, b) => (roadGap(track, ...P(i, a * (hw + 44))) > roadGap(track, ...P(i, b * (hw + 44))) ? a : b));
@@ -4783,6 +4895,7 @@ function buildRoseBay(track, rnd, randIn) {
     houses.count = nh; flats.count = nfl; houses.castShadow = flats.castShadow = false; worldGroup.add(houses, flats);
   }
 
+  if (wires.pos.length) { const m = flatMesh(wires.pos, wires.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })); m.userData.dyn = true; worldGroup.add(m); } // (kept apart from the merged scenery, which casts shadows)
   // everything flat-coloured, in one mesh
   if (quads.pos.length) {
     const m = flatMesh(quads.pos, quads.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
