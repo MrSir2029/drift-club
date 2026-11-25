@@ -699,6 +699,7 @@ function renderSettings() {
   document.querySelectorAll('#seg-map button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.expanded));
   document.querySelectorAll('#seg-sound button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === audio.on));
   document.querySelectorAll('#seg-recghost button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.recGhostOn));
+  document.querySelectorAll('#seg-cam button').forEach(b => b.classList.toggle('on', b.dataset.v === app.camMode));
   const pct = Math.round(audio.vol * 100);
   $('#vol').value = pct; $('#vol-val').textContent = pct + '%';
 }
@@ -1261,12 +1262,26 @@ function unpackPath(p) {
 // server keeps how each leaderboard lap was driven (laps set since 3.34) and sends it when asked.
 function wantRecordGhost() {
   if (!app.room || app.mode !== 'quali' || !app.recGhostOn) return;
-  const top = boardList(app.trackId)[0];
-  const key = top && top.g ? `${app.trackId}|${top.n}|${top.ms}` : null;
-  if (!key) { app.recLap = null; app.recKey = null; return; }
+  // the lap to chase: the fastest on the track's board that the server has the path of (the record itself, once
+  // it has been set since ghosts came in; until then, the best lap that has one)
+  const list = boardList(app.trackId), at = list.findIndex((e) => e.g), top = at >= 0 ? list[at] : null;
+  const key = top ? `${app.trackId}|${top.n}|${top.ms}` : null;
+  if (!key) { app.recLap = null; app.recKey = null; ghostButton(); return; }
   if (key === app.recKey) return;
-  app.recKey = key; app.recLap = null;
+  app.recKey = key; app.recLap = null; app.recPlace = at + 1; app.recCar = top.c;
   send({ t: 'path', k: String(app.trackId), n: top.n });
+}
+// the ghost on or off: from Settings, or from the pause menu in Polytrack mode
+function setRecGhost(on) {
+  app.recGhostOn = !!on;
+  try { localStorage.setItem('dc-recghost', app.recGhostOn ? 'on' : 'off'); } catch {}
+  if (!app.recGhostOn) { app.recLap = null; app.recKey = null; }
+  renderSettings(); wantRecordGhost(); ghostButton();
+}
+// what the pause menu's button says: whose ghost it is, or that this track has none yet
+function ghostButton() {
+  const b = $('#btn-recghost'), who = app.recLap && app.recWho;
+  if (b) b.textContent = !app.recGhostOn ? "Record holder's ghost: off" : who ? `Ghost on: ${who.name}  ${fmtTime(who.ms)}` : "Record holder's ghost: on (no lap here has one yet)";
 }
 function onPath(msg) {
   if (typeof msg.k !== 'string' || typeof msg.n !== 'string') return;
@@ -1276,14 +1291,18 @@ function onPath(msg) {
     // where each sample is on this track: the road's height there (the path only has x and z) and how far round the lap
     let hint = 0, y = app.track.samples[0].p.y;
     app.recLap = pts.map((q) => { const loc = locate(app.track, { x: q.x, y, z: q.z }, hint, 60); if (loc) { hint = loc.i; y = loc.y; } return { ...q, y, i: hint }; });
-    app.recWho = { name: msg.n, ms: msg.ms, c: (boardList(app.trackId)[0] || {}).c };
+    app.recWho = { name: msg.n, ms: msg.ms, c: app.recCar, place: app.recPlace };
     if (app.recGhost) { carsGroup.remove(app.recGhost.group); disposeTree(app.recGhost.group); app.recGhost = null; }
-    app.recI = 0;
+    app.recI = 0; ghostButton();
+    // say so (after the start's own message, if that's still up): a gold car you weren't told about is easy to miss
+    const who = app.recWho, text = who.place === 1 ? `Chasing the record: ${who.name}  ${fmtTime(who.ms)}` : `Chasing ${who.name}  ${fmtTime(who.ms)}, the fastest lap with a ghost`;
+    setTimeout(() => { if (app.recLap && app.recWho === who && inRace() && app.mode === 'quali') raceToast(text, 3500); }, Math.max(0, 4300 - (performance.now() - raceStartPerf())));
   }
 }
 function updateRecGhost(now) {
   const car = app.local, lap = app.recLap;
   const on = car && lap && app.recGhostOn && app.mode === 'quali' && app.phase === 'racing';
+  app.recOn = false; // set below once the ghost has a place on the lap (the minimap shows it then)
   if (!on) { if (app.recGhost) app.recGhost.group.visible = false; return; }
   if (!app.recGhost) {
     const who = app.recWho || {};
@@ -1302,6 +1321,7 @@ function updateRecGhost(now) {
   const u = clamp((t - a.t) / (b.t - a.t), 0, 1);
   g.position.set(lerp(a.x, b.x, u), lerp(a.y, b.y, u) + 0.02, lerp(a.z, b.z, u));
   g.rotation.set(0, lerpAngle(a.h, b.h, u), 0);
+  app.recOn = true;
   g.visible = (g.position.x - car.pos.x) ** 2 + (g.position.z - car.pos.z) ** 2 > 9; // not when it's sitting on top of you
 }
 // ---- a lap's line, from the leaderboard: the track from above with the lap drawn on it, red where it's slow
@@ -6190,8 +6210,7 @@ function setCarClass(cls) {
   PHYS.maxSpeed = CAR.topSpeed;
   cockpitEye.set(...CAR.eye);
   audio.gear = 0;
-  app.camMode = camFor(cls);
-  const b = document.querySelector('#btn-cam'); if (b) b.textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
+  app.camMode = app.camPref || camFor(cls); // (the camera picked in Settings or with its key, or else the one that suits the car)
 }
 
 function tyreForce(surf, Fz, alpha) {
@@ -6690,7 +6709,8 @@ const faceForward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,
 // outside behind the car in the others. C switches for the rest of that race.
 const CAM_DEFAULT = { open: 'cockpit', rally: 'chase', camry: 'chase' };
 const camFor = (cls) => CAM_DEFAULT[cls] || 'chase';
-app.camMode = camFor('open');
+try { const c = localStorage.getItem('dc-cam'); app.camPref = c === 'cockpit' || c === 'chase' ? c : null; } catch { app.camPref = null; } // the camera you chose, if you ever did
+app.camMode = app.camPref || camFor('open');
 const camPos = new THREE.Vector3();
 const _ce = new THREE.Euler(), _cq = new THREE.Quaternion();
 let camInit = false;
@@ -7340,14 +7360,18 @@ function setMenu(open) {
   if (open) {
     const poly = app.mode === 'quali' && app.phase === 'racing';
     $('#btn-restart').classList.toggle('hidden', !poly);
+    $('#btn-recghost').classList.toggle('hidden', !poly); ghostButton();
     $('#pause-hint').textContent = `Esc menu · ${keyOf('cam')} camera · ${keyOf('mute')} sound · ${keyOf('reset')} reset to last gate${poly ? ` · ${keyOf('restart')} restart your run` : ''}`;
   }
 }
-function toggleCamera() {
-  app.camMode = app.camMode === 'cockpit' ? 'chase' : 'cockpit';
-  $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
+// The camera: chosen in Settings, or swapped with its key. Your choice is remembered, for every car.
+function setCamera(mode) {
+  app.camMode = app.camPref = mode === 'cockpit' ? 'cockpit' : 'chase';
+  try { localStorage.setItem('dc-cam', app.camMode); } catch {}
+  renderSettings();
   if (inRace()) raceToast(app.camMode === 'cockpit' ? 'Cockpit camera' : 'Chase camera', 1200);
 }
+function toggleCamera() { setCamera(app.camMode === 'cockpit' ? 'chase' : 'cockpit'); }
 
 function goHome() {
   endPodium(false);
@@ -7577,8 +7601,7 @@ function wireUI() {
   $('#btn-resume').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); });
   $('#btn-restart').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(false); restartRun(); });
   $('#btn-quit').addEventListener('click', () => { send({ t: 'leave' }); goHome(); });
-  $('#btn-cam').addEventListener('click', (e) => { e.currentTarget.blur(); toggleCamera(); });
-  $('#btn-cam').textContent = app.camMode === 'cockpit' ? 'Camera: cockpit' : 'Camera: chase';
+  $('#btn-recghost').addEventListener('click', (e) => { e.currentTarget.blur(); setRecGhost(!app.recGhostOn); });
   // settings: graphics and the expanded map
   const openSettings = (e) => { e?.currentTarget?.blur?.(); $('#map-note').textContent = ''; renderSettings(); $('#settings').classList.remove('hidden'); };
   for (const id of ['#btn-settings', '#btn-settings-lobby', '#btn-settings-pause']) $(id).addEventListener('click', openSettings);
@@ -7622,11 +7645,8 @@ function wireUI() {
   $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').classList.add('hidden'); });
   document.querySelectorAll('#seg-gfx button').forEach(b => b.addEventListener('click', () => setGfxMode(b.dataset.v)));
   document.querySelectorAll('#seg-map button').forEach(b => b.addEventListener('click', () => setExpanded(b.dataset.v === 'on')));
-  document.querySelectorAll('#seg-recghost button').forEach(b => b.addEventListener('click', () => {
-    app.recGhostOn = b.dataset.v === 'on';
-    try { localStorage.setItem('dc-recghost', app.recGhostOn ? 'on' : 'off'); } catch {}
-    renderSettings(); wantRecordGhost();
-  }));
+  document.querySelectorAll('#seg-recghost button').forEach(b => b.addEventListener('click', () => setRecGhost(b.dataset.v === 'on')));
+  document.querySelectorAll('#seg-cam button').forEach(b => b.addEventListener('click', () => setCamera(b.dataset.v)));
   // laps (host only)
   const setLaps = (e, d) => { e.currentTarget.blur(); if (app.room?.hostId === app.myId) send({ t: 'laps', laps: (app.room.laps || 3) + d }); };
   $('#laps-minus').addEventListener('click', (e) => setLaps(e, -1));
@@ -7639,10 +7659,9 @@ function wireUI() {
   $('#board-list').addEventListener('click', (e) => { const b = e.target.closest('.linebtn'); if (b && board.track !== 'champ') askLine(board.track, b.dataset.n); });
   $('#btn-line-close').addEventListener('click', () => $('#lineview').classList.add('hidden'));
   $('#lineview').addEventListener('click', (e) => { if (e.target.id === 'lineview') $('#lineview').classList.add('hidden'); });
-  for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
-    $(id).classList.toggle('hidden', !FEEDBACK_URL);
-    $(id).addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
-  }
+  // feedback: one button, in Settings (it used to be on the home screen and in the pause menu as well)
+  $('#row-feedback').classList.toggle('hidden', !FEEDBACK_URL);
+  $('#btn-feedback').addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
   document.querySelectorAll('#seg-sound button').forEach(b => b.addEventListener('click', () => { initAudio(); setSound(b.dataset.v === 'on'); }));
   $('#vol').addEventListener('input', (e) => { initAudio(); setVolume(+e.target.value); });
@@ -7875,6 +7894,11 @@ function drawMinimap() {
     mmCtx.beginPath(); mmCtx.arc(gp.x * sc + ox, gp.z * sc + oz, 4.5, 0, Math.PI * 2);
     mmCtx.fillStyle = 'rgba(255,255,255,0.6)'; mmCtx.fill(); mmCtx.strokeStyle = '#3d8bff'; mmCtx.lineWidth = 2.5; mmCtx.stroke();
   }
+  if (app.recOn && app.recGhost) { // the record holder's ghost: a gold dot with a dark ring
+    const gp = app.recGhost.group.position;
+    mmCtx.beginPath(); mmCtx.arc(gp.x * sc + ox, gp.z * sc + oz, 4.5, 0, Math.PI * 2);
+    mmCtx.fillStyle = '#ffd23f'; mmCtx.fill(); mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2; mmCtx.stroke();
+  }
   if (app.local) dot(app.local.pos.x, app.local.pos.z, COLOR_CSS[app.color], 6);
 }
 
@@ -8046,7 +8070,7 @@ function renderFrame() {
 // ---------------------------------------------------------------------------
 buildWorld(0);
 wireUI();
-window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; app.rollSlot = rollSlot; // handy for poking at the game from the console
+window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; app.rollSlot = rollSlot; app.wantRecordGhost = wantRecordGhost; // handy for poking at the game from the console
 $('#btn-create').disabled = true; $('#btn-join').disabled = true;
 connect();
 requestAnimationFrame(frame);

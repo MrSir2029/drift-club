@@ -103,9 +103,9 @@ sells them at cost, around $10 a year) and add it to the Worker under
 | Space | handbrake |
 | R | reset to the last gate |
 | Backspace | Polytrack mode: restart your run (back to the grid; the lap clock starts at the line) |
-| C | chase / cockpit camera (every race starts in the cockpit in the open seater, outside in the others) |
+| C | chase / cockpit camera (also in **Settings**; the choice is remembered. Until a player chooses, the open seater starts in the cockpit and the others outside) |
 | M | sound on / off |
-| Esc | menu: resume, restart your run (Polytrack mode), camera, graphics, leave |
+| Esc | menu: resume, restart your run and the record ghost's switch (Polytrack mode), settings, leave |
 
 Players can change any of these but Esc under **Settings → Change keys**
 (up to two keys each; kept in their browser, `ACTIONS` in `game.js`).
@@ -167,9 +167,12 @@ keeps the path of every lap that is on a board (`paths` in `server/core.js`,
 dropped when the lap leaves the board) and marks those laps `g: 1`. Anyone
 can ask for one (`path` message): the leaderboard shows a **line** button on
 those laps, which draws the track from above with the lap on it, red where
-it's slow through to green where it's fast; and in Polytrack mode the lap at
-the top of the track's board drives round with you as a gold see-through car
-with its driver's name and time over it (Settings turns it off). With Upstash
+it's slow through to green where it's fast; and in Polytrack mode the fastest
+lap on the track's board that has a path (the record itself, once it has been
+set since 3.34) drives round with you as a gold see-through car with its
+driver's name and time over it, and as a gold dot on the minimap. A message
+says whose lap it is when it joins. Its switch is in Settings and in the
+Polytrack pause menu, which also says whose ghost it is. With Upstash
 the paths are kept in a hash beside the leaderboard (`drift-club:boards:paths`,
 one field a lap); without it they last until the server restarts. They are
 not in `server/boards.json`, and laps from before 3.34, or set in a race,
@@ -447,12 +450,11 @@ game still works; those visits just aren't counted.
 
 ## Feedback
 
-The **Feedback** button on the home screen and **Send feedback** in the Esc
-menu open a page in a new tab: set `FEEDBACK_URL` at the top of
+**Send feedback** in Settings opens a page in a new tab: set `FEEDBACK_URL` at the top of
 `public/game.js` to its link. A Google Form works well: make one at
 https://forms.google.com with a paragraph question, set it to not collect
 email addresses, and use its share link. Replies show up in the form's
-**Responses** tab. The buttons stay hidden while `FEEDBACK_URL` is empty.
+**Responses** tab. The row stays hidden while `FEEDBACK_URL` is empty.
 
 ## Tips
 

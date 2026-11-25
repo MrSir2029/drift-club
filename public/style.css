@@ -294,9 +294,13 @@ input:focus { border-color: var(--blue); }
 
 .homerow { display: flex; gap: 8px; margin-top: 14px; }
 .homerow .whatsnew { margin-top: 0; flex: 1; }
-.settings { width: min(460px, 100%); display: flex; flex-direction: column; gap: 12px; }
+/* Settings: the short rows sit two to a line, so the panel fits a laptop screen; on a smaller one still it scrolls, so Done is always reachable */
+.settings { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .settings .label { margin: 0; }
-.setrow { display: flex; flex-direction: column; gap: 6px; }
+.setrow { display: flex; flex-direction: column; gap: 5px; flex: none; }
+.setpair { display: flex; gap: 12px; flex: none; }
+.setpair > .setrow { flex: 1 1 0; min-width: 0; } /* (one of a pair that's hidden leaves the other the whole line) */
+.settings #map-note:empty { display: none; }
 .seg { display: flex; border: 3px solid var(--ink); border-radius: 12px; overflow: hidden; }
 .seg button { flex: 1; font: inherit; font-weight: 800; padding: 8px 4px; border: 0; border-left: 3px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; }
 .seg button:first-child { border-left: 0; }

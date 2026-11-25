@@ -64,7 +64,10 @@
   hills read as unfinished.
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
-  opens on the Championship.
+  opens on the Championship. Camera and Feedback live in Settings, not on
+  the home screen or the pause menu (the owner asked), and the record
+  ghost's switch sits near the top of Settings and in the Polytrack pause
+  menu ("too hard to find" where it was, low down in Settings).
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update
