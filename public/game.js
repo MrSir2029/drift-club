@@ -414,10 +414,19 @@ const VERGE_MAX_DROP = 3;   // past this drop there is no skirt: it's a bridge d
 const SEA_SAND = new THREE.Color(0xc9b17c), SEA_DEEP = new THREE.Color(0x1f5d70); // the sea bed: wet sand, and deep water
 const WADE = 0.55;          // out at sea cars wade this deep (the sea bed is too deep to drive on)
 
-// The ground a car rides on: the terrain, or out at sea, wading depth.
-function groundAt(x, z) {
-  const y = terrainHeight(x, z), sea = app.track?.sea;
-  return sea ? Math.max(y, sea.level - WADE) : y;
+// What stands under a spot `y` high: the ground, or the flat roof of one of
+// the track's own buildings (`roofs` in tracks.js, each [x0, z0, x1, z1,
+// height]: Westfield's car park) for anything already up at its level.
+function surfaceAt(def, x, z, y) {
+  let g = terrainHeight(x, z);
+  if (y != null && def?.roofs) for (const r of def.roofs) if (x > r[0] && x < r[2] && z > r[1] && z < r[3] && y > r[4] - 2.5) g = Math.max(g, r[4]);
+  return g;
+}
+// The ground a car rides on: the terrain (or a roof it's already up on), or
+// out at sea, wading depth. Give y to count roofs.
+function groundAt(x, z, y) {
+  const T = app.track, g = surfaceAt(T?.def, x, z, y), sea = T?.sea;
+  return sea ? Math.max(g, sea.level - WADE) : g;
 }
 // is this spot under water? (from the heights before any landmark levelled
 // the ground, so it's the same for every player)
@@ -929,7 +938,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   const edges = samples.map((s) => {
     const L = s.p.clone().addScaledVector(s.left, EDGE), R = s.p.clone().addScaledVector(s.left, -EDGE);
     const Lo = s.p.clone().addScaledVector(s.left, EDGE + VERGE), Ro = s.p.clone().addScaledVector(s.left, -EDGE - VERGE);
-    const gL = terrainHeight(Lo.x, Lo.z), gR = terrainHeight(Ro.x, Ro.z);
+    const gL = surfaceAt(track.def, Lo.x, Lo.z, s.p.y), gR = surfaceAt(track.def, Ro.x, Ro.z, s.p.y); // (the ground, or a roof the road runs across)
     Lo.y = Math.min(s.p.y - 0.25, gL - 0.35); Ro.y = Math.min(s.p.y - 0.25, gR - 0.35); // tuck under the grass
     return { L, R, Lo, Ro, dropL: s.p.y - gL, dropR: s.p.y - gR };
   });
@@ -938,7 +947,6 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   const railMat = new THREE.MeshLambertMaterial({ color: 0xc9ced6, flatShading: true }), railPost = new THREE.BoxGeometry(0.16, 1.1, 0.16);
   const railing = (p, q, i) => {
     track.walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 });
-    if (track.def.walls === 'race') return; // (a race barrier runs along the deck instead: buildStreetWalls)
     for (const h of [0.55, 1.0]) worldGroup.add(strut(V(p.x, p.y + h, p.z), V(q.x, q.y + h, q.z), 0.12, 0.12, railMat));
     if (i % 3 === 0) { const post = new THREE.Mesh(railPost, railMat); post.position.set(p.x, p.y + 0.55, p.z); worldGroup.add(post); }
   };
@@ -957,7 +965,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
       pushQuad(deckPos, deckCol, aL0, bL0, bR0, aR0, underColor);   // underside, faces down
     }
     if (i % 16 === 0) {
-      const ground = terrainHeight(s.p.x, s.p.z), gap = s.p.y - ground;
+      const ground = surfaceAt(track.def, s.p.x, s.p.z, s.p.y), gap = s.p.y - ground;
       if (gap > 3.5 && !roadBelow(track, s)) {
         const pier = new THREE.Mesh(pierGeo, pierMat);
         const tall = gap - DECK + 1.5;                 // sunk 1 m into the ground, tucked into the deck
@@ -1097,6 +1105,7 @@ function roadGap(track, x, z) {
 function isFree(track, x, z, r, roadMargin) {
   if (TERRAIN.wet && wetAt(x, z)) return false; // nothing gets built in the sea
   for (const b of track.def.blocks || []) if (x > b[0] - r && x < b[2] + r && z > b[1] - r && z < b[3] + r) return false; // nor on the track's own buildings
+  if (track.sea?.quay) for (let k = 0; k < 8; k++) if (wetAt(x + Math.cos(k * 0.7854) * 24, z + Math.sin(k * 0.7854) * 24)) return false; // nor on a quay: the track's own scenery looks after its waterfront
   for (const o of occupied) {
     const dx = o.x - x, dz = o.z - z, rr = o.r + r;
     if (dx * dx + dz * dz < rr * rr) return false;
@@ -1723,51 +1732,24 @@ function insideLoop(track, x, z) {
   return inside;
 }
 
-// The banners on a street circuit's race barriers: made-up sponsors, two to a
-// banner, sixteen rows on one sheet.
-const BANNERS = [['DRIFT CLUB', '#1d2230', '#ff8a3d'], ['DINGO DONUTS', '#ff6bcb', '#ffffff'], ['BILBY BURGERS', '#ffd23f', '#3b2a1e'], ['CROC CRISPS', '#2f6b4a', '#ffe9a8'],
-  ['SUNBURNT SODA', '#3d8bff', '#ffffff'], ['ROO RIDES', '#7ed957', '#1d3b1f'], ['TURBO TEA', '#2ec4b6', '#0f2f3a'], ['GALAH GAMES', '#e6453a', '#ffffff'],
-  ['WOMBAT TYRES', '#26303f', '#ffd23f'], ['KOOKABURRA COLA', '#c0392b', '#ffe9a8'], ['QUOKKA OIL', '#ff8a3d', '#1d2230'], ['EMU ENERGY', '#1f6fb5', '#ffffff']];
-function bannerTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 1024;
-  const x = c.getContext('2d'); x.textAlign = 'center'; x.textBaseline = 'middle';
-  BANNERS.forEach(([name, bg, ink], k) => {
-    const y = k * 64;
-    x.fillStyle = bg; x.fillRect(0, y, 1024, 64); x.fillStyle = ink;
-    let size = 46; do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 2; } while (x.measureText(name).width > 440 && size > 16);
-    x.fillText(name, 256, y + 34); x.fillText(name, 768, y + 34);
-    x.globalAlpha = 0.5; x.fillRect(508, y + 14, 8, 36); x.fillRect(0, y + 14, 4, 36); x.fillRect(1020, y + 14, 4, 36); x.globalAlpha = 1; // a bar between the two
-  });
-  const tex = cleanTexture(c);
-  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); // read along the wall, from low down
-  return tex;
-}
-
-// A street circuit: walls down both sides of the road, just past the kerbs.
-// Sydney CBD's are plain concrete, painted in blocks of colour on the road
-// side. A day circuit (`walls: 'race'` in tracks.js: Rose Bay, Westfield) gets
-// race barriers instead: white concrete with a sloping grey foot and a red
-// band along the top, sponsors' banners along them, carried on along the edge of any bridge deck
-// in place of its railings. Side streets break the walls now and then, always
-// on the outside of the circuit, so there's a way out to the rest of the map
-// (and 9LAT2) but no short cut across the middle. track.gaps keeps buildings
-// out of those streets.
+// A street circuit (Sydney CBD): concrete walls down both sides of the road,
+// just past the kerbs, painted in blocks of colour on the road side. Side
+// streets break them now and then, always on the outside of the circuit, so
+// there's a way out to the rest of the city (and 9LAT2) but no short cut
+// across the middle. track.gaps keeps the buildings out of those streets.
+// (Rose Bay and Westfield had walls like these all the way round at first.
+// They don't now: like the older tracks they have rails on the outside of
+// corners, and a barrier only where a car would otherwise end up somewhere
+// it can't be.)
 function buildStreetWalls(track) {
   const { samples, N, hw, cps } = track;
   const IN = hw + 3.4, THICK = 0.6, H = 1.15, SINK = 0.6, GAP = 8; // a side street is 8 samples (12 m) wide
-  const race = track.def.walls === 'race', RH = 1.18, FACE = 1.0, ON_DECK = hw + 1.5; // (a race barrier is 1.18 m high, its face 1 m, and it stands on the kerb's edge along a deck)
   const turn = samples.map((a, i) => { const b = samples[(i + 14) % N]; return a.th.x * b.th.z - a.th.z * b.th.x; });
   const straight = (i) => Math.abs(turn[((i % N) + N - 14) % N]) < 0.02 && Math.abs(turn[i % N]) < 0.02; // straight for 21 m either side
   const nearGate = (i) => cps.some(c => Math.min((i - c + N) % N, (c - i + N) % N) < 14);
   const gaps = track.gaps = [];
   let last = -999;
-  // (a track can say where they open instead, as [x, z, side, samples wide])
-  for (const [x, z, side, n] of track.def.gaps || []) {
-    let i = 0, best = Infinity;
-    samples.forEach((s, k) => { const d = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (d < best) { best = d; i = k; } });
-    gaps.push({ side, a: i - (n >> 1), b: i + (n >> 1) });
-  }
-  for (let i = 70; i < N - 60 && !track.def.gaps; i++) { // not on the grid, behind the line, or just after it
+  for (let i = 70; i < N - 60; i++) { // not on the grid, behind the line, or just after it
     if (i - last < 85 || !straight(i) || !straight(i + GAP) || nearGate(i) || nearGate(i + GAP)) continue;
     const s = samples[i + (GAP >> 1)];
     const out = [1, -1].find((side) => {
@@ -1783,21 +1765,16 @@ function buildStreetWalls(track) {
   const inGap = (side, i) => gaps.some(g => g.side === side && i >= g.a && i <= g.b);
   const adCols = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0xff6bcb, 0x2ec4b6];
   const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e), ad = new THREE.Color();
-  const WHITE = new THREE.Color(0xf6f3ea), FOOT = new THREE.Color(0xb4b8c0), TOE = new THREE.Color(0x7c828d), BAND = new THREE.Color(0xe6453a), CAP = new THREE.Color(0xc93a30), BACK = new THREE.Color(0xc4c7cd); // a race barrier's paint
-  const pos = [], col = [], bpos = [], buv = [];
+  const pos = [], col = [];
   track.wallAt = {}; // which samples have a wall beside them, each side (the city puts its crowds behind them)
   for (const side of [1, -1]) {
     // the wall's road-side face, IN metres out; where the inside of a tight
     // bend folds that line back on itself the points come too near the road
     // and are dropped, and the wall cuts straight across instead
-    // (race barriers run on along a deck, on its edge, and come in over 12 m either side to meet it)
-    const onDeck = (i) => track.vergeDrop[((i % N) + N) % N] > VERGE_MAX_DROP;
-    const latAt = (i) => { if (!race) return IN; let d = 8; for (let k = -8; k <= 8; k++) if (onDeck(i + k)) d = Math.min(d, Math.abs(k)); const t = d / 8; return ON_DECK + (IN - ON_DECK) * t * t * (3 - 2 * t); };
     const P = samples.map((s, i) => {
-      const lat = latAt(i), deck = onDeck(i), p = V(s.p.x + s.left.x * side * lat, s.p.y, s.p.z + s.left.z * side * lat);
-      if (inGap(side, i) || (deck && !race) || roadGap(track, p.x, p.z) < lat - 0.35) return null; // (a plain wall stops at a bridge deck, which has railings)
-      const g = terrainHeight(p.x, p.z);
-      return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g, n: V(s.left.x * side, 0, s.left.z * side), base: deck ? s.p.y - 0.3 : Math.min(s.p.y - SINK, g - 0.3) };
+      const p = V(s.p.x + s.left.x * side * IN, s.p.y, s.p.z + s.left.z * side * IN);
+      if (inGap(side, i) || track.vergeDrop[i] > VERGE_MAX_DROP || roadGap(track, p.x, p.z) < IN - 0.35) return null; // (a bridge deck has railings instead)
+      return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g: terrainHeight(p.x, p.z) };
     });
     // join each point to the next one; across a run of dropped points (but
     // never a side street) only if a straight wall there keeps clear of the road
@@ -1812,31 +1789,6 @@ function buildStreetWalls(track) {
       links.push([P[i], c]); hasOut[i] = 1; hasIn[j] = 1;
     }
     track.wallAt[side] = hasIn.map((v, i) => v | hasOut[i]);
-    if (race) {
-      // the barrier's shape, from the road outwards: a foot, a slope, a near-upright face, a flat top, the back.
-      // at(q, d, h): d metres behind its road-side edge, h above the road (no h: down at its base, which is the
-      // ground, however far under the road that is)
-      const at = (q, d, h) => V(q.p.x + q.n.x * d, h == null ? q.base : q.p.y + h, q.p.z + q.n.z * d);
-      const whole = (i) => { for (let k = 0; k < 6; k++) if (!(P[(i + k) % N] && P[(i + k + 1) % N] && hasOut[(i + k) % N])) return false; return true; }; // room for a banner: six links in a row
-      for (const [a, b] of links) {
-        pushQuad(pos, col, at(a, 0), at(a, 0, 0.08), at(b, 0, 0.08), at(b, 0), TOE);
-        pushQuad(pos, col, at(a, 0, 0.08), at(a, 0.2, 0.4), at(b, 0.2, 0.4), at(b, 0, 0.08), FOOT);
-        pushQuad(pos, col, at(a, 0.25, FACE), at(a, 0.27, RH), at(b, 0.27, RH), at(b, 0.25, FACE), BAND);
-        pushQuad(pos, col, at(a, 0.27, RH), at(a, 0.5, RH), at(b, 0.5, RH), at(b, 0.27, RH), CAP);
-        pushQuad(pos, col, at(a, 0.5, RH), at(a, 0.5), at(b, 0.5), at(b, 0.5, RH), BACK);
-        // the face: six samples of every eight a banner, white between (read from the road, so backwards on the right)
-        const k = a.i % 8 - 1, start = a.i - k, f = [at(a, 0.2, 0.4), at(a, 0.25, FACE), at(b, 0.25, FACE), at(b, 0.2, 0.4)];
-        if (k >= 0 && k < 6 && (b.i - a.i + N) % N === 1 && whole(start)) {
-          const row = (Math.floor(a.i / 8) * 5 + (side > 0 ? 0 : 7)) % BANNERS.length, v1 = 1 - row / 16 - 2 / 1024, v0 = 1 - (row + 1) / 16 + 2 / 1024;
-          const ua = side > 0 ? k / 6 : 1 - k / 6, ub = side > 0 ? (k + 1) / 6 : 1 - (k + 1) / 6, uv = [[ua, v0], [ua, v1], [ub, v1], [ub, v0]];
-          for (const j of [0, 1, 2, 0, 2, 3]) { bpos.push(f[j].x, f[j].y, f[j].z); buv.push(uv[j][0], uv[j][1]); }
-        } else pushQuad(pos, col, f[0], f[1], f[2], f[3], WHITE);
-        track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2 });
-      }
-      // each end of a run, closed off in the barrier's own shape
-      for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) { const q = P[i]; pushQuad(pos, col, at(q, 0), at(q, 0, 0.08), at(q, 0.2, 0.4), at(q, 0.5), BACK); pushQuad(pos, col, at(q, 0.2, 0.4), at(q, 0.27, RH), at(q, 0.5, RH), at(q, 0.5), BACK); }
-      continue;
-    }
     const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
     for (const [a, b] of links) {
       // faces: road side, top, back (each facing out, whichever side of the road)
@@ -1854,13 +1806,6 @@ function buildStreetWalls(track) {
   const mesh = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
   mesh.castShadow = mesh.receiveShadow = true;
   worldGroup.add(mesh);
-  if (bpos.length) { // the banners: one sheet, lit like the barriers they're on
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(bpos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(buv, 2)); g.computeVertexNormals();
-    const banners = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: bannerTexture(), side: THREE.DoubleSide }));
-    banners.receiveShadow = true;
-    worldGroup.add(banners);
-  }
 }
 
 // The sea round Noosa Heads: water out to the horizon, see-through enough that
@@ -3206,7 +3151,10 @@ function buildScenery(track) {
 // court and back out, across Oxford Street again and up the other ramp. The
 // 333 waits at its stop, there are walkways over the street between the two
 // buildings, and the city and the Harbour Bridge are on the horizon from the
-// roof.
+// roof. There are no barriers along the road: the roof is open to drive on,
+// out to the low wall round its edge (the parked cars are solid), the ramps
+// have railings because they're bridges, in the mall the shopfronts are the
+// walls, and the food court has a glass screen round it.
 function buildMall(track, rnd) {
   const { samples, N, hw } = track, lim = track.limit, solids = track.solids, walls = track.walls;
   const [A, B] = track.def.blocks; // the car park and the mall, each [x0, z0, x1, z1]
@@ -3251,7 +3199,7 @@ function buildMall(track, rnd) {
   };
   const world = at(0, 0, 0, 0);
 
-  const PAVE = -0.2, WALK = hw + 3.9, SHOPS = hw + 8.5, UP = SHOPS + 3, CEIL = 9.2, ROOF = 10.4, DECK = 9.7;
+  const PAVE = -0.2, SHOPS = hw + 8.5, UP = SHOPS + 3, CEIL = 9.2, ROOF = 10.4, DECK = track.def.roofs[0][4]; // (DECK: the car park's roof, which cars drive on)
   const indoors = (i) => samples[wrap(i)].p.z < B[3] - 0.5;
   const i0 = samples.findIndex((_, i) => indoors(i)), i1 = N - 1 - [...samples].reverse().findIndex((_, i) => indoors(N - 1 - i)); // in through the east doors, out through the west ones
   // the food court: the middle of the hairpin at the far end
@@ -3294,13 +3242,13 @@ function buildMall(track, rnd) {
     for (let i = i0; i < i1; i++) {
       const s = samples[i], k = i - i0;
       for (const sd of [1, -1]) {
-        ribbon(lit, i, sd, WALK, SHOPS, PAVE, PAVE, TILE[(k >> 1) % 2]);
-        if (sd === 1 && inU(i)) continue; // the food court is open on the inside of the hairpin
+        ribbon(lit, i, sd, hw + 1.62, hw + 3, 0.01, PAVE, TILE[(k >> 1) % 2]); ribbon(lit, i, sd, hw + 3, SHOPS, PAVE, PAVE, TILE[(k >> 1) % 2]); // tiles from the kerb to the shopfronts
+        if (sd === 1 && inU(i)) continue; // the food court is on the inside of the hairpin
         const kk = k + (sd > 0 ? 0 : 4), n = Math.floor(kk / SHOP), first = kk % SHOP === 0, food = inU(i) || inU(i + 20) || inU(i - 20);
         ribbon(glow, i, sd, SHOPS, SHOPS + 0.02, PAVE, 3.4, GLASS[(n * 5 + (sd > 0 ? 0 : 3)) % GLASS.length]);
         ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, 3.4, 4.9, FASCIA);
         ribbon(glow, i, sd, SHOPS - 1.3, UP, 4.9, 4.9, SLAB);                   // the gallery's floor, sticking out over the walkway
-        ribbon(glow, i, sd, SHOPS - 1.3, SHOPS - 1.28, 4.9, 6.0, RAIL);         // its glass balustrade
+        ribbon(glow, i, sd, SHOPS - 1.3, SHOPS - 1.28, 4.9, 5.7, RAIL);         // its glass balustrade
         ribbon(lit, i, sd, UP, UP + 0.02, 4.9, CEIL, UPPER);
         ribbon(glow, i, sd, UP - 0.02, UP, 5.6, 7.6, GLASS[(n * 3 + 1) % GLASS.length]); // upstairs windows
         if (first) {
@@ -3309,10 +3257,11 @@ function buildMall(track, rnd) {
           if (i + SHOP <= i1 && !(sd === 1 && inU(i + SHOP))) signStrip(i + 1, SHOP - 2, sd, SHOPS - 0.06, 3.6, 4.7, food ? MAIN.length + (shop[1]++ % FOOD.length) : shop[0]++ % MAIN.length);
         }
         if (k % 4 === 0) { const [ax0, az0] = P(i, sd * SHOPS), [bx0, bz0] = P(Math.min(i + 4, i1), sd * SHOPS); walls.push({ ax: ax0, az: az0, bx: bx0, bz: bz0, y: s.p.y }); }
-        // shoppers, benches and plants along the walkway
-        if (rnd() < 0.3) { const [x, z] = P(i, sd * (WALK + 0.7 + rnd() * 3.2)); people.add(x, s.p.y + PAVE + 0.02, z, facing(i, sd) + (rnd() - 0.5) * 1.6); }
+        // shoppers watch from the gallery, up out of the way; benches and plants by the shopfronts (solid)
+        if (rnd() < 0.34) { const [x, z] = P(i, sd * (SHOPS - 0.95 + rnd() * 0.7)); people.add(x, s.p.y + 4.92, z, facing(i, sd) + (rnd() - 0.5) * 0.9, undefined, 1.35); }
         if (kk % 22 === 11) {
           const [x, z] = P(i, sd * (SHOPS - 1.5)), g = at(x, z, facing(i, sd), s.p.y + PAVE);
+          solids.push({ x, z, r: 1.1, y: s.p.y });
           if ((n + (sd > 0 ? 0 : 1)) % 2) { box(g, 1.3, 0.9, 1.3, 0xb5543c, 0, 0.45, 0).castShadow = false; add(g, new THREE.IcosahedronGeometry(0.95, 0), 0x3f9a4a, 0, 1.7, 0).castShadow = false; add(g, new THREE.IcosahedronGeometry(0.6, 0), 0x4fae54, 0.2, 2.6, 0.1).castShadow = false; }
           else { box(g, 2.2, 0.12, 0.55, 0x8a5a2b, 0, 0.45, 0).castShadow = false; for (const lx of [-0.9, 0.9]) box(g, 0.1, 0.45, 0.5, 0x4a4f5a, lx, 0.22, 0).castShadow = false; }
         }
@@ -3338,14 +3287,28 @@ function buildMall(track, rnd) {
     for (const [x, z, sd] of [[100, -110, -1], [-40, -100, 1], [-190, -100, 1], [160, -70, -1]]) {
       const i = nearestI(x, z), a = samples[i], b = samples[wrap(i + 7)], [ax0, az0] = P(i, sd * (SHOPS - 2.1)), [bx0, bz0] = P(i + 7, sd * (SHOPS - 2.1));
       const m = strut(V(ax0, a.p.y, az0), V(bx0, b.p.y + 4.9, bz0), 1.5, 0.5, lam(0x5a6372)); worldGroup.add(m);
+      for (const j of [0, 1.5, 3]) { const [sx, sz] = P(i + j, sd * (SHOPS - 2.1)); solids.push({ x: sx, z: sz, r: 1, y: a.p.y }); } // (its foot is solid)
       for (const off of [-0.75, 0.75]) { const [cx, cz] = P(i, sd * (SHOPS - 2.1 + off)), [dx, dz] = P(i + 7, sd * (SHOPS - 2.1 + off)); quad(glow, [cx, a.p.y + 0.2, cz], [dx, b.p.y + 5.1, dz], [dx, b.p.y + 6.0, dz], [cx, a.p.y + 1.1, cz], C(0xbfe3f5)); }
     }
   }
 
-  // ---- the food court: tables in the middle of the hairpin, a juice bar, palms in pots ----
+  // ---- the food court: tables in the middle of the hairpin, a juice bar, palms in pots, a glass screen round it ----
   {
     const g = at(fc.x, fc.z, 0, PAVE - 0.3 + 0.32);
     flatQ(lit, fc.x - 15, fc.z - 15, fc.x + 15, fc.z + 2, PAVE + 0.01, C(0xe2dccb));
+    // the screen: the one barrier in the mall. People are sitting in there, and it's the inside of the hairpin
+    const R = 13.4, cz = fc.z - 1, GLASSC = C(0xbfe3f5), KERB = C(0xe9e4d8), back = fc.z + 1.8, half = 25 - SHOPS + 0.3;
+    solids.push({ x: fc.x, z: cz, r: R, y: 0 });
+    for (let k = 0; k < 28; k++) {
+      const a0 = (k / 28) * 6.2832, a1 = ((k + 1) / 28) * 6.2832, p0 = [fc.x + Math.cos(a0) * R, cz + Math.sin(a0) * R], p1 = [fc.x + Math.cos(a1) * R, cz + Math.sin(a1) * R];
+      if (Math.max(p0[1], p1[1]) > back) continue; // (the shops' end wall is there)
+      wallQ(lit, p0[0], p0[1], p1[0], p1[1], PAVE, 0.3, KERB); wallQ(glow, p0[0], p0[1], p1[0], p1[1], 0.3, 1.25, GLASSC);
+      box(world, 0.14, 1.35, 0.14, 0xd9dde3, p0[0], 0.6, p0[1]).castShadow = false;
+    }
+    // the end of the block of shops between the two legs, facing the food court
+    wallQ(glow, fc.x - half, back, fc.x + half, back, PAVE, 3.4, C(0xfff3d6)); wallQ(lit, fc.x - half, back, fc.x + half, back, 3.4, CEIL, C(0xf6f2e8));
+    walls.push({ ax: fc.x - half, az: back, bx: fc.x + half, bz: back, y: 0 });
+    { const e = at(fc.x, back - 0.12, Math.PI, 0); sign(e, 'FOOD COURT', '#e6453a', '#ffffff', 12, 1.1, 0, 4.15, 0); }
     add(g, new THREE.CylinderGeometry(2.6, 2.6, 1.1, 10), 0xf6f2e8, 0, 0.55, -1).castShadow = false; add(g, new THREE.CylinderGeometry(3.2, 3.2, 0.25, 10), 0x8fd400, 0, 2.9, -1).castShadow = false;
     for (let k = 0; k < 5; k++) box(g, 0.12, 1.7, 0.12, 0xd9dde3, Math.cos(k * 1.257) * 2.4, 1.95, -1 + Math.sin(k * 1.257) * 2.4).castShadow = false;
     sign(g, 'JUICE BAR', '#8fd400', '#ffffff', 3.6, 0.7, 0, 3.5, 2.25); sign(g, 'JUICE BAR', '#8fd400', '#ffffff', 3.6, 0.7, 0, 3.5, -4.25, Math.PI);
@@ -3382,7 +3345,8 @@ function buildMall(track, rnd) {
 
   // ---- the car park: a block under the roof the lap starts on, with the ramps down either side ----
   {
-    const CONC = 0xcfd3d8, DARK = 0x3b4250, main = [A[0] + 29, A[1], A[2] - 29, 160], strip = [A[0], 160, A[2], A[3]];
+    const CONC = 0xcfd3d8, DARK = 0x3b4250, [main, strip] = track.def.roofs, rampE = samples[i0].p.x, rampW = samples[i1].p.x, RW = hw + 1.8; // (the ramps come up through the strip's near edge)
+    const onRoof = (x, z, r) => solids.push({ x, z, r, y: DECK });
     for (const [x0, z0, x1, z1] of [main, strip]) {
       box(world, x1 - x0, DECK + 1, z1 - z0, CONC, (x0 + x1) / 2, (DECK - 1) / 2, (z0 + z1) / 2);
       solidRect(x0, z0, x1, z1);
@@ -3394,9 +3358,13 @@ function buildMall(track, rnd) {
       box(world, strip[2] - strip[0] - 8, 1.7, 0.4, DARK, (strip[0] + strip[2]) / 2, y, strip[3] + 0.1);
       for (const x of [strip[0] - 0.1, strip[2] + 0.1]) box(world, 0.4, 1.7, strip[3] - strip[1] - 8, DARK, x, y, (strip[1] + strip[3]) / 2);
     }
-    // a low wall round the edge of the roof
-    for (const [x0, z0, x1, z1] of [[strip[0], strip[3], strip[2], strip[3]], [strip[0], strip[1], strip[0], strip[3]], [strip[2], strip[1], strip[2], strip[3]], [main[0], main[1], main[2], main[1]], [main[0], main[1], main[0], main[3]], [main[2], main[1], main[2], main[3]]])
+    // a low wall round the edge of the roof, solid: the roof is open to drive on, and this is where it stops
+    for (const [x0, z0, x1, z1] of [[strip[0], strip[3], strip[2], strip[3]], [strip[0], strip[1], strip[0], strip[3]], [strip[2], strip[1], strip[2], strip[3]],
+      [strip[0], strip[1], rampW - RW, strip[1]], [rampW + RW, strip[1], main[0], strip[1]], [main[2], strip[1], rampE - RW, strip[1]], [rampE + RW, strip[1], strip[2], strip[1]],
+      [main[0], main[1], main[2], main[1]], [main[0], main[1], main[0], main[3]], [main[2], main[1], main[2], main[3]]]) {
       box(world, Math.abs(x1 - x0) + 0.5, 1.1, Math.abs(z1 - z0) + 0.5, 0xe9e4d8, (x0 + x1) / 2, DECK + 0.55, (z0 + z1) / 2);
+      walls.push({ ax: x0, az: z0, bx: x1, bz: z1, y: DECK });
+    }
     // parked cars in marked bays, some under shade sails
     const body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 4.2), new THREE.MeshLambertMaterial({ flatShading: true }), 420), cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.6, 2.1), lam(0x26303f), 420);
     const M = new THREE.Matrix4(), col = new THREE.Color(), CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a, 0xf6f2e8, 0xb9c0cc];
@@ -3408,19 +3376,21 @@ function buildMall(track, rnd) {
       if (rnd() < 0.42 || n >= 420 || (z < 162 && Math.abs(x + 15) < 9)) continue;
       M.makeRotationY(rnd() < 0.5 ? 0 : Math.PI); M.setPosition(x, DECK + 0.6, z); body.setMatrixAt(n, M); M.setPosition(x, DECK + 1.25, z + (rnd() < 0.5 ? 0.3 : -0.3)); cab.setMatrixAt(n, M);
       body.setColorAt(n++, col.set(CARS[Math.floor(rnd() * CARS.length)]));
+      onRoof(x, z - 1, 1.25); onRoof(x, z + 1, 1.25); // (solid)
     }
     body.count = cab.count = n; body.castShadow = true; worldGroup.add(body, cab);
     const sail = new THREE.MeshLambertMaterial({ color: 0xf1e9d6, side: THREE.DoubleSide, flatShading: true });
     for (let x = main[0] + 30; x < main[2] - 30; x += 36) for (const z of [99, 133]) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([x - 14, DECK + 4.6, z - 8, x + 14, DECK + 3.4, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 4.6, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 3.4, z + 8], 3)); g.computeVertexNormals();
       const m = new THREE.Mesh(g, sail); m.castShadow = true; worldGroup.add(m);
-      for (const [px, pz] of [[-14, -8], [14, -8], [14, 8], [-14, 8]]) box(world, 0.25, 4.8, 0.25, 0x8d93a0, x + px, DECK + 2.4, z + pz);
+      for (const [px, pz] of [[-14, -8], [14, -8], [14, 8], [-14, 8]]) { box(world, 0.25, 4.8, 0.25, 0x8d93a0, x + px, DECK + 2.4, z + pz); onRoof(x + px, z + pz, 0.35); }
     }
     // the lifts, with the centre's name on them, and lamps along the roof
     const lift = at(-15, 150, 0, DECK);
     box(lift, 16, 7, 8, 0xe9e4d8, 0, 3.5, 0); box(lift, 16.6, 0.5, 8.6, 0xd62f2f, 0, 7.2, 0);
+    solidRect(-23, 146, -7, 154, DECK);
     sign(lift, 'WESTFIELD', '#ffffff', '#d62f2f', 13, 2, 0, 4.9, 4.06); sign(lift, 'P  ROOFTOP PARKING', '#1f6fb5', '#ffffff', 13, 1.4, 0, 2.6, 4.06);
-    for (let x = strip[0] + 20; x < strip[2] - 10; x += 45) for (const z of [178, 203]) { if (roadGap(track, x, z) < hw + 4.5) continue; box(world, 0.22, 7, 0.22, 0x8d93a0, x, DECK + 3.5, z); box(world, 1.6, 0.2, 0.5, 0xd9dde3, x, DECK + 7, z); } // (never on the road: one used to stand in the corner at the top of the ramp)
+    for (let x = strip[0] + 20; x < strip[2] - 10; x += 45) for (const z of [178, 203]) { if (roadGap(track, x, z) < hw + 4.5) continue; box(world, 0.22, 7, 0.22, 0x8d93a0, x, DECK + 3.5, z); box(world, 1.6, 0.2, 0.5, 0xd9dde3, x, DECK + 7, z); onRoof(x, z, 0.35); } // (never on the road: one used to stand in the corner at the top of the ramp)
     // a height bar at the foot of each ramp
     for (const x of [samples[i0].p.x, samples[i1].p.x]) {
       const g = at(x, 46, 0, 0);
@@ -3501,7 +3471,7 @@ function buildMall(track, rnd) {
 
   // the sheets
   const sheet = (Q, mat, shadow) => { if (!Q.pos.length) return; const m = flatMesh(Q.pos, Q.col, mat); m.userData.dyn = true; m.receiveShadow = !!shadow; worldGroup.add(m); };
-  sheet(lit, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
+  sheet(lit, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
   sheet(glow, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
   sheet(paint, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), true);
   if (sp.length) {
@@ -3547,7 +3517,8 @@ function buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, ohRy, ohScale = 1) {
 }
 
 // Rose Bay: Sydney's own Monaco. Along the quay there's a sea wall with a wide
-// promenade, Norfolk pines, marquees and superyachts moored stern-on; then a
+// promenade (and a guard rail to keep cars off it: it's paving over sloping
+// ground, not somewhere to drive), Norfolk pines, marquees and superyachts moored stern-on; then a
 // marina, the seaplanes, a ferry calling at the wharf and Catalina on its
 // stilts over the water. Shops line New South Head Road on the way down (a few
 // real ones among them, in plain lettering: the owner asked for local names
@@ -3590,7 +3561,10 @@ function buildRoseBay(track, rnd, randIn) {
   const onQuay = (i, n = 0) => { const sd = wet[wrap(i)]; for (let k = -n; k <= n; k++) if (wet[wrap(i + k)] !== sd) return 0; return sd; };
   // the tunnel: round the corner onto the quay
   const t0 = nearestI(-215, 52), t1 = nearestI(-170, 0), inTunnel = (i, pad = 3) => { const k = wrap(i); return k >= t0 - pad && k <= t1 + pad; };
-  const inGap = (i, sd, pad) => (track.gaps || []).some((g) => g.side === sd && wrap(i) >= g.a - pad && wrap(i) <= g.b + pad); // a side street out through the wall
+  const TUN = hw + 4.7; // the tunnel's walls, this far out from the centre line
+  const free = (x, z, r) => !occupied.some((o) => (o.x - x) ** 2 + (o.z - z) ** 2 < (o.r + r) ** 2); // (isFree keeps everything off the waterfront: what's below belongs on it)
+  // paving beside the road: up against the kerb, down a little to its own level, then flat out to `lat`
+  const pave = (i, sd, lat, color) => { ribbon(i, sd, hw + 1.62, hw + 3, 0.01, PAVE, color); ribbon(i, sd, hw + 3, lat, PAVE, PAVE, color); };
 
   // ---- trees, as instances: Norfolk pines (the ones along every Sydney beach) and big round figs ----
   const pineGeo = model((g) => { add(g, new THREE.CylinderGeometry(0.22, 0.36, 11, 5), 0x6b5038, 0, 5.5, 0); for (let k = 0; k < 6; k++) add(g, new THREE.ConeGeometry(3.4 - k * 0.5, 1.5, 7), k % 2 ? 0x2f6b3f : 0x3a7a48, 0, 3.2 + k * 1.55, 0); }).children[0].geometry;
@@ -3608,9 +3582,9 @@ function buildRoseBay(track, rnd, randIn) {
 
   // ---- the tunnel, under the hotel ----
   {
-    const TW = hw + 4.7, TH = 6.6, conc = C(0x9aa0aa), roof = C(0x6b7078), lp = [];
+    const TW = TUN, TH = 6.6, conc = C(0x9aa0aa), roof = C(0x6b7078), floor = C(0x7c828d), lp = [];
     for (let i = t0; i < t1; i++) {
-      for (const sd of [1, -1]) ribbon(i, sd, TW, TW + 0.02, -0.5, TH, conc);
+      for (const sd of [1, -1]) { ribbon(i, sd, TW, TW + 0.02, -0.5, TH, conc); pave(i, sd, TW, floor); } // walls, and concrete from the kerb to each
       ribbon(i, 1, TW, -TW, TH, TH, roof);
       if (i % 5 === 0) { // a strip light in the roof
         const a = samples[wrap(i)], b = samples[wrap(i + 2)], y = TH - 0.06;
@@ -3628,6 +3602,9 @@ function buildRoseBay(track, rnd, randIn) {
     for (const i of [t0, t1]) { const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i), s.p.y); box(g, 2 * TW + 3, 1.8, 1.4, 0x6b7078, 0, TH + 0.5, 0); for (const lx of [-TW - 0.7, TW + 0.7]) box(g, 1.4, TH + 0.8, 1.4, 0x6b7078, lx, TH / 2, 0); }
     { const s = samples[wrap(t0)], g = at(s.p.x - s.th.x * 3.3, s.p.z - s.th.z * 3.3, along(t0) + Math.PI, s.p.y); sign(g, 'HARBOURSIDE HOTEL', '#1d2b5c', '#f6e7c8', 13, 2.2, 0, TH + 4.2, 0); }
     for (let i = t0 - 4; i < t1 + 4; i += 3) for (const sd of [1, -1]) for (const lat of [hw + 9, hw + 15]) { const [x, z] = P(i, sd * lat); claim(x, z, 4.5); }
+    // its walls are solid, and so are the posts at each end
+    for (let i = t0; i < t1; i += 2) for (const sd of [1, -1]) { const [ax, az] = P(i, sd * TW), [bx, bz] = P(Math.min(i + 2, t1), sd * TW); walls.push({ ax, az, bx, bz, y: samples[wrap(i)].p.y }); }
+    for (const i of [t0, t1]) for (const sd of [1, -1]) { const [x, z] = P(i, sd * (TW + 0.7)); solids.push({ x, z, r: 0.95, y: samples[wrap(i)].p.y }); }
   }
 
   // ---- the quay: a paved promenade, a sea wall down into the water, a white balustrade, pines, lamps and marquees ----
@@ -3655,13 +3632,14 @@ function buildRoseBay(track, rnd, randIn) {
       const i = wrap(start + k), sd = onQuay(i, 1), s = samples[i];
       if (!sd) { flush(); continue; }
       if (edge[i]) run.push(edge[i]);
-      if (onQuay(i + 1, 1) === sd) { // the paving, from behind the barrier out to the wall
-        const b = samples[wrap(i + 1)], [ax, az] = P(i, sd * (hw + 3.9)), [bx, bz] = P(i + 1, sd * (hw + 3.9)), ea = nearEdge(i), eb = nearEdge(i + 1);
+      if (onQuay(i + 1, 1) === sd) { // the paving, from the kerb out to the wall
+        const b = samples[wrap(i + 1)], [ax, az] = P(i, sd * (hw + 3)), [bx, bz] = P(i + 1, sd * (hw + 3)), ea = nearEdge(i), eb = nearEdge(i + 1);
+        ribbon(i, sd, hw + 1.62, hw + 3, 0.01, PAVE, paving);
         if (ea && eb) pushQuad(quads.pos, quads.col, V(ax, s.p.y + PAVE, az), V(bx, b.p.y + PAVE, bz), V(eb.x, eb.y + PAVE, eb.z), V(ea.x, ea.y + PAVE, ea.z), paving);
       }
       if (inTunnel(i, 8) || !edge[i]) continue;
       const y = s.p.y + PAVE;
-      if (i % 12 === 6) { const [x, z] = P(i, sd * (hw + 8.5)); if (isFree(track, x, z, 1.2, hw + 4.4)) tree(true, x, z, 0.85 + rnd() * 0.3, true, y + 0.3); }
+      if (i % 12 === 6) { const [x, z] = P(i, sd * (hw + 8.5)); if (free(x, z, 1.2)) tree(true, x, z, 0.85 + rnd() * 0.3, true, y + 0.3); }
       if (i % 20 === 0) { // a lamp: a white post with two globes
         const [x, z] = P(i, sd * (hw + 15.6)), g = at(x, z, along(i), y);
         box(g, 0.16, 4.4, 0.16, 0xf6f2e8, 0, 2.2, 0); box(g, 0.1, 0.1, 1.3, 0xf6f2e8, 0, 4.3, 0);
@@ -3669,7 +3647,7 @@ function buildRoseBay(track, rnd, randIn) {
       }
       if (i % 24 === 18 && s.p.x > 6 && s.p.x < 165 && Math.abs(s.p.z) < 8) { // race day, along the start straight: a white marquee with a pennant
         const [x, z] = P(i, sd * (hw + 12.5));
-        if (isFree(track, x, z, 3.4, hw + 4.4)) {
+        if (free(x, z, 3.4)) {
           const g = at(x, z, along(i), y), pen = [0xe6453a, 0x1d6fb5, 0xffd23f][Math.floor(i / 24) % 3];
           for (const [lx, lz] of [[-2.4, -2.4], [2.4, -2.4], [2.4, 2.4], [-2.4, 2.4]]) box(g, 0.14, 2.6, 0.14, 0xd9dde3, lx, 1.3, lz);
           add(g, new THREE.ConeGeometry(3.9, 1.9, 4), 0xf6f2e8, 0, 3.5, 0).rotation.y = Math.PI / 4;
@@ -3679,9 +3657,34 @@ function buildRoseBay(track, rnd, randIn) {
           for (let n = 0; n < 3; n++) { const [px, pz] = W(g, -1.6 + n * 1.6, 0.4); people.add(px, y + 0.02, pz, along(i) + Math.PI); }
         }
       }
-      if (rnd() < 0.2) { const [x, z] = P(i, sd * (hw + 5 + rnd() * 11)); if (isFree(track, x, z, 0.5, hw + 4.4)) people.add(x, y + 0.02, z, rnd() * 6.28); }
+      if (rnd() < 0.2) { const [x, z] = P(i, sd * (hw + 5 + rnd() * 11)); if (free(x, z, 0.5)) people.add(x, y + 0.02, z, rnd() * 6.28); }
     }
     flush();
+    // A guard rail between the road and the promenade, all the way along the water: the promenade is paving
+    // laid over ground that slopes into the sea, so a car on it would sink through. One rail on posts 6 m
+    // apart, like the rails round the outside of corners on the other tracks; at each end it turns back to
+    // the sea wall, or runs into the tunnel's wall, so there's no way round it.
+    {
+      const railMat = lam(0xc9ced6), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
+      const span = (a, b) => { const m = strut(V(a[0], a[1] + 0.78, a[2]), V(b[0], b[1] + 0.78, b[2]), 0.25, 0.5, railMat); m.castShadow = true; worldGroup.add(m); walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 }); };
+      const on = (i) => !!onQuay(i, 1) && !inTunnel(i, 0);
+      const end = (j, i, sd, y) => { if (inTunnel(j, 0)) { const [x, z] = P(j, sd * TUN); return [x, y, z]; } const e = nearEdge(i); return e && [e.x, y, e.z]; }; // what the rail meets beyond sample i, towards j
+      let prev = null, nt = 0;
+      for (let k = 1; k <= N; k++) {
+        const i = wrap(start + k), sd = onQuay(i, 1);
+        if (!on(i)) { prev = null; continue; }
+        const s = samples[i], last = !(on(i + 1) && onQuay(i + 1, 1) === sd);
+        if (prev && !last && i % 4) continue;
+        const [x, z] = P(i, sd * QRAIL), q = [x, s.p.y - 0.16, z];
+        box(worldGroup, 0.2, 1.0, 0.2, 0x5a6372, x, q[1] + 0.4, z);
+        if (prev) span(prev, q); else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
+        if (last) { const e = end(i + 1, i, sd, q[1]); if (e) span(q, e); }
+        prev = last ? null : q;
+        // tyres at the sharpest of a corner the water is on the outside of
+        const b = samples[wrap(i + 14)], turn = s.th.x * b.th.z - s.th.z * b.th.x;
+        if (Math.abs(turn) > 0.5 && (turn > 0 ? 1 : -1) === sd && i % 8 === 0) { const [tx, tz] = P(i, sd * (hw + 1.95)); for (let h = 0; h < 2; h++) add(worldGroup, tyreGeo, tyres[(nt + h) % 3], tx, s.p.y + 0.43 + h * 0.85, tz); nt++; }
+      }
+    }
   }
 
   // ---- superyachts moored stern-on to the quay beside the start straight ----
@@ -3849,7 +3852,7 @@ function buildRoseBay(track, rnd, randIn) {
       const w = 9 + rnd() * 5, span = Math.round(w / 1.5), c = i + (span >> 1), s = samples[wrap(c)];
       let D = 9;
       const fits = (d) => { const [x, z] = P(c, sd * (FRONT + d / 2)), [bx, bz] = P(c, sd * (FRONT + d)); return roadGap(track, bx, bz) > hw + 5 && isFree(track, x, z, Math.max(w, d) / 2 - 0.5, hw + 5); };
-      if (inGap(i, sd, 3) || inGap(i + span, sd, 3) || inTunnel(i + span, 6)) { i += 2; continue; }
+      if (inTunnel(i + span, 6)) { i += 2; continue; }
       if (!fits(D)) { D = 6; if (!fits(D)) { i += 3; continue; } }
       const [x, z] = P(c, sd * (FRONT + D / 2)), g = at(x, z, facing(c, sd), s.p.y), k = shopN++;
       box(g, w - 0.5, 11.2, D, WALLS[Math.floor(rnd() * WALLS.length)], 0, 1.6, 0);                           // (sunk 4 m, for the hill it stands on)
@@ -3864,12 +3867,12 @@ function buildRoseBay(track, rnd, randIn) {
       const q = [[-sw / 2, 3.6], [sw / 2, 3.6], [sw / 2, 3.6 + sh], [-sw / 2, 3.6 + sh]].map(([lx, ly]) => V(lx, ly, D / 2 + 0.1).applyMatrix4(g.matrixWorld)), t = [[u0, v0], [u0 + 0.5, v0], [u0 + 0.5, v1], [u0, v1]];
       for (const j of [0, 1, 2, 0, 2, 3]) { sp.push(q[j].x, q[j].y, q[j].z); suv.push(...t[j]); }
       const corners = [[-w / 2, D / 2], [w / 2, D / 2], [w / 2, -D / 2], [-w / 2, -D / 2]].map(([lx, lz]) => W(g, lx, lz));
-      for (let j = 0; j < 3; j++) { const a = corners[(j + 3) % 4], b = corners[j]; walls.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], y: s.p.y }); } // its front and two sides are solid
+      for (let j = 0; j < 4; j++) { const a = corners[(j + 3) % 4], b = corners[j]; walls.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], y: s.p.y }); } // solid all round
       claim(x, z, Math.max(w, D) / 2 + 0.5);
-      if (rnd() < 0.75) { const [px, pz] = P(c + (rnd() - 0.5) * span, sd * (hw + 5 + rnd() * 2.6)); people.add(px, s.p.y + PAVE + 0.02, pz, rnd() * 6.28); }
+      if (rnd() < 0.75) { const [px, pz] = P(c + (rnd() - 0.5) * span, sd * (FRONT - 0.6 - rnd() * 1.6)); people.add(px, s.p.y + PAVE + 0.02, pz, facing(c, sd) + (rnd() - 0.5) * 1.2); } // by the shopfronts, under the awnings
       i += span;
     }
-    for (let i = i0; i < i1; i++) if (!inGap(i, sd, 1)) ribbon(i, sd, hw + 3.9, FRONT, PAVE, PAVE, footpath);
+    for (let i = i0; i < i1; i++) pave(i, sd, FRONT, footpath);
   };
   const s0 = nearestI(40, 164), s1 = nearestI(-186, 163), s2 = nearestI(-215, 130), s3 = nearestI(-215, 60);
   for (const sd of [1, -1]) shopRow(s0, s1, sd);
@@ -3877,10 +3880,11 @@ function buildRoseBay(track, rnd, randIn) {
   // the outside of the hill down is left open: a lookout over the harbour, with benches
   for (let i = s2; i < s3; i++) {
     const s = samples[wrap(i)];
-    if (!inGap(i, 1, 1)) ribbon(i, 1, hw + 3.9, FRONT, PAVE, PAVE, footpath);
-    if (i % 9 === 4 && !inGap(i, 1, 2)) {
+    pave(i, 1, FRONT, footpath);
+    if (i % 9 === 4) {
       const [x, z] = P(i, FRONT - 0.9), g = at(x, z, outward(i, 1) - 0.5, s.p.y + PAVE); // looking out, and round towards the city
       box(g, 1.9, 0.12, 0.5, 0x8a5a2b, 0, 0.45, 0); box(g, 1.9, 0.5, 0.1, 0x8a5a2b, 0, 0.75, -0.25); for (const lx of [-0.8, 0.8]) box(g, 0.1, 0.45, 0.45, 0x4a4f5a, lx, 0.22, 0);
+      solids.push({ x, z, r: 1, y: s.p.y });
       if (rnd() < 0.7) { const [px, pz] = W(g, (rnd() - 0.5) * 1.2, 0.9); people.add(px, s.p.y + PAVE + 0.02, pz, outward(i, 1) - 0.5); }
     }
   }
@@ -3889,6 +3893,29 @@ function buildRoseBay(track, rnd, randIn) {
     const sg = new THREE.BufferGeometry();
     sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2));
     worldGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: cleanTexture(atlas), color: 0xe6e6e6 })));
+  }
+
+  // ---- A stone wall along the top of the bank behind the shops, from the second hairpin on past the next gate.
+  // The road above runs back along it: without the wall you could come out of the first hairpin, drop down
+  // the bank and join the shops' street, leaving out the straight and the second hairpin altogether. ----
+  {
+    const w0 = nearestI(53.5, 164.3), w1 = nearestI(-125, 160), LAT = FRONT + 9.8, TOP = 5.9, STONE = C(0xcdb88a), COPING = C(0xb9a878); // (from where the hairpin's two legs part)
+    for (let i = w0; i < w1; i++) {
+      ribbon(i, 1, LAT, LAT + 0.02, -1.5, TOP, STONE); ribbon(i, 1, LAT + 0.7, LAT + 0.72, -1.5, TOP, STONE); ribbon(i, 1, LAT, LAT + 0.7, TOP, TOP, COPING);
+      if ((i - w0) % 3 === 0) { // solid from either level
+        const y = samples[wrap(i)].p.y, [ax, az] = P(i, LAT + 0.35), [bx, bz] = P(Math.min(i + 3, w1), LAT + 0.35);
+        for (const dy of [1.2, 5.6]) walls.push({ ax, az, bx, bz, y: y + dy });
+      }
+    }
+    { // and on to the middle of the hairpin, so there's no way down the bank beside it
+      const a = samples[wrap(w0)], y0 = a.p.y - 1.5, y1 = a.p.y + TOP, [ax, az] = P(w0, LAT), [bx, bz] = P(w0, LAT + 0.7), ex = ax + 8.6;
+      for (const z of [az, bz]) pushQuad(quads.pos, quads.col, V(ax, y0, z), V(ex, y0, z), V(ex, y1, z), V(ax, y1, z), STONE);
+      pushQuad(quads.pos, quads.col, V(ax, y1, az), V(ex, y1, az), V(ex, y1, bz), V(ax, y1, bz), COPING);
+      pushQuad(quads.pos, quads.col, V(ex, y0, az), V(ex, y0, bz), V(ex, y1, bz), V(ex, y1, az), STONE);
+      for (const dy of [1.2, 5.6]) walls.push({ ax, az: (az + bz) / 2, bx: ex, bz: (az + bz) / 2, y: a.p.y + dy });
+    }
+    { const a = samples[wrap(w1)], [ax, az] = P(w1, LAT), [bx, bz] = P(w1, LAT + 0.7); pushQuad(quads.pos, quads.col, V(ax, a.p.y - 1.5, az), V(bx, a.p.y - 1.5, bz), V(bx, a.p.y + TOP, bz), V(ax, a.p.y + TOP, az), STONE); }
+    for (let i = w0; i < w1; i += 4) { const [x, z] = P(i, LAT + 0.35); claim(x, z, 3.2); }
   }
 
   // ---- Heartbreak Hill (the City2Surf's): a banner over the climb ----
@@ -5438,8 +5465,8 @@ function stepLocal(car, dt, canDrive) {
   let sideSlope = 0;
   if (!onTrack) {
     const fx = Math.sin(car.h), fz = Math.cos(car.h), lx = Math.cos(car.h), lz = -Math.sin(car.h);
-    const hF = groundAt(car.pos.x + fx * 1.5, car.pos.z + fz * 1.5), hB = groundAt(car.pos.x - fx * 1.5, car.pos.z - fz * 1.5);
-    const hL = groundAt(car.pos.x + lx, car.pos.z + lz), hR = groundAt(car.pos.x - lx, car.pos.z - lz);
+    const hF = groundAt(car.pos.x + fx * 1.5, car.pos.z + fz * 1.5, car.pos.y), hB = groundAt(car.pos.x - fx * 1.5, car.pos.z - fz * 1.5, car.pos.y);
+    const hL = groundAt(car.pos.x + lx, car.pos.z + lz, car.pos.y), hR = groundAt(car.pos.x - lx, car.pos.z - lz, car.pos.y);
     slopeAlong = clamp((hF - hB) / 3, -0.6, 0.6);
     sideSlope = clamp((hL - hR) / 2, -0.6, 0.6);
   }
@@ -5620,7 +5647,7 @@ function stepLocal(car, dt, canDrive) {
   // from road height down to the grass, matching what's drawn.
   const vloc = locate(app.track, car.pos, car.idx, 30);
   const onRoadNow = !!vloc && Math.abs(vloc.lateral) <= app.track.hw + 1.6 && Math.abs(vloc.along) < 2.5 && Math.abs(vloc.y - car.pos.y) < 3.5;
-  let groundY = groundAt(car.pos.x, car.pos.z);
+  let groundY = groundAt(car.pos.x, car.pos.z, car.pos.y);
   if (!onRoadNow && vloc && Math.abs(vloc.along) < 2.5 && Math.abs(vloc.y - car.pos.y) < 3.5 && (app.track.vergeDrop?.[vloc.i] ?? 99) <= VERGE_MAX_DROP) {
     const over = Math.abs(vloc.lateral) - (app.track.hw + 1.6);
     if (over < VERGE) groundY = Math.max(groundY, lerp(vloc.y, groundY, clamp(over / VERGE, 0, 1)));
@@ -5884,7 +5911,7 @@ function updateCamera(dt) {
   // keep the camera from sinking into hills behind the car
   const back = locate(app.track, camPos, car.idx, 20);
   if (back && Math.abs(back.lateral) < app.track.hw + 2) camPos.y = Math.max(camPos.y, back.y + 3.5);
-  camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z) + 2.5); // (above the waves at sea)
+  camPos.y = Math.max(camPos.y, groundAt(camPos.x, camPos.z, camPos.y) + 2.5); // (above the waves at sea, and a roof it's over)
   camera.position.lerp(camPos, camInit ? 1 - Math.exp(-dt * 7) : 1);
   camTarget.copy(car.pos).addScaledVector(fwd, 5).add(new THREE.Vector3(0, 1.2, 0));
   camera.lookAt(camTarget);

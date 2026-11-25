@@ -111,11 +111,13 @@ export const TRACKS = [
     blurb: 'Monaco on Sydney Harbour: along the quay, up Heartbreak Hill, two hairpins, down past the shops and through the tunnel.',
     theme: 'beach',
     urban: true,   // only the landmarks that fit in a town, and none inside the walled-in middle
-    walls: 'race',   // race barriers with sponsors' banners, not Sydney CBD's plain concrete
     width: 13,
     scale: 1,
-    // the harbour: water right up to the sea wall along the quay (z < 0), none inland
-    sea: { level: -1.2, shore: 6, from: -20, base: 6.5, hills: 0.5, sand: 0.2, fade: 0.5, clear: true },
+    // the harbour: water right up to the sea wall along the quay (z < 0), none inland. `quay`: the track's own
+    // scenery builds the waterfront (and its guard rail), so none of the usual trackside furniture goes near the water
+    sea: { level: -1.2, shore: 6, from: -20, base: 6.5, hills: 0.5, sand: 0.2, fade: 0.5, clear: true, quay: true },
+    // the tunnel under the hotel, and the lookout beside the hill down: nothing else gets built on them
+    blocks: [[-240, -20, -158, 60], [-330, -60, -229, 140]],
     points: [
       [24, 0, 0], [80, 0, 0], [120, 0, -1.4], [160, 0, -4.6], [218, 0, -11.5], [234, 0, -6.8], [241.4, 0.5, 8],
       [243.5, 3, 40], [250, 6, 79], [262, 9, 112], [270, 12, 141], [271, 15, 175], [266, 18, 206], [254.5, 19, 228], [232, 19, 238],
@@ -134,7 +136,6 @@ export const TRACKS = [
     blurb: 'Off the rooftop car park, down the ramp, across Oxford Street, flat out through the shops and round the food court.',
     theme: 'mall',
     urban: true,
-    walls: 'race',
     bare: true,       // no grandstands, pits or paddock: it's a shopping centre
     width: 14,
     scale: 1,
@@ -143,8 +144,8 @@ export const TRACKS = [
     blocks: [[-205, 50, 175, 215], [-215, -215, 185, -40]],
     // Oxford Street, and the view up the ramp to the Harbour Bridge: no landmark lands on them
     streets: [[-700, -20, 700, 20], [-330, 215, -50, 420]],
-    // where the barriers open: both sides of the two crossings of Oxford Street, as [x, z, side, samples wide]
-    gaps: [[160, 0, 1, 14], [160, 0, -1, 14], [-190, 0, 1, 14], [-190, 0, -1, 14]],
+    // the car park's flat roof, as [x0, z0, x1, z1, height]: cars up there drive on it
+    roofs: [[-176, 50, 146, 160, 9.7], [-205, 160, 175, 215, 9.7]],
     points: [
       [-60, 10, 190], [-20, 10, 190], [60, 10, 190], [118, 10, 190], [138, 10, 190], [146.4, 10, 188.3], [153.6, 10, 183.6], [158.3, 10, 176.4],
       [160, 10, 168], [160, 10, 160], [160, 9.3, 150], [160, 5, 100], [160, 0.7, 50], [160, 0, 40], [160, 0, 28], [160, 0, -20],
