@@ -4354,12 +4354,15 @@ function buildRoseBay(track, rnd, randIn) {
 
   // ---- the tunnel, under the hotel ----
   {
-    const TW = TUN, TH = 6.6, conc = C(0x9aa0aa), roof = C(0x6b7078), floor = C(0x7c828d), lp = [];
+    // (ROOF: the ceiling hangs a little under the hotel's floor, which is flat block by block while the road under it
+    // drops: at the same height the two flickered against each other, and where the road fell away from a block
+    // its pale floor showed through the ceiling in a wedge.)
+    const TW = TUN, TH = 6.6, ROOF = TH - 0.35, conc = C(0x9aa0aa), roof = C(0x6b7078), floor = C(0x7c828d), lp = [];
     for (let i = t0; i < t1; i++) {
       for (const sd of [1, -1]) { ribbon(i, sd, TW, TW + 0.02, -0.5, TH, conc); pave(i, sd, TW, floor); } // walls, and concrete from the kerb to each
-      ribbon(i, 1, TW, -TW, TH, TH, roof);
+      ribbon(i, 1, TW, -TW, ROOF, ROOF, roof);
       if (i % 5 === 0) { // a strip light in the roof
-        const a = samples[wrap(i)], b = samples[wrap(i + 2)], y = TH - 0.06;
+        const a = samples[wrap(i)], b = samples[wrap(i + 2)], y = ROOF - 0.08;
         const c4 = [P(i, 1.4), P(i + 2, 1.4), P(i + 2, -1.4), P(i, -1.4)].map(([x, z], j) => [x, (j === 1 || j === 2 ? b : a).p.y + y, z]);
         for (const j of [0, 1, 2, 0, 2, 3]) lp.push(...c4[j]);
       }
@@ -4824,7 +4827,7 @@ function buildRoseBay(track, rnd, randIn) {
     barrier(309, 388, 1); barrier(396, 446, 1); barrier(454, 487, 1);
     // the shops' street, both footpaths, and the shops' side of the hill down, in to the tunnel's wall
     barrier(609, 768, -1, { crowd: 'path', deep: FRONT - 2.6 }); barrier(622, 771, 1, { crowd: 'path', deep: FRONT - 2.6 });
-    barrier(806, t0, -1, { to: TUN - TH / 2, crowd: 'path', deep: hw + 6.4 });
+    barrier(806, t0, -1, { to: TUN - TH / 2 - 0.15, crowd: 'path', deep: hw + 6.4 }); // (15 cm in from the wall's own line, so its wires don't lie in the face of the portal's post)
     fans.finish();
   }
 

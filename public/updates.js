@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.45', date: '26 Nov 2026', title: 'Rose Bay\'s tunnel ceiling',
+    items: [
+      'In Rose Bay\'s tunnel the ceiling sat at exactly the height of the hotel\'s floor above it, so the two flickered and a pale wedge of the hotel showed through near the way in. The ceiling hangs a little lower now and both are gone.',
+    ],
+  },
+  {
     v: '3.44', date: '26 Nov 2026', title: 'The centre line, whole again',
     items: [
       'The white dashes down the middle of the road had bits missing on corners that climb or drop, like Rose Bay\'s second hairpin. They follow the road properly now, on every track.',
