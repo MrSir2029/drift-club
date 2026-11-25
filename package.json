@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "save-boards": "node scripts/save-boards.mjs"
+    "save-boards": "node scripts/save-boards.mjs",
+    "build-preview": "node scripts/build-preview.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -416,6 +416,13 @@ get a red dot on the button until they've read it.
   times don't come back from players' browsers.
 - `public/vendor/`: Three.js r187, and in `fonts/` the typefaces the sponsors'
   boards are lettered in, all copied from npm so nothing loads from a CDN.
+- `scripts/build-preview.mjs` (`npm run build-preview`): writes
+  `preview-build/`, a copy of the game that needs no server, for trying a
+  build before it's deployed. The server's own code runs inside the page (one
+  player, a leaderboard of its own that starts empty), the live server's name
+  filter is left out, and Three.js comes from a public CDN. Serve the folder
+  with any file server and open `local.html`, or publish `index.html` with
+  the files beside it as a private page.
 
 Physics runs on each player's own computer (there are no car-to-car
 collisions, so nobody can push you off). The server trusts clients for
