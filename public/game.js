@@ -258,8 +258,8 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
   }
 }
 // Feedback: the link to a Google Form (or any page) where players can send
-// feedback. The Feedback buttons (home screen and Esc menu) stay hidden while
-// this is empty.
+// feedback. The Feedback button (on the home screen, beside Settings) stays
+// hidden while this is empty.
 const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf5U42l6jkWDvBuiG2E4ggpI6ZcHBNJH4_4nfAL_sbAMMtnnA/viewform';
 // Tips for guests in the lobby while they wait for the host: a random one
 // each time, and clicking it shows another.
@@ -7946,8 +7946,9 @@ function wireUI() {
   $('#board-list').addEventListener('click', (e) => { const b = e.target.closest('.linebtn'); if (b && board.track !== 'champ') askLine(board.track, b.dataset.n); });
   $('#btn-line-close').addEventListener('click', () => $('#lineview').classList.add('hidden'));
   $('#lineview').addEventListener('click', (e) => { if (e.target.id === 'lineview') $('#lineview').classList.add('hidden'); });
-  // feedback: one button, in Settings (it used to be on the home screen and in the pause menu as well)
-  $('#row-feedback').classList.toggle('hidden', !FEEDBACK_URL);
+  // feedback: one button, on the home screen beside Settings. (It was there, and in the pause menu, until 3.39; then
+  // in Settings until 3.61, when the owner asked for it back beside Settings on the home screen.)
+  $('#btn-feedback').classList.toggle('hidden', !FEEDBACK_URL);
   $('#btn-feedback').addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
   $('#btn-lobby').addEventListener('click', () => send({ t: 'lobby' }));
   document.querySelectorAll('#seg-sound button').forEach(b => b.addEventListener('click', () => { initAudio(); setSound(b.dataset.v === 'on'); }));

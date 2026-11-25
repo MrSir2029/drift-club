@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.61', date: '26 Nov 2026', title: 'Feedback is back on the home screen',
+    items: [
+      'The Feedback button is next to Settings on the home screen again. It had been inside Settings.',
+    ],
+  },
+  {
     v: '3.60', date: '26 Nov 2026', title: 'A wider home screen',
     items: [
       'The panel on the home screen is wider, and the game\'s version now sits beside its name instead of on the What\'s new button.',

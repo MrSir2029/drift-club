@@ -509,11 +509,12 @@ game still works; those visits just aren't counted.
 
 ## Feedback
 
-**Send feedback** in Settings opens a page in a new tab: set `FEEDBACK_URL` at the top of
+**Feedback**, beside Settings on the home screen, opens a page in a new tab: set `FEEDBACK_URL` at the top of
 `public/game.js` to its link. A Google Form works well: make one at
 https://forms.google.com with a paragraph question, set it to not collect
 email addresses, and use its share link. Replies show up in the form's
-**Responses** tab. The row stays hidden while `FEEDBACK_URL` is empty.
+**Responses** tab. The button stays hidden while `FEEDBACK_URL` is empty. (It was in Settings from 3.39 to
+3.60; the owner asked for it back on the home screen.)
 
 ## Tips
 

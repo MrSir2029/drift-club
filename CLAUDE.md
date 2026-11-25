@@ -98,8 +98,11 @@
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
   opens on the Championship from the home screen, and on the picked track's
-  board from the lobby. Camera and Feedback live in Settings, not on
-  the home screen or the pause menu (the owner asked), and the record
+  board from the lobby. Camera lives in Settings, not on the home screen
+  or the pause menu (the owner asked). Feedback is on the home screen
+  beside Settings: it went into Settings with Camera for a while, and the
+  owner asked for it back ("Put feedback next to settings in the Home
+  Screen again"). The record
   ghost's switch sits near the top of Settings and in the Polytrack pause
   menu ("too hard to find" where it was, low down in Settings). The record
   ghost is off by default (the owner asked).
