@@ -177,9 +177,16 @@ Settings and in the Polytrack pause menu, which also says whose ghost it is.
 Your own best-lap ghost gives way wherever the two are in the same place
 (3.49: drawn through each other they flickered). With Upstash
 the paths are kept in a hash beside the leaderboard (`drift-club:boards:paths`,
-one field a lap); without it they last until the server restarts. They are
-not in `server/boards.json`, and laps from before 3.34, or set in a race,
-have none.
+one field a lap). Without it the server forgets them whenever it restarts,
+which on Render is every update and every wake from sleep, and gets them
+back two ways (3.53; before that they simply vanished): `npm run save-boards`
+asks the live game for each lap's path and writes them to `server/paths.json`
+beside `server/boards.json`, which the server loads at startup; and the
+browser of anyone who set, watched or chased a lap keeps a copy with the
+server's signature (`dc-lines`, 16 at most, its own laps first) and hands it
+back when the lap is on the board without its line (`pathseed`: taken only
+if the signature fits the name, the time and every character of the path).
+Laps from before 3.34, or set in a race, have none.
 
 **The Drift King championship** ranks every name by its results over all the
 boards. Each board's top ten score as in F1 (25 for the record, then 18, 15,

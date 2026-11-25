@@ -183,6 +183,9 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   const paths = new Map();
   const pathKey = (k, name) => `${k}|${String(name).toLowerCase()}`;
   const goodPath = (p) => typeof p === 'string' && p.length >= 24 && p.length <= PATH_MAX && /^[A-Za-z0-9+/]+={0,2}$/.test(p);
+  // (A path the server has kept is signed like a lap, so that a browser can hand its copy back after a restart:
+  // the signature covers whose lap, its time and every character of the path.)
+  const pathSignature = (k, n, ms, p) => sign(`${BOARD_SEASON}|path|${k}${layoutTag(k)}|${String(n).toLowerCase()}|${ms}|${p}`);
   const onBoard = (key, ms) => { const at = key.indexOf('|'), list = boards.get(key.slice(0, at)) || []; return list.some((e) => e.n.toLowerCase() === key.slice(at + 1) && e.ms === ms); };
   // tick the laps on board k that have a path (g: 1), and forget the paths of laps that have left it
   function tidyPaths(k) {
@@ -480,7 +483,10 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         const place = addLap(player.name, room.trackId, room.car, time, player.num);
         if (place) {
           // how it was driven, if the browser sent that: kept while the lap is on the board
-          if (goodPath(msg.path)) { const key = pathKey(boardKey(room.trackId), player.name), g = { ms: Math.round(time), p: msg.path }; paths.set(key, g); if (savePath) savePath(key, g); }
+          if (goodPath(msg.path)) {
+            const k = boardKey(room.trackId), key = pathKey(k, player.name), g = { ms: Math.round(time), p: msg.path }; paths.set(key, g); if (savePath) savePath(key, g);
+            if (sign) send(player, { t: 'pathkept', k, ms: g.ms, s: pathSignature(k, player.name, g.ms, g.p) }); // (theirs to keep, and hand back if this server forgets it)
+          }
           boardChanged(boardKey(room.trackId));
           broadcast(room, { t: 'record', id: player.id, name: player.name, place, time: Math.round(time), track: room.trackId, car: room.car });
         }
@@ -509,7 +515,20 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         if (typeof msg.k !== 'string' || typeof msg.n !== 'string' || now - (player.pathAt || 0) < 120) return;
         player.pathAt = now;
         const k = msg.k.slice(0, 8), n = msg.n.slice(0, 16), g = paths.get(pathKey(k, n));
-        send(player, { t: 'path', k, n, ms: g ? g.ms : 0, p: g ? g.p : null });
+        send(player, { t: 'path', k, n, ms: g ? g.ms : 0, p: g ? g.p : null, ...(g && sign ? { s: pathSignature(k, n, g.ms, g.p) } : {}) });
+        break;
+      }
+      case 'pathseed': {
+        // A browser's copy of a lap's path, handed back: a server that forgets everything when it restarts (Render's
+        // free plan, with no database) loses every path, and with them the racing lines and the record's ghost.
+        // Taken only if this server signed it, the lap is still on the board, and the board has no path for it.
+        const now = Date.now();
+        if (!sign || typeof msg.k !== 'string' || typeof msg.n !== 'string' || typeof msg.s !== 'string' || !Number.isInteger(msg.ms) || !goodPath(msg.p) || now - (player.seedAt || 0) < 200) return;
+        player.seedAt = now;
+        const k = msg.k.slice(0, 8), n = msg.n.slice(0, 16), key = pathKey(k, n);
+        if (paths.get(key)?.ms === msg.ms || !onBoard(key, msg.ms) || msg.s !== pathSignature(k, n, msg.ms, msg.p)) return;
+        const g = { ms: msg.ms, p: msg.p }; paths.set(key, g); if (savePath) savePath(key, g);
+        boardChanged(k);
         break;
       }
       case 'lbseed': {

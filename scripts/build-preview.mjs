@@ -53,15 +53,16 @@ for (const f of fs.readdirSync(path.join(repo, 'public/vendor/fonts')).filter((f
 write('fonts.js', `// the sponsors' typefaces (see public/vendor/fonts in the repository for what they are and their licences)\nwindow.DC_FONTS = ${JSON.stringify(fonts)};\n`);
 
 // ---- the server, in the page
-let saved = null;
+let saved = null, savedPaths = null;
 try { saved = JSON.parse(read('server/boards.json')); } catch {}
+try { savedPaths = JSON.parse(read('server/paths.json')); } catch {} // (the racing lines saved with them)
 write('local-server.js', `// Drift Club's server, running in this page. The game opens a WebSocket to its server; here that "socket" hands
 // each message straight to the server's own code (core.js). One player, and nothing leaves the browser: the
 // leaderboard starts as the live one was when last saved, and is this page's own from there.
 import { createGame } from './core.js';
-const SAVED = ${JSON.stringify(saved)};
+const SAVED = ${JSON.stringify(saved)}, SAVED_PATHS = ${JSON.stringify(savedPaths)};
 const sign = (text) => { let a = 2166136261, b = 5381; for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = (Math.imul(b, 33) + c) | 0; } return ((a >>> 0).toString(36) + (b >>> 0).toString(36)).padStart(12, '0').slice(0, 12); };
-const game = createGame({ note: 'A preview: these totals are this page\\'s own.', sign, boards: SAVED });
+const game = createGame({ note: 'A preview: these totals are this page\\'s own.', sign, boards: SAVED, paths: SAVED_PATHS });
 class LocalSocket {
   constructor() {
     this.readyState = 0; this.onopen = this.onclose = this.onmessage = this.onerror = null;

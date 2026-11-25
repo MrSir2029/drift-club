@@ -8,6 +8,13 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.53', date: '26 Nov 2026', title: 'Racing lines that last',
+    items: [
+      'The racing lines on the leaderboard, and the record ghost that follows them, used to vanish every time the game was updated. Now they\'re kept with the leaderboard, and your browser hands back the lines of your own laps if the game ever loses them.',
+      'The lines from before this are gone, sorry: set a lap in Polytrack mode and yours is back for good.',
+    ],
+  },
+  {
     v: '3.52', date: '26 Nov 2026', title: 'Rose Bay on the home screen',
     items: [
       'Rose Bay is the track behind the home screen when the game opens: the harbour, the yachts and the city across the water.',

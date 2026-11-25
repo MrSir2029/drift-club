@@ -111,15 +111,21 @@ const saveBoards = KV_URL && KV_TOKEN
   ? (b) => kv(['SET', KV_KEY, JSON.stringify(b)]).catch((e) => console.warn(`Leaderboard: couldn't save to Upstash (${e.message})`))
   : null;
 // How each lap on the leaderboard was driven (for ghost cars and racing lines): a hash beside the leaderboard,
-// one field a lap, written when a lap gets onto a board and deleted when it leaves. Without Upstash they last
-// until the server restarts.
+// one field a lap, written when a lap gets onto a board and deleted when it leaves. Without Upstash the server
+// forgets them when it restarts, and gets them back two ways: from server/paths.json (saved before each update)
+// and from the browsers of players who set or watched the laps, who hand their copies back (see 'pathseed').
 let savedPaths = null;
+// (as they were at the last update: npm run save-boards writes them beside the boards, so a redeploy doesn't lose them)
+try {
+  savedPaths = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'server', 'paths.json'), 'utf8'));
+  console.log(`Leaderboard: ${Object.keys(savedPaths).length} laps' paths from server/paths.json`);
+} catch {}
 if (KV_URL && KV_TOKEN) {
   try {
-    const flat = await kv(['HGETALL', KV_KEY + ':paths']);
-    savedPaths = {};
-    for (let i = 0; i + 1 < (flat || []).length; i += 2) { try { savedPaths[flat[i]] = JSON.parse(flat[i + 1]); } catch {} }
-    console.log(`Leaderboard: ${Object.keys(savedPaths).length} laps' paths loaded from Upstash`);
+    const flat = await kv(['HGETALL', KV_KEY + ':paths']), kept = {};
+    for (let i = 0; i + 1 < (flat || []).length; i += 2) { try { kept[flat[i]] = JSON.parse(flat[i + 1]); } catch {} }
+    savedPaths = { ...(savedPaths || {}), ...kept }; // (the database's copy of a lap wins: it's the newer)
+    console.log(`Leaderboard: ${Object.keys(kept).length} laps' paths loaded from Upstash`);
   } catch (e) { console.warn(`Leaderboard: couldn't load the laps' paths from Upstash (${e.message})`); }
 }
 const savePath = KV_URL && KV_TOKEN
