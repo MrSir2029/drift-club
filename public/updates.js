@@ -8,7 +8,22 @@
 // seen it.
 export const UPDATES = [
   {
-    v: '3.38', date: '25 Nov 2026', title: 'Westfield\'s start straight, walled in',
+    v: '3.40', date: '26 Nov 2026', title: 'The record ghost, easier to find',
+    items: [
+      'The record holder\'s ghost has its switch near the top of Settings now, and in Polytrack mode there\'s one in the pause menu too, which says whose ghost you\'re chasing.',
+      'When the ghost joins you a message says whose lap it is, and it shows as a gold dot on the minimap.',
+      'A track whose record is from before ghosts came in used to have no ghost at all. Now you chase the fastest lap that has one.',
+    ],
+  },
+  {
+    v: '3.39', date: '26 Nov 2026', title: 'Camera and Feedback, in Settings',
+    items: [
+      'Camera is in Settings, at the top: pick Cockpit or Chase and the game remembers it, for every car and every race. The camera key still swaps it while you drive.',
+      'Feedback is in Settings too, instead of on the home screen and in the pause menu.',
+    ],
+  },
+  {
+    v: '3.38', date: '26 Nov 2026', title: 'Westfield\'s start straight, walled in',
     items: [
       'At Westfield the race barrier runs unbroken down both sides of the start straight now, through the grid and the line to the corner at the far end, with the crowd behind it all the way.',
     ],
