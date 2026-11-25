@@ -262,6 +262,7 @@ the fairground and the radio mast.
 Rose Bay (the seventh) is Sydney's own Monaco, by day (`buildRoseBay` in
 `game.js`): a street circuit along a harbour quay, up Heartbreak Hill,
 round two hairpins, down a street of shops and through a tunnel under a hotel
+(signed The InterContinental, at the owner's request)
 back onto the quay. Along the quay there's a sea wall with a wide promenade,
 Norfolk pines and marquees, superyachts moored stern-on, a marina, the seaplane
 base (one plane flies a circuit and lands in the bay), a ferry that calls at

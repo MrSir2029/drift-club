@@ -3814,7 +3814,7 @@ function buildRoseBay(track, rnd, randIn) {
       box(g, 2 * (hw + 9) + 0.6, 0.6, 15.6, 0x8f949e, 0, 18.3, 0);
     }
     for (const i of [t0, t1]) { const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i), s.p.y); box(g, 2 * TW + 3, 1.8, 1.4, 0x6b7078, 0, TH + 0.5, 0); for (const lx of [-TW - 0.7, TW + 0.7]) box(g, 1.4, TH + 0.8, 1.4, 0x6b7078, lx, TH / 2, 0); }
-    { const s = samples[wrap(t0)], g = at(s.p.x - s.th.x * 3.3, s.p.z - s.th.z * 3.3, along(t0) + Math.PI, s.p.y); sign(g, 'HARBOURSIDE HOTEL', '#1d2b5c', '#f6e7c8', 13, 2.2, 0, TH + 4.2, 0); }
+    { const s = samples[wrap(t0)], g = at(s.p.x - s.th.x * 3.3, s.p.z - s.th.z * 3.3, along(t0) + Math.PI, s.p.y); sign(g, 'THE INTERCONTINENTAL', '#1d2b5c', '#f6e7c8', 13, 2.2, 0, TH + 4.2, 0); } // (the owner's choice of name, in plain lettering like the shops' signs)
     for (let i = t0 - 4; i < t1 + 4; i += 3) for (const sd of [1, -1]) for (const lat of [hw + 9, hw + 15]) { const [x, z] = P(i, sd * lat); claim(x, z, 4.5); }
     // its walls are solid, and so are the posts at each end
     for (let i = t0; i < t1; i += 2) for (const sd of [1, -1]) { const [ax, az] = P(i, sd * TW), [bx, bz] = P(Math.min(i + 2, t1), sd * TW); walls.push({ ax, az, bx, bz, y: samples[wrap(i)].p.y }); }

@@ -6,9 +6,9 @@
 // where things ended up that day, not every step on the way.
 export const UPDATES = [
   {
-    v: '3.24', date: '25 Nov 2026', title: 'Rose Bay, Westfield and the Drift King',
+    v: '3.25', date: '25 Nov 2026', title: 'Rose Bay, Westfield and the Drift King',
     items: [
-      'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the hotel.',
+      'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the InterContinental.',
       'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
       'And another, Westfield Mall Circuit: start on the roof of the car park, down the ramp, across Oxford Street, in through the doors and flat out between the shops, round the food court and back up the other ramp, with the Harbour Bridge dead ahead. The 333 is waiting at its stop.',
       'Neither has walls all the way round: like the older tracks, there are rails on the outside of corners and open ground everywhere else. Rose Bay keeps a guard rail along the harbour, and at Westfield you can drive all over the car park roof.',
