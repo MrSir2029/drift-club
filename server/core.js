@@ -113,7 +113,10 @@ export function beaconTag(token) {
 // can't tell when a connection has died.
 // pairStates: ask clients to send their positions two at a time (half the
 // messages, a little less smooth), for hosts that count every message.
-export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, paths: savedPaths = null, savePath = null, sign = null, dropSilent = false } = {}) {
+// version: the game's version (the top entry of What's new). Every tab is told
+// it when it connects, so that one left open since before an update can ask
+// its player to refresh (see "old tabs" below). Without it nobody is told.
+export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, paths: savedPaths = null, savePath = null, sign = null, dropSilent = false, version = '' } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
@@ -289,6 +292,22 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     const data = JSON.stringify(msg);
     for (const p of room.players.values()) { try { p.sock.send(data); } catch {} }
   }
+
+  // ---------- old tabs ----------
+  // A tab left open keeps running the game as it was when it was opened, and
+  // updating the game restarts the server, so after an update every open tab
+  // reconnects still running the old one. From 3.57 a tab says which version it
+  // is first thing ('ver'), is told the server's, and puts up its own notice
+  // with a Refresh button if it's behind. Tabs from before 3.57 say nothing,
+  // and the only words they can be made to show are an 'error' message, which
+  // they pop up for a few seconds: so that is how they're reminded, when they
+  // connect, when they get into a room and after each session.
+  const REFRESH = 'A new update is out. Refresh this tab to get it.';
+  function nudge(p) {
+    if (!version || p.ver !== undefined) return;
+    p.nudged = true;
+    send(p, { t: 'error', msg: REFRESH });
+  }
   function roomSnapshot(room) {
     return {
       t: 'room', code: room.code, hostId: room.hostId, trackId: room.trackId, car: room.car, phase: room.phase, laps: room.laps,
@@ -381,6 +400,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     const order = [...room.players.values()].sort((a, b) => (a.best ?? Infinity) - (b.best ?? Infinity));
     // Polytrack mode stands on its own: its times don't set the grid for a race
     broadcast(room, { t: 'results', quali: true, results: order.map(p => ({ id: p.id, name: p.name, color: p.color, time: p.best ?? null })) });
+    for (const p of room.players.values()) nudge(p);
   }
   function maybeFinishRace(room) {
     if ([...room.players.values()].every(p => p.finished)) showResults(room);
@@ -393,6 +413,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     // a photo finish is decided by the times, not by whose message arrived first
     const done = [...room.results].sort((a, b) => a.time - b.time);
     broadcast(room, { t: 'results', mode: room.mode, results: [...done, ...dnf] });
+    for (const p of room.players.values()) nudge(p);
   }
 
   // ---------- messages ----------
@@ -400,6 +421,10 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     if (!msg || typeof msg.t !== 'string') return;
+    // which version the tab is (see "old tabs"): a tab that starts with anything else is from before 3.57
+    if (msg.t === 'ver') { player.ver = typeof msg.v === 'string' ? msg.v.slice(0, 12) : ''; return; }
+    // (told at its first words, unless it's on its way into a room: then once it's in, so the reminder is the last thing it's shown)
+    if (!player.nudged && msg.t !== 'create' && msg.t !== 'join') nudge(player);
     const room = player.room;
     switch (msg.t) {
       case 'create': {
@@ -410,6 +435,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         const newRoom = createRoom(player);
         if (!newRoom) return send(player, { t: 'error', msg: 'Server is full, try again later.' });
         addPlayer(newRoom, player);
+        nudge(player);
         break;
       }
       case 'join': {
@@ -427,6 +453,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         player.spec = player.finished;
         addPlayer(target, player);
         if (target.phase === 'countdown' || target.phase === 'racing') send(player, startMessage(target, { spectate: target.mode !== 'quali' }));
+        nudge(player);
         break;
       }
       case 'track': {
@@ -658,6 +685,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       if (conns.size > stats.peak) { stats.peak = conns.size; stats.peakAt = Date.now(); }
       statsChanged();
       sweepTimer ??= setInterval(sweep, 20000);
+      if (version) send(p, { t: 'ver', v: version }); // (a tab that's behind asks its player to refresh: see "old tabs")
       send(p, { t: 'lbs', boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs), lay: TRACK_VERSION }); // the leaderboard (and best sectors), to start with, and the layouts they're for
       return {
         message(raw) {

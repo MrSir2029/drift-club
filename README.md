@@ -523,6 +523,20 @@ message; clicking it shows another. The tips are `TIPS` near the top of
 home screen. Add an entry at the top whenever you ship something; players
 get a red dot on the button until they've read it.
 
+Its top entry is also the game's version, and that is how a tab that has
+been left open finds out there's an update. A tab keeps running the game as
+it was when it was opened. Updating restarts the server, so every open tab
+reconnects, and the server tells each one which version it is (`ver`). A tab
+that is behind puts up "A new update is out" with a Refresh button: on the
+home screen, in the lobby and with the results, never while driving
+(`onVersion` and `showStale` in `game.js`). Tabs from before 3.57 have no
+notice of their own. They are the ones that don't say which version they are
+when they connect, so the server sends them the reminder as an `error`
+message, which they pop up for a few seconds: when they connect, when they
+get into a room and after each session (`nudge` in `server/core.js`). So an
+update only reaches the tabs that are already open if it has a new version
+at the top of the list.
+
 ## How it works
 
 - `server/core.js`: the game server: rooms, races, results and the `/stats`

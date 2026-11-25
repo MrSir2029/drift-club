@@ -3,6 +3,7 @@
 // GameServer, which runs the game server (server/core.js). It's created in
 // Oceania so races feel quick for players in Australia and New Zealand.
 import { createGame, beaconTag } from './server/core.js';
+import { UPDATES } from './public/updates.js'; // (What's new: its top entry is the game's version)
 
 export default {
   async fetch(request, env) {
@@ -37,6 +38,7 @@ export class GameServer {
         note: 'Totals are kept since the game moved to Cloudflare.',
         pairStates: true, // the free plan counts every message, so send half as many
         dropSilent: true, // nothing else here notices a connection that has died
+        version: UPDATES[0].v, // tabs still running an older one are asked to refresh
       });
     });
   }

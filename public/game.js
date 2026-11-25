@@ -7022,6 +7022,32 @@ function updateCamera(dt) {
 }
 
 // ---------------------------------------------------------------------------
+// a newer version
+// ---------------------------------------------------------------------------
+// A tab left open keeps running the game as it was when the tab was opened. The server says which version it is
+// whenever a tab connects, and every tab reconnects after an update, because updating restarts the server: if
+// the server's version is newer than this tab's, a notice with a Refresh button stays up on the menus (not
+// while driving, or during the podium scene) until it's pressed. The tab says its own version too, first thing,
+// so the server knows the tab looks after this itself: tabs from before 3.57 can't, and are sent the reminder
+// as a message to pop up.
+// Where the notice goes: on the home screen, above the What's new button; in the lobby, under the room code and
+// the racers (measured, because the list of racers grows); with the results, top centre. Each is clear of the
+// panels at every window size a laptop has.
+const VERSION = UPDATES[0].v;
+const vnum = (v) => { const [a, b = 0] = String(v).split('.').map(Number); return a * 1000 + b; }; // (3.9 comes before 3.16)
+function onVersion(v) {
+  app.stale = typeof v === 'string' && vnum(v) > vnum(VERSION); // (anything that isn't a version, or isn't newer: no notice)
+  showStale();
+}
+function showStale() {
+  if (!app.stale && !app.staleAt) return; // (up to date, and no notice to take down: nearly always)
+  const quiet = !app.stale || app.phase === 'countdown' || app.phase === 'racing' || $('#screen-race').classList.contains('podium-on');
+  const at = quiet ? '' : app.phase === 'home' || app.phase === 'lobby' ? app.phase : 'results', el = $('#update-note');
+  if (at !== (app.staleAt || '')) { app.staleAt = at; el.classList.toggle('hidden', !at); el.dataset.at = at; el.style.top = ''; }
+  if (at === 'lobby') { const y = Math.round($('.lobby-top').getBoundingClientRect().bottom + 10) + 'px'; if (el.style.top !== y) el.style.top = y; }
+}
+
+// ---------------------------------------------------------------------------
 // networking
 // ---------------------------------------------------------------------------
 function connect() {
@@ -7029,6 +7055,7 @@ function connect() {
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
   app.ws = ws;
   ws.onopen = () => {
+    ws.send(JSON.stringify({ t: 'ver', v: VERSION })); // (before anything else: see "a newer version")
     $('#btn-create').disabled = false; $('#btn-join').disabled = false;
     // our copy of the leaderboard: fills it back in if the server has restarted
     const seed = JSON.stringify({ t: 'lbseed', boards: app.lbKeep, sec: app.secKeep });
@@ -7061,6 +7088,7 @@ function send(msg) {
 function handle(msg) {
   switch (msg.t) {
     case 'error': toast(msg.msg); break;
+    case 'ver': onVersion(msg.v); break;
     case 'joined':
       app.myId = msg.id;
       if (typeof msg.name === 'string' && msg.name !== app.name) {
@@ -7830,7 +7858,6 @@ function wireUI() {
   // Someone here for the first time starts up to date.
   const latest = UPDATES[0].v, store = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const seen = store('dc-seen'), back = VISITED_BEFORE;
-  const vnum = (v) => { const [a, b = 0] = String(v).split('.').map(Number); return a * 1000 + b; }; // (3.9 comes before 3.16)
   const since = seen == null ? -1 : UPDATES.findIndex(u => vnum(u.v) <= vnum(seen)); // entries newer than the version they saw (never looked: just the latest)
   const fresh = (k) => seen !== latest && k < (since < 0 ? 1 : since);
   $('#ver').textContent = 'v' + latest;
@@ -7839,6 +7866,7 @@ function wireUI() {
   const markSeen = () => { $('#updates-dot').classList.add('hidden'); try { localStorage.setItem('dc-seen', latest); } catch {} };
   const openUpdates = () => { $('#updates').classList.remove('hidden'); markSeen(); };
   $('#btn-updates').addEventListener('click', openUpdates);
+  $('#btn-refresh').addEventListener('click', () => location.reload()); // (the notice of a newer version)
   if (seen !== latest) { if (back) openUpdates(); else markSeen(); }
   $('#btn-updates-close').addEventListener('click', () => $('#updates').classList.add('hidden'));
   $('#updates').addEventListener('click', (e) => { if (e.target.id === 'updates') $('#updates').classList.add('hidden'); });
@@ -8256,6 +8284,7 @@ function frame(now) {
   const dt = clamp((now - last) / 1000, 0, 0.05);
   watchFrameRate(now - last, now);
   last = now;
+  showStale(); // (the notice of a newer version comes and goes with the menus)
 
   if (app.local && (app.phase === 'countdown' || app.phase === 'racing' || app.phase === 'results')) {
     const canDrive = !app.menuOpen && (app.phase === 'racing' || (app.phase === 'results' && app.finished));

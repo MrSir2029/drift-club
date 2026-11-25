@@ -36,6 +36,7 @@ let live = await new Promise((resolve, reject) => {
       clearTimeout(timer); setTimeout(next, 50); setTimeout(done, 400 + want.length * 260); // then the paths, and done when the last has had time to come
     } else if (m.t === 'path' && typeof m.p === 'string' && Number.isInteger(m.ms)) livePaths[`${m.k}|${String(m.n).toLowerCase()}`] = { ms: m.ms, p: m.p };
   });
+  ws.on('open', () => ws.send(JSON.stringify({ t: 'ver', v: 'save-boards' }))); // (not a tab running an old version: no reminder to refresh, thanks)
   ws.on('error', (e) => { clearTimeout(timer); reject(e); });
 });
 

@@ -56,7 +56,10 @@
 - **What's new** (`public/updates.js`): one entry per version, newest first.
   Every change gets its own version and its own entry (the owner asked for
   this; the entries before 3.17 are a day each). Player-facing wording, and
-  say whose idea it was only by their in-game name.
+  say whose idea it was only by their in-game name. The top entry is also
+  the game's version: the server tells tabs running an older one to refresh
+  (the owner asked: "remind people to refresh the tab for new updates"), so
+  a change shipped without a new version never reaches the tabs already open.
 - **Players' ideas:** run them by the owner before building any ("run
   everything by me first").
 - **A new layout for a track** restarts its leaderboard (and its Drift King
