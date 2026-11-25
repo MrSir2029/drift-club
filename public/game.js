@@ -1083,8 +1083,8 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   for (const [kind, Q] of Object.entries(sponsorQuads)) {
     if (!Q.pos.length) continue;
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(Q.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(Q.uv, 2));
-    worldGroup.add(new THREE.Mesh(g, sponsorMat(kind, !!look.night)));
+    g.setAttribute('position', new THREE.Float32BufferAttribute(Q.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(Q.uv, 2)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, sponsorMat(kind, !!look.night)); m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); // (lit and shadowed like what they hang on, by day; kept out of the merged scenery, which would take them for plain boards before their artwork has loaded)
   }
   mergeStatic(worldGroup, new Set(track.gateMats)); // gates stay apart: the next one glows
   // each wall's box, so a car only tests the few walls near it (the city has thousands)
@@ -1333,7 +1333,7 @@ function updateRecGhost(now) {
     const who = app.recWho || {};
     app.recGhost = makeCarMesh(2, '', true, CAR_NAMES[who.c] ? who.c : app.carClass, false, null);
     app.recGhost.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.5; m.material.color?.setHex(0xffd76a); m.material.depthWrite = false; m.castShadow = false; } });
-    const label = makeLabel(`${who.name || 'Record'}  ${fmtTime(who.ms || 0)}`, '#ffd23f'); label.position.y = 2.6; app.recGhost.group.add(label);
+    const label = makeLabel(who.name || 'Record', '#ffd23f'); label.position.y = 2.6; app.recGhost.group.add(label); // (just the name: the time is in the message when it joins, and in the pause menu)
     carsGroup.add(app.recGhost.group);
   }
   const t = car.armed ? 0 : now - car.lapStart, g = app.recGhost.group;
@@ -1348,6 +1348,12 @@ function updateRecGhost(now) {
   g.rotation.set(0, lerpAngle(a.h, b.h, u), 0);
   app.recOn = true;
   g.visible = (g.position.x - car.pos.x) ** 2 + (g.position.z - car.pos.z) ** 2 > 9; // not when it's sitting on top of you
+  // Your own best lap's ghost sets off from the line at the same moment. Where the two laps run together, two
+  // see-through cars stood in the same place and the picture flickered between your car's colours and gold (all
+  // the way round, if the record is your own lap; and plainest with a two-tone livery under the gold). So where
+  // they are within a car's length of each other, yours gives way to the record holder's.
+  const mine = app.ghost?.group;
+  if (mine && mine.visible && (mine.position.x - g.position.x) ** 2 + (mine.position.z - g.position.z) ** 2 < 25) mine.visible = false;
 }
 // ---- a lap's line, from the leaderboard: the track from above with the lap drawn on it, red where it's slow
 // through yellow to green where it's fast ----
@@ -1661,16 +1667,20 @@ const SPONSOR_ART = [
 // without them, in whatever the browser has), so for a moment after the page
 // opens the boards are blank.
 const sponsorQuads = { poster: { pos: [], uv: [] }, banner: { pos: [], uv: [] } }; // this world's, filled in as it's built
-const sponsorMats = new Map();
+const sponsorMats = new Map(), SPONSOR_TONE = 0xd9d6cf; // (the tone: a little under full strength, so a white board is the white of a painted wall and not the brightest thing in sight)
 let sponsorSheets = null;
 function sponsorMat(kind, night) {
   const key = kind + (night ? '|night' : '|day');
   let m = sponsorMats.get(key);
   if (!m) {
-    // lit from inside, as far as the game goes: the same by day whichever way they face, and readable at night
-    // (and drawn as if a touch nearer than they are: from far off, the frame or wall a hand's width behind one
-    // can't be told from it by depth, and the two flickered through each other, worst from the cockpit)
-    m = new THREE.MeshBasicMaterial({ color: night ? (kind === 'poster' ? 0xc4c4c4 : 0x9c9c9c) : 0xe8e8e8, map: sponsorSheets?.[kind] ?? null, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
+    // By day they take the light and the shadows of the place like the wall or the board they're on. They used to
+    // be lit from inside whichever way they faced, and a sign glowing on a wall in the shade looked stuck on
+    // ("the sign sponsors feel way too intrusive and out of place"). At night they are still lit from inside,
+    // as a city's signs are. (Either way they're drawn as if a touch nearer than they are: from far off, the
+    // frame or wall a hand's width behind one can't be told from it by depth, and the two flickered through
+    // each other.)
+    const common = { map: sponsorSheets?.[kind] ?? null, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 };
+    m = night ? new THREE.MeshBasicMaterial({ ...common, color: kind === 'poster' ? 0xc4c4c4 : 0x9c9c9c }) : new THREE.MeshLambertMaterial({ ...common, color: SPONSOR_TONE });
     m.userData.keep = true; m.userData.kind = kind; // shared by every track: never disposed with one
     sponsorMats.set(key, m);
   }
@@ -4775,8 +4785,9 @@ function buildRoseBay(track, rnd, randIn) {
       post(i1, sd, o(n) + mid, foot);
       if (!block) return;
       for (const j of [0, n]) { const q = pt(i0 + j, sd, o(j) + mid, 0); box(worldGroup, 0.66, 1.9, 0.66, 0xcdb88a, q.x, q.y + 0.35, q.z); } // a pier at each end, like the harbour wall's
-      // a sponsor's banner every 40 m or so, on the road side (not where it runs in at an end, nor behind a gate's post)
-      for (let j = 12; ads && j + 3 <= n - 8; j += 27) {
+      // a sponsor's banner every 80 m or so, on the road side (not where it runs in at an end, nor behind a gate's post).
+      // (It was every 40 m: with the signs "way too intrusive", half of them went.)
+      for (let j = 12; ads && j + 3 <= n - 8; j += 54) {
         if (track.cps.some((c) => Math.abs(((i0 + j + 1 - c) % N + N + N / 2) % N - N / 2) < 5)) continue;
         for (let k = 0; k < 3; k++) { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, k / 3, (k + 1) / 3, a.p.x, a.p.z); }
         nb++;

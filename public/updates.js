@@ -8,6 +8,20 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.50', date: '26 Nov 2026', title: 'Quieter sponsors\' signs',
+    items: [
+      'By day the sponsors\' posters and banners take the light and shade of wherever they are, like the walls they hang on. They used to glow the same whichever way they faced, which made them jump out.',
+      'Rose Bay\'s race barriers carry half as many banners.',
+    ],
+  },
+  {
+    v: '3.49', date: '26 Nov 2026', title: 'The record ghost stops flickering',
+    items: [
+      'In Polytrack mode your own best-lap ghost and the record holder\'s gold ghost set off together, and where their laps ran together the two see-through cars flickered through each other. Yours now gives way wherever they\'re in the same place.',
+      'The tag over the record ghost is just the name.',
+    ],
+  },
+  {
     v: '3.48', date: '26 Nov 2026', title: 'No way round the barriers\' ends',
     items: [
       'At Rose Bay, where a race barrier came to a corner\'s rail the two passed side by side with room for a car between them. Each barrier now runs in to meet the end of the rail, at all five places, so there\'s no gap to slip through.',
