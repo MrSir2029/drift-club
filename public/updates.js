@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.51', date: '26 Nov 2026', title: 'The record ghost starts switched off',
+    items: [
+      'The record holder\'s ghost is off unless you switch it on: in Settings, or in the pause menu in Polytrack mode. If you had already switched it on yourself, it stays on.',
+    ],
+  },
+  {
     v: '3.50', date: '26 Nov 2026', title: 'Quieter sponsors\' signs',
     items: [
       'By day the sponsors\' posters and banners take the light and shade of wherever they are, like the walls they hang on. They used to glow the same whichever way they faced, which made them jump out.',

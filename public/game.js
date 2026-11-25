@@ -334,7 +334,7 @@ try {
   localStorage.setItem('dc-defaults', '3');
 } catch {}
 try { app.expanded = localStorage.getItem('dc-map') !== 'off'; } catch { app.expanded = true; }
-try { app.recGhostOn = localStorage.getItem('dc-recghost') !== 'off'; } catch { app.recGhostOn = true; } // the record holder's ghost in Polytrack mode
+try { app.recGhostOn = localStorage.getItem('dc-recghost') === 'on'; } catch { app.recGhostOn = false; } // the record holder's ghost in Polytrack mode: off unless you've switched it on (the owner: "off by default")
 
 // (the landmarks used to hide stars to find; forget the ones found)
 try { localStorage.removeItem('dc-found'); } catch {}

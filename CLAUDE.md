@@ -82,7 +82,8 @@
   opens on the Championship. Camera and Feedback live in Settings, not on
   the home screen or the pause menu (the owner asked), and the record
   ghost's switch sits near the top of Settings and in the Polytrack pause
-  menu ("too hard to find" where it was, low down in Settings).
+  menu ("too hard to find" where it was, low down in Settings). The record
+  ghost is off by default (the owner asked).
 - **Nothing a few centimetres in front of something else on far-off
   scenery** (window panes on a wall, a band round a tower): from a few
   hundred metres the two flicker, and the test renderer doesn't show it
