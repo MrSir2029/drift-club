@@ -159,6 +159,17 @@ room). Open it from the home screen or the lobby; the lobby
 also shows the lap time record for the track that's picked, and setting a time on the
 board pops up a message.
 
+**The Drift King championship** ranks every name by its results over all the
+boards. Each board's top ten score as in F1 (25 for the record, then 18, 15,
+12, 10, 8, 6, 4, 2 and 1) and the points add up across the tracks; level on
+points, more records wins, then more second places, and so on. Whoever leads
+is the Drift King: shown with a crown at the top of the leaderboard and beside
+that name in every list. The Championship tab (or a click on the king's
+banner) shows the whole table, with your own place under it. Racer, the name
+you get without picking one, isn't in it. It's all worked out in the browser
+from the boards everyone already has (`overallStandings` in `game.js`), so the
+server doesn't know about it.
+
 There are no accounts: it goes by the name you race with, one line per name. Names with a
 bad word in them (a short blocklist in `server/core.js`) are swapped for
 "Racer" everywhere, not just on the board. The blocklist also catches
@@ -419,8 +430,9 @@ get a red dot on the button until they've read it.
 - `scripts/build-preview.mjs` (`npm run build-preview`): writes
   `preview-build/`, a copy of the game that needs no server, for trying a
   build before it's deployed. The server's own code runs inside the page (one
-  player, a leaderboard of its own that starts empty), the live server's name
-  filter is left out, and Three.js comes from a public CDN. Serve the folder
+  player; the leaderboard starts as the live one was when last saved, and laps
+  set in a preview stay there), the live server's name filter is left out, and
+  Three.js comes from a public CDN. Serve the folder
   with any file server and open `local.html`, or publish `index.html` with
   the files beside it as a private page.
 

@@ -1,8 +1,9 @@
 // Builds a copy of Drift Club that needs no server, for trying a build before it is deployed:
 //   npm run build-preview            (writes preview-build/, which isn't committed)
 // The game's own server code (server/core.js) runs inside the page, behind something that looks like a WebSocket
-// to the game: one player, a leaderboard of its own that starts empty, and nothing leaves the browser. Three.js
-// comes from a public CDN, so the page does need the internet.
+// to the game: one player, and nothing leaves the browser. Its leaderboard starts as the live one was when it was
+// last saved (server/boards.json) and is the page's own from there: laps set in a preview stay in the preview.
+// Three.js comes from a public CDN, so the page does need the internet.
 //
 // index.html is written the way a Claude artifact page is (no doctype, head or body of its own: the publisher
 // wraps it), to publish with the files beside it. local.html is the same page wrapped, for opening yourself:
@@ -52,12 +53,15 @@ for (const f of fs.readdirSync(path.join(repo, 'public/vendor/fonts')).filter((f
 write('fonts.js', `// the sponsors' typefaces (see public/vendor/fonts in the repository for what they are and their licences)\nwindow.DC_FONTS = ${JSON.stringify(fonts)};\n`);
 
 // ---- the server, in the page
+let saved = null;
+try { saved = JSON.parse(read('server/boards.json')); } catch {}
 write('local-server.js', `// Drift Club's server, running in this page. The game opens a WebSocket to its server; here that "socket" hands
 // each message straight to the server's own code (core.js). One player, and nothing leaves the browser: the
-// leaderboard is this page's own and starts empty.
+// leaderboard starts as the live one was when last saved, and is this page's own from there.
 import { createGame } from './core.js';
+const SAVED = ${JSON.stringify(saved)};
 const sign = (text) => { let a = 2166136261, b = 5381; for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = (Math.imul(b, 33) + c) | 0; } return ((a >>> 0).toString(36) + (b >>> 0).toString(36)).padStart(12, '0').slice(0, 12); };
-const game = createGame({ note: 'A preview: these totals are this page\\'s own.', sign });
+const game = createGame({ note: 'A preview: these totals are this page\\'s own.', sign, boards: SAVED });
 class LocalSocket {
   constructor() {
     this.readyState = 0; this.onopen = this.onclose = this.onmessage = this.onerror = null;

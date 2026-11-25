@@ -383,12 +383,12 @@ input:focus { border-color: var(--blue); }
 .boardpanel { width: min(520px, 100%); max-height: 90vh; display: flex; flex-direction: column; gap: 10px; }
 .boardpanel .label { margin: 0; }
 .boardpanel .seg button { font-size: 13px; padding: 7px 4px; }
-/* the track tabs: two rows of four (eight tracks don't fit in one) */
-#board-tracks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-#board-tracks button { border-left: 3px solid var(--ink); }
-#board-tracks button:nth-child(4n + 1) { border-left: 0; }
-#board-tracks button:nth-child(n + 5) { border-top: 3px solid var(--ink); }
-.board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; overflow: auto; }
+/* the tabs: Championship across the top, then the tracks in two rows of four (eight don't fit in one) */
+#board-tracks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); flex: none; } /* (never squeezed: in a short window it's the list that scrolls) */
+#board-tracks button { border-left: 3px solid var(--ink); border-top: 3px solid var(--ink); }
+#board-tracks button.champ { grid-column: 1 / -1; border-left: 0; border-top: 0; display: flex; align-items: center; justify-content: center; gap: 7px; }
+#board-tracks button:nth-child(4n + 2) { border-left: 0; }
+.board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; overflow: auto; min-height: 92px; }
 .board-list li { display: flex; align-items: center; gap: 10px; border: 3px solid var(--ink); border-radius: 10px; padding: 6px 12px; font-weight: 800; background: #fff; }
 .board-list li .place { width: 22px; color: var(--muted); }
 .board-list li .rnum { min-width: 30px; padding: 1px 4px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; font-size: 13px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; } /* the race number, like the one on the car */
@@ -400,6 +400,20 @@ input:focus { border-color: var(--blue); }
 .board-list li.me { outline: 3px solid var(--blue); outline-offset: -3px; }
 .board-list li.empty { justify-content: center; color: var(--muted); font-weight: 700; }
 .board-pb { font-weight: 800; font-size: 14px; }
+/* the Drift King: the name with the best results over every board, at the top of the leaderboard */
+.crown { width: 1.35em; height: 1.1em; vertical-align: -0.14em; fill: #ffd23f; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; }
+.king { display: flex; align-items: center; gap: 12px; flex: none; cursor: pointer; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; background: var(--ink); color: var(--paper); }
+.king > .crown { width: 46px; height: 38px; flex: none; stroke: #0f1320; stroke-width: 2; }
+.king-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.king-title { font-size: 11px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #ffd23f; }
+.king-who b { font-size: 22px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.king-next { font-size: 12px; font-weight: 700; color: #b9c0d0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.king-pts { display: flex; flex-direction: column; align-items: flex-end; flex: none; font-size: 12px; font-weight: 700; color: #b9c0d0; white-space: nowrap; }
+.king-pts b { font-size: 24px; line-height: 1; font-weight: 900; color: #ffd23f; font-variant-numeric: tabular-nums; }
+.king-mark { flex: none; margin-right: -3px; } /* before the name, so a long name cut short doesn't take the crown with it */
+.board-list li.first .crown { fill: #fff; }
+.board-list li .time small { font-size: 12px; font-weight: 700; color: var(--muted); }
+#board-tracks button.champ.on .crown { fill: #fff; }
 .board-pb:empty { display: none; }
 .label .record { float: right; color: var(--ink); text-transform: none; letter-spacing: 0; font-weight: 800; }
 

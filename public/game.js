@@ -6365,8 +6365,26 @@ const board = { track: 0 };
 const boardList = (t) => { const l = app.boards[String(t)]; return Array.isArray(l) ? l.filter(e => e && typeof e.n === 'string' && e.ms > 0) : []; };
 function boardsChanged(key) {
   try { localStorage.setItem('dc-lb', JSON.stringify(app.boards)); } catch {}
-  if (!$('#board').classList.contains('hidden') && (!key || key === String(board.track))) renderBoard();
+  if (!$('#board').classList.contains('hidden')) renderBoard(); // (whichever board changed: the Drift King is worked out from them all)
   renderRecord();
+}
+// The Drift King championship: every name's results over all the tracks' leaderboards. Each board's top ten score
+// as in F1 (25 for the record, then 18, 15, 12, 10, 8, 6, 4, 2 and 1) and the points add up. Level on points, more
+// records wins, then more second places, and so on down. Whoever leads is the Drift King. Racer, the name you get
+// without picking one, is anybody, so it isn't in it. The leaderboard's Championship tab shows the whole table.
+const KING_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+const CROWN = '<svg class="crown" viewBox="0 0 32 26" aria-hidden="true"><path d="M3 20.5 2 6.5l8 6.5 6-10.5 6 10.5 8-6.5-1 14z"/><path d="M3 20.5h26V24H3z"/></svg>';
+function overallStandings() {
+  const by = new Map();
+  for (let t = 0; t < TRACKS.length; t++) boardList(t).slice(0, KING_POINTS.length).forEach((e, i) => {
+    const key = e.n.toLowerCase();
+    if (key === 'racer') return;
+    let who = by.get(key);
+    if (!who) by.set(key, who = { name: e.n, pts: 0, tracks: 0, places: KING_POINTS.map(() => 0) });
+    who.pts += KING_POINTS[i]; who.places[i]++; who.tracks++;
+  });
+  const onPlaces = (a, b) => { for (let i = 0; i < a.places.length; i++) if (a.places[i] !== b.places[i]) return b.places[i] - a.places[i]; return 0; };
+  return [...by.values()].sort((a, b) => b.pts - a.pts || onPlaces(a, b) || a.name.localeCompare(b.name));
 }
 function notePersonalBest(lapTime) {
   const k = String(app.trackId), ms = Math.round(lapTime);
@@ -6380,11 +6398,32 @@ function openBoard(track) {
   renderBoard();
 }
 function renderBoard() {
-  $('#board-tracks').innerHTML = TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}" title="${esc(t.name)}">${esc(t.short || t.name)}</button>`).join('');
-  const list = boardList(board.track);
+  const champ = board.track === 'champ'; // the Championship tab, or a track's number
+  $('#board-tracks').innerHTML = `<button data-t="champ" class="champ ${champ ? 'on' : ''}" title="Everyone's points over all the tracks">${CROWN}Championship</button>`
+    + TRACKS.map((t, i) => `<button data-t="${i}" class="${i === board.track ? 'on' : ''}" title="${esc(t.name)}">${esc(t.short || t.name)}</button>`).join('');
   const me = (app.room ? app.name : $('#name').value.replace(/[^A-Za-z0-9 _\-]/g, '').trim().slice(0, 12) || 'Racer').toLowerCase();
+  const table = overallStandings(), king = table[0], kingKey = king ? king.name.toLowerCase() : null;
+  const kingEl = $('#board-king');
+  kingEl.classList.toggle('hidden', !king);
+  if (king) {
+    const records = king.places[0], next = table.slice(1, 3).map((w, i) => `${i + 2}. ${esc(w.name)} ${w.pts}`).join(' \u00b7 ');
+    kingEl.innerHTML = `${CROWN}<div class="king-who"><span class="king-title">Drift King</span><b>${esc(king.name)}</b>${next ? `<span class="king-next">${next}</span>` : ''}</div>`
+      + `<div class="king-pts"><b>${king.pts}</b><span>points</span><span>${records ? `${records} of ${TRACKS.length} records` : 'no records yet'}</span></div>`;
+  }
+  const crown = `<span class="king-mark" title="The Drift King">${CROWN}</span>`;
+  if (champ) {
+    // the championship: everyone with a point, the king first
+    const count = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
+    $('#board-list').innerHTML = table.length
+      ? table.map((w, i) => `<li class="${w.name.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span>${i === 0 ? crown : ''}<span class="name">${esc(w.name)}</span><span class="car">${w.places[0] ? count(w.places[0], 'record') + ' \u00b7 ' : ''}${count(w.tracks, 'track')}</span><span class="time">${w.pts}<small> ${w.pts === 1 ? 'pt' : 'pts'}</small></span></li>`).join('')
+      : '<li class="empty">No laps yet. Set the first one!</li>';
+    const mine = table.findIndex((w) => w.name.toLowerCase() === me);
+    $('#board-pb').textContent = mine >= 0 ? `You: ${ordinal(mine + 1)}, with ${count(table[mine].pts, 'point')}` : table.length ? 'A top-ten lap on any track puts you in the championship.' : '';
+    return;
+  }
+  const list = boardList(board.track);
   $('#board-list').innerHTML = list.length
-    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="rnum" title="Race number">${Number.isInteger(e.num) ? e.num : ''}</span><span class="name">${esc(e.n)}</span><span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
+    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="rnum" title="Race number">${Number.isInteger(e.num) ? e.num : ''}</span>${e.n.toLowerCase() === kingKey ? crown : ''}<span class="name">${esc(e.n)}</span><span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
     : '<li class="empty">No laps yet. Set the first one!</li>';
   const pb = app.pbs[String(board.track)];
   $('#board-pb').textContent = pb ? `Your best here: ${fmtTime(pb)}` : '';
@@ -6961,7 +7000,8 @@ function wireUI() {
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
   for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(app.room ? app.room.trackId : null); });
   $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
-  $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = +b.dataset.t; renderBoard(); } });
+  $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = b.dataset.t === 'champ' ? 'champ' : +b.dataset.t; renderBoard(); } });
+  $('#board-king').addEventListener('click', () => { board.track = 'champ'; renderBoard(); }); // the king's banner opens the championship too
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
     $(id).addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
