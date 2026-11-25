@@ -3396,6 +3396,26 @@ function buildScenery(track) {
 // out to the low wall round its edge (the parked cars are solid), the ramps
 // have railings because they're bridges, in the mall the shopfronts are the
 // walls, and the food court has a glass screen round it.
+// A parked car, as one shape: a low body, a glasshouse that narrows to the roof, four wheels. Its paint is white
+// here and takes each car's own colour; glass and tyres are dark whatever the colour. It stands on y = 0, nose to +z.
+function parkedCarGeometry() {
+  const pos = [], col = [], PAINT = new THREE.Color(1, 1, 1), GLASS = new THREE.Color(0.13, 0.16, 0.2), TYRE = new THREE.Color(0.07, 0.07, 0.08), TRIM = new THREE.Color(0.2, 0.2, 0.22);
+  // a block between two rectangles: (x half-width, z0, z1) at y0, and another at y1, centred on x = cx. `side`
+  // colours its sides, `top` its top (null: no top, it's hidden); `mask` picks the sides: 1 back, 2 right, 4 front, 8 left
+  const block = (w0, a0, b0, y0, w1, a1, b1, y1, side, top, cx = 0, mask = 15) => {
+    const B = [V(cx - w0, y0, a0), V(cx + w0, y0, a0), V(cx + w0, y0, b0), V(cx - w0, y0, b0)], T = [V(cx - w1, y1, a1), V(cx + w1, y1, a1), V(cx + w1, y1, b1), V(cx - w1, y1, b1)];
+    for (let k = 0; k < 4; k++) if (mask & (1 << k)) pushQuad(pos, col, B[(k + 1) % 4], B[k], T[k], T[(k + 1) % 4], side); // (wound to face outwards)
+    if (top) pushQuad(pos, col, T[3], T[2], T[1], T[0], top);
+  };
+  block(0.9, -2.1, 2.1, 0.22, 0.9, -2.1, 2.1, 0.5, TRIM, null);           // sills and bumpers
+  block(0.9, -2.08, 2.08, 0.5, 0.88, -2.02, 1.98, 0.78, PAINT, PAINT);    // the body, to the waistline
+  block(0.84, -1.5, 0.95, 0.78, 0.7, -1.08, 0.42, 1.28, GLASS, PAINT);    // the glasshouse, and the roof
+  for (const sx of [-1, 1]) for (const z of [-1.3, 1.32]) block(0.14, z - 0.36, z + 0.36, 0, 0.14, z - 0.36, z + 0.36, 0.66, TYRE, null, sx * 0.8, 5 | (sx > 0 ? 2 : 8)); // (a touch proud of the body: the outside, front and back of each tyre)
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  return g;
+}
+
 function buildMall(track, rnd) {
   const { samples, N, hw } = track, lim = track.limit, solids = track.solids, walls = track.walls;
   const [A, B, MEDIAN, SPAN] = track.def.blocks; // the car park and the mall, each [x0, z0, x1, z1]; then Oxford Street's median, and the bridge over the street
@@ -3410,7 +3430,7 @@ function buildMall(track, rnd) {
   const nearestI = (x, z) => { let b = 0, d = Infinity; for (let i = 0; i < N; i++) { const s = samples[i], e = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (e < d) { d = e; b = i; } } return b; };
   const along = (i) => { const s = samples[wrap(i)]; return Math.atan2(s.th.x, s.th.z); };
   const facing = (i, sd) => { const s = samples[wrap(i)]; return Math.atan2(-s.left.x * sd, -s.left.z * sd); }; // turned to face the road from side sd
-  const people = makePeople(640, rnd);
+  const people = makePeople(1600, rnd);
   const C = (hex) => new THREE.Color(hex);
   // three sheets of flat colour: lit (and casting no shadow: the mall isn't dark inside), glowing, and painted on the ground
   const lit = { pos: [], col: [] }, glow = { pos: [], col: [] }, paint = { pos: [], col: [] };
@@ -3439,6 +3459,42 @@ function buildMall(track, rnd) {
     m.position.set(x, y, z); m.rotation.y = ry; g.add(m); return m;
   };
   const world = at(0, 0, 0, 0);
+  // every parked car is one of these (some stretched a little taller: a van, a four-wheel drive)
+  const cars = new THREE.InstancedMesh(parkedCarGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), 560), carM = new THREE.Matrix4(), carC = new THREE.Color();
+  let nCars = 0;
+  const parkCar = (x, y, z, ry, hex, tall = 1) => { if (nCars >= 560) return; carM.makeRotationY(ry); carM.scale(V(1, tall, 1)); carM.setPosition(x, y, z); cars.setMatrixAt(nCars, carM); cars.setColorAt(nCars++, carC.set(hex)); };
+  // It's a race track: where people stand to watch there's a length of race barrier in front of them, a concrete
+  // block with a wire catch fence on top (solid). Along x, from x0 to x1 at z, the ground at y; `out` is +1 or -1,
+  // the side of it the crowd is on; k: which sponsor's banner the block carries on its track side, or -1 for none.
+  const rndC = mulberry32(5150);
+  const raceFence = (x0, x1, z, y, out, k = -1) => {
+    const len = x1 - x0, mx = (x0 + x1) / 2, STEEL = 0x8d93a0;
+    box(world, len, 1.0, 0.5, 0xd4d7dc, mx, y + 0.5, z); box(world, len + 0.1, 0.08, 0.6, 0xb9bdc5, mx, y + 1.02, z).castShadow = false;
+    for (let x = x0; x <= x1 + 0.01; x += len / Math.round(len / 4)) box(world, 0.1, 2.5, 0.1, STEEL, x, y + 2.25, z + out * 0.15).castShadow = false;
+    box(world, len, 0.08, 0.08, STEEL, mx, y + 3.5, z + out * 0.15).castShadow = false;
+    for (const h of [1.5, 2.0, 2.5, 3.0]) box(world, len, 0.03, 0.03, STEEL, mx, y + h, z + out * 0.15).castShadow = false;
+    walls.push({ ax: x0, az: z, bx: x1, bz: z, y });
+    if (k >= 0) addBanner(k, { x: mx - 2.25, y, z: z - out * 0.33 }, { x: mx + 2.25, y, z: z - out * 0.33 }, 0.14, 0.98, 0, 1, mx, z - out * 10);
+  };
+  // n people standing in the rectangle, facing the way `out` points from (towards -out: the track)
+  const crowd = (x0, x1, z0, z1, y, n, out, avoid = []) => {
+    for (let k = 0; k < n; k++) {
+      const x = x0 + rndC() * (x1 - x0), z = z0 + rndC() * (z1 - z0), rot = (out > 0 ? Math.PI : 0) + (rndC() - 0.5) * 0.7;
+      if (!avoid.some(([ox, oz, r]) => Math.hypot(x - ox, z - oz) < r)) people.add(x, y, z, rot);
+    }
+  };
+  // a grandstand: four tiers rising away from the track, a back wall and a roof in the centre's red, most seats taken
+  const grandstand = (x0, x1, z, y, out) => {
+    const len = x1 - x0, mx = (x0 + x1) / 2;
+    for (let r = 0; r < 4; r++) {
+      const zr = z + out * (0.45 + r * 0.9), top = 0.35 + r * 0.42;
+      box(world, len, top, 0.9, r % 2 ? 0xb9bdc5 : 0xcfd3d8, mx, y + top / 2, zr);
+      for (let x = x0 + 0.5; x < x1 - 0.3; x += 0.78) if (rndC() < 0.8) people.add(x + (rndC() - 0.5) * 0.2, y + top, zr, (out > 0 ? Math.PI : 0) + (rndC() - 0.5) * 0.4);
+    }
+    box(world, len, 3.6, 0.2, 0xd62f2f, mx, y + 1.8, z + out * 3.75); box(world, len + 0.8, 0.2, 4.6, 0xf6f2e8, mx, y + 3.9, z + out * 1.9);
+    for (const x of [x0 + 0.15, x1 - 0.15]) box(world, 0.16, 3.8, 0.16, 0x8d93a0, x, y + 1.9, z + out * 0.1).castShadow = false;
+    solidRect(x0, Math.min(z, z + out * 3.85), x1, Math.max(z, z + out * 3.85), y);
+  };
 
   const PAVE = -0.2, SHOPS = hw + 8.5, UP = SHOPS + 3, CEIL = 9.2, ROOF = 10.4, DECK = track.def.roofs[0][4]; // (DECK: the car park's roof, which cars drive on)
   const indoors = (i) => samples[wrap(i)].p.z < B[3] - 0.5;
@@ -3486,7 +3542,7 @@ function buildMall(track, rnd) {
   {
     const TILE = [C(0xe9e2cf), C(0xd9d2c0)], FASCIA = C(0xf6f2e8), SLAB = C(0xcfd6dc), UPPER = C(0xefe9da), CEILING = C(0xd3d9e1), RAIL = C(0xbfe3f5), SKY = C(0xbfe6ff), LAMP = C(0xffffff);
     const GLASS = [0xfff3d6, 0xdff1ff, 0xffe9b8, 0xe6f7ee, 0xfde6ee, 0xf2ecff].map(C), SHOP = 8; // a shop every 8 samples (12 m)
-    const WIN = 0.9, DOOR = 2.4, SILL = PAVE + 0.5, RISER = C(0x6a7280), SHELF = C(0xf6f2e8), TAPE = C(0xe6453a), STAND = C(0xd9dde3), SKIN = C(0xf1c9a5);
+    const WIN = 0.9, DOOR = 2.4, SILL = PAVE + 0.5, RISER = C(0x6a7280), SHELF = C(0xf6f2e8), TAPE = C(0xe6453a), STAND = C(0xd9dde3), SKIN = C(0xf1c9a5), BARR = hw + 3.7, STEELC = C(0xaab0ba);
     const ITEM = [0xe6453a, 0x3d8bff, 0xffd23f, 0x7ed957, 0xff6bcb, 0x1d2230, 0xf6f2e8, 0xff8a3d].map(C);
     // an upright wall across the walkway's line at sample i, from lat0 out to lat1 (the end of a window, the side of a doorway)
     const cross = (Q, i, sd, lat0, lat1, y0, y1, color) => { const c = samples[wrap(i)], [ax, az] = P(i, sd * lat0), [bx, bz] = P(i, sd * lat1); quad(Q, [ax, c.p.y + y0, az], [bx, c.p.y + y0, bz], [bx, c.p.y + y1, bz], [ax, c.p.y + y1, az], color); };
@@ -3521,6 +3577,13 @@ function buildMall(track, rnd) {
           show(i, sd, n, m);
         }
         ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, 3.4, 4.9, FASCIA);
+        // a crowd barrier on the walkway outside every other shop, one side then the other, and people behind it (solid)
+        if (n % 2 === (sd > 0 ? 0 : 1) && m >= 2 && m <= 6 && i > i0 + 8 && i < i1 - 10 && !inU(i)) {
+          for (const h of [0.52, 1.02]) ribbon(lit, i, sd, BARR, BARR + 0.02, PAVE + h, PAVE + h + 0.08, STEELC);
+          for (const j of m === 6 ? [i, i + 1] : [i]) { const [x, z] = P(j, sd * BARR), y = samples[wrap(j)].p.y + PAVE; blockQ(lit, x - 0.05, z - 0.05, x + 0.05, z + 0.05, y, y + 1.12, STEELC); }
+          { const [ax0, az0] = P(i, sd * BARR), [bx0, bz0] = P(i + 1, sd * BARR); walls.push({ ax: ax0, az: az0, bx: bx0, bz: bz0, y: s.p.y }); }
+          for (let q = 0; q < 2; q++) if (rndC() < 0.55) { const [x, z] = P(i, sd * (BARR + 0.8 + rndC() * 2.4)); people.add(x + (rndC() - 0.5) * 1.1, s.p.y + PAVE + 0.02, z + (rndC() - 0.5) * 1.1, facing(i, sd) + (rndC() - 0.5) * 0.7, undefined, 1.05); }
+        }
         ribbon(glow, i, sd, SHOPS - 1.3, UP, 4.9, 4.9, SLAB);                   // the gallery's floor, sticking out over the walkway
         ribbon(glow, i, sd, SHOPS - 1.3, SHOPS - 1.28, 4.9, 5.7, RAIL);         // its glass balustrade
         ribbon(lit, i, sd, UP, UP + 0.02, 4.9, CEIL, UPPER);
@@ -3642,10 +3705,9 @@ function buildMall(track, rnd) {
       box(world, strip[2] - strip[0] - 8, 1.7, 0.4, DARK, (strip[0] + strip[2]) / 2, y, strip[3] + 0.1);
       for (const x of [strip[0] - 0.1, strip[2] + 0.1]) box(world, 0.4, 1.7, strip[3] - strip[1] - 8, DARK, x, y, (strip[1] + strip[3]) / 2);
     }
-    // in the open decks you drive past (the side along Oxford Street, and the two beside the ramps): a parapet,
-    // a column every 8 m, and the backs of the cars parked on that level
+    // in the open decks you drive past (the side along Oxford Street, and the two beside the ramps): a parapet
+    // and a column every 8 m
     {
-      const rndK = mulberry32(6102), CARC = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a].map(C), CABC = C(0x26303f);
       // one face, from a to b along it; (ox, oz) points out of the building
       const deckFace = (ax, az, bx, bz, ox, oz) => {
         const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len, bays = Math.floor(len / 8), pad = (len - bays * 8) / 2;
@@ -3653,11 +3715,6 @@ function buildMall(track, rnd) {
           const floor = y - 0.85, mx = (ax + bx) / 2, mz = (az + bz) / 2;
           { const m = box(world, Math.abs(ux) * len + Math.abs(uz) * 0.5, 0.6, Math.abs(uz) * len + Math.abs(ux) * 0.5, CONC, mx + ox * 0.34, floor + 0.3, mz + oz * 0.34); m.castShadow = false; }
           for (let k = 0; k <= bays; k++) { const d = pad + k * 8, m = box(world, Math.abs(ux) * 0.7 + Math.abs(uz) * 0.5, 1.7, Math.abs(uz) * 0.7 + Math.abs(ux) * 0.5, CONC, ax + ux * d + ox * 0.36, y, az + uz * d + oz * 0.36); m.castShadow = false; }
-          for (let k = 0; k < bays; k++) for (let j = 0; j < 3; j++) {
-            if (rndK() < 0.4) continue;
-            const d = pad + k * 8 + 1.45 + j * 2.55, px = ax + ux * d + ox * 0.33, pz = az + uz * d + oz * 0.33, c = CARC[Math.floor(rndK() * CARC.length)];
-            wallQ(lit, px - ux * 0.9, pz - uz * 0.9, px + ux * 0.9, pz + uz * 0.9, floor + 0.6, floor + 0.98, c); wallQ(lit, px - ux * 0.78, pz - uz * 0.78, px + ux * 0.78, pz + uz * 0.78, floor + 0.98, floor + 1.5, CABC);
-          }
         }
       };
       deckFace(main[0] + 4, main[1], main[2] - 4, main[1], 0, -1); deckFace(main[0], main[1] + 5, main[0], main[3] - 5, -1, 0); deckFace(main[2], main[1] + 5, main[2], main[3] - 5, 1, 0);
@@ -3677,27 +3734,31 @@ function buildMall(track, rnd) {
       for (let k = 0; k < 3; k++) { const x = rampW + (k - 1) * 6; addBanner(k + 3, { x: x - 2.25, y: DECK, z: zn }, { x: x + 2.25, y: DECK, z: zn }, 0.14, 0.98, 0, 1, x, zn - 20); }
       for (let k = 0; k < 2; k++) { const z = strip[1] + 9 + k * 9; addBanner(k + 1, { x: xw, y: DECK, z: z - 2.25 }, { x: xw, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xw + 20, z); }
     }
-    // parked cars in marked bays, some under shade sails: both sides of the start straight, all the way along it.
-    // (Their own run of random numbers, like the town's and the skyline's further down: a change to one of them
-    // no longer reshuffles the others.)
-    const rndP = mulberry32(4421), CAP = 640, STAIRS = [-100, 62];
-    const body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 4.2), new THREE.MeshLambertMaterial({ flatShading: true }), CAP), cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.6, 2.1), lam(0x26303f), CAP);
-    const M = new THREE.Matrix4(), col = new THREE.Color(), CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a, 0xf6f2e8, 0xb9c0cc];
-    let n = 0;
-    const white = C(0xf6f2e8), lampBay = (x) => Math.abs((((x - strip[0] - 20) % 45) + 45) % 45) < 0.1; // (a lamp post stands in that bay of the row north of the road)
-    for (const z of [62, 68, 96, 102, 130, 136, 166, 172, 204, 210]) for (let x = (z > 162 ? strip[0] : main[0]) + 8; x < (z > 162 ? strip[2] : main[2]) - 8; x += 3) {
+    // parked cars in marked bays, some under shade sails: on the main roof, and one row each side of the start
+    // straight, back behind the crowd. (Their own run of random numbers, like the town's and the skyline's further
+    // down: a change to one of them no longer reshuffles the others.)
+    const rndP = mulberry32(4421), STAIRS = [-100, 62];
+    const CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a, 0xf6f2e8, 0xb9c0cc];
+    const white = C(0xf6f2e8);
+    for (const z of [62, 68, 96, 102, 130, 136, 166, 210]) for (let x = (z > 162 ? strip[0] : main[0]) + 8; x < (z > 162 ? strip[2] : main[2]) - 8; x += 3) {
       if (z > 162 && z < 200 && (x > samples[i0].p.x - 34 || x < samples[i1].p.x + 34)) continue; // (the ramps come up through here)
       flatQ(lit, x - 1.55, z - 2.6, x - 1.45, z + 2.6, DECK + 0.03, white);
-      if (rndP() < 0.42 || n >= CAP || (z < 162 && Math.abs(x + 15) < 9)) continue;
-      if (z > 200 && (Math.abs(x - rampW) < 11 || (z === 204 && lampBay(x)) || (z === 210 && STAIRS.some((sx) => Math.abs(x - sx) < 4.8)))) continue; // (nothing parked in front of the banners at the top of the ramp, round a lamp post, or in a stair tower)
-      const cz = z + (rndP() < 0.5 ? 0.3 : -0.3);
-      M.makeRotationY(rndP() < 0.5 ? 0 : Math.PI); M.setPosition(x, DECK + 0.6, z); body.setMatrixAt(n, M); M.setPosition(x, DECK + 1.25, cz); cab.setMatrixAt(n, M);
-      body.setColorAt(n++, col.set(CARS[Math.floor(rndP() * CARS.length)]));
+      if (rndP() < 0.42 || (z < 162 && Math.abs(x + 15) < 9)) continue;
+      if (z > 200 && (Math.abs(x - rampW) < 11 || STAIRS.some((sx) => Math.abs(x - sx) < 4.8))) continue; // (nothing parked in front of the banners at the top of the ramp, or in a stair tower)
+      parkCar(x, DECK + 0.02, z, rndP() < 0.5 ? 0 : Math.PI, CARS[Math.floor(rndP() * CARS.length)], rndP() < 0.22 ? 1.22 : 1);
       onRoof(x, z - 1, 1.25); onRoof(x, z + 1, 1.25); // (solid)
-      // in the rows next to the road, some people have climbed onto their cars to watch
-      if ((z === 172 || z === 204) && rndP() < 0.22) people.add(x + (rndP() - 0.5) * 0.5, DECK + 1.56, cz, z < 190 ? 0 : Math.PI);
     }
-    body.count = cab.count = n; body.castShadow = true; worldGroup.add(body, cab);
+    // The start straight, dressed as one: lengths of race barrier down both sides with the crowd behind them
+    // (gaps between, so the roof is still open to drive on), and a grandstand each side just past the line.
+    {
+      const zr = samples[0].p.z, FENCE = hw + 3.9, xl = samples[0].p.x;
+      for (let k = 0, x = xl - 93; x + 24 < rampE - 30; x += 36, k++) for (const out of [-1, 1]) {
+        const z = zr + out * FENCE, stand = Math.abs(x + 12 - (xl + 27)) < 6; // (the length with the grandstand behind it)
+        raceFence(x, x + 24, z, DECK, out, (k + (out > 0 ? 1 : 0)) % 2 ? -1 : k + (out > 0 ? 2 : 0));
+        if (stand) grandstand(x, x + 24, z + out * 1.3, DECK, out);
+        else crowd(x + 0.6, x + 23.4, z + out * 0.9, z + out * 5.6, DECK + 0.02, 15, out);
+      }
+    }
     const sail = new THREE.MeshLambertMaterial({ color: 0xf1e9d6, side: THREE.DoubleSide, flatShading: true });
     for (let x = main[0] + 30; x < main[2] - 30; x += 36) for (const z of [99, 133]) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([x - 14, DECK + 4.6, z - 8, x + 14, DECK + 3.4, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 4.6, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 3.4, z + 8], 3)); g.computeVertexNormals();
@@ -3771,6 +3832,20 @@ function buildMall(track, rnd) {
         for (const lz of [-3.4, 3.4]) box(world, 0.7, 0.16, 1.5, 0xfff3c4, x, h + 7.05, lz, 0x8a7a40);
       }
     }
+    // race barrier down the outside of each carriageway, in lengths, with the crowd on the footpath behind it;
+    // and a crowd round the outside of the hairpin, behind its rail
+    {
+      const pillars = [-9, 9].flatMap((lx) => [[BRIDGE.x + lx, WIDE + 3, 1.3], [BRIDGE.x + lx, -WIDE - 3, 1.3]]);
+      for (let k = 0, x = MED.x0 + 16; x + 24 <= MED.x1 - 2; x += 36, k++) for (const out of [-1, 1]) {
+        raceFence(x, x + 24, out * (WIDE + 0.3), 0, out, (k + (out > 0 ? 0 : 1)) % 2 ? -1 : k + (out > 0 ? 1 : 3));
+        crowd(x + 0.6, x + 23.4, out * (WIDE + 1.2), out * (WIDE + 5.4), 0.09, 14, out, pillars);
+      }
+      const hx = street.xa + 15; // (the hairpin's centre)
+      for (let k = 0; k < 46; k++) {
+        const a = (100 + rndC() * 160) * Math.PI / 180, r = 29 + rndC() * 4.5, x = hx + Math.cos(a) * r, z = Math.sin(a) * r;
+        people.add(x, terrainHeight(x, z) + 0.08, z, Math.atan2(hx - x, -z) + (rndC() - 0.5) * 0.5);
+      }
+    }
     // the Westfield bridge between the two buildings: two glazed storeys, wide enough to drive under for a moment
     // like the real one's underpass. It stands on the median and on the footpaths; lights under it
     {
@@ -3805,8 +3880,8 @@ function buildMall(track, rnd) {
     // traffic held up behind the bus and across the street from it, while the race is on
     for (const [x, z, c, taxi] of [[BX - 13, -8.6, 0xf6f2e8, 1], [BX - 20, -8.6, 0xe6453a, 0], [BX + 1, 6.4, 0x2b2f3a, 0], [BX - 6.5, 6.4, 0xffd23f, 0], [BX - 14, 6.4, 0xb9c0cc, 0]]) {
       const y = terrainHeight(x, z) + 0.05;
-      box(world, 4.2, 0.75, 1.8, c, x, y + 0.6, z); box(world, 2.1, 0.6, 1.6, 0x26303f, x - 0.3, y + 1.25, z);
-      if (taxi) box(world, 0.5, 0.2, 0.9, 0xffd23f, x - 0.3, y + 1.65, z, 0x8a6a10);
+      parkCar(x, y, z, z < 0 ? Math.PI / 2 : -Math.PI / 2, c); // (each facing the way its side of the street goes)
+      if (taxi) box(world, 0.5, 0.18, 0.9, 0xffd23f, x + 0.3, y + 1.37, z, 0x8a6a10);
       for (const o of [-1, 1]) solids.push({ x: x + o, z, r: 1.25, y: 0 });
     }
     // street signs: on the corners where the lap crosses at the west doors, and by the bridge
@@ -3868,6 +3943,7 @@ function buildMall(track, rnd) {
     sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2));
     worldGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ map: cleanTexture(atlas), color: 0xf0f0f0, side: THREE.DoubleSide })));
   }
+  cars.count = nCars; cars.castShadow = true; worldGroup.add(cars);
   people.finish();
 }
 
