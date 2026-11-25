@@ -333,10 +333,12 @@ more shoppers, a skylight, boards hanging over the road, escalators, benches
 and plants; tables, a juice bar and palms in the middle of the food-court
 hairpin, behind a glass screen; and a crowd barrier outside every other shop
 with people behind it. It's dressed as a race track (the owner: "remember
-this is a racing track"): lengths of race barrier (`raceFence`: a concrete
-block with a wire catch fence on top) with the crowd behind them down both
-sides of the start straight and of Oxford Street's two carriageways, a
-grandstand each side just past the line, and a crowd round the hairpin.
+this is a racing track"): race barrier (`raceFence`: a concrete block with a
+wire catch fence on top) with the crowd behind it, unbroken down both sides
+of the start straight from the top of the ramp to the corner at the far end
+(the owner didn't want it cut off between the stands) and in lengths along
+Oxford Street's two carriageways; a grandstand each side just past the line,
+and a crowd round the hairpin.
 Outside: a row of parked cars each side of the roof, back behind the crowd,
 and more on the main roof (`parkedCarGeometry`: one shape for all of them, a
 body, a glasshouse and wheels, after the owner called the old boxes buns),
