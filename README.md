@@ -266,7 +266,9 @@ village, a stone circle, a campsite, a windmill and a radio mast. These
 are the **expanded map**, which is on by default;
 players on slower computers can turn it off under Settings. The 9LAT2
 building is always there, hidden as far from the roads as the map allows,
-down in low ground, with a sign you only make out up close. A TV
+down in low ground, with a sign you only make out up close (a painted sign,
+lit by the sun like the walls: it glowed until 3.59, when the owner asked
+for it not to be illuminated). A TV
 helicopter follows the race leader.
 
 Centennial Park (the second track) runs through a forest: thick with dark pines,
