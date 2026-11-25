@@ -405,8 +405,10 @@ The posters, and the banners on walls, carry the trackside sponsors, which
 the owner chose: 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and
 Glory Days), and Tenth Floor Chambers and Frangos as themselves, each in its
 company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
-every billboard (each turned to face the cars coming) and on Sydney CBD's lit
-boards. Banners go on solid walls only, one every 20 m or so: six along the
+every billboard and on Sydney CBD's lit boards. A billboard has one poster,
+on the face turned to the road and the cars coming; its back is the back of
+a sign, on its posts and rails (until 3.58 the back carried a second poster:
+the owner asked for single-sided signs). Banners go on solid walls only, one every 20 m or so: six along the
 pit wall, Sydney CBD's walls (about 95 round the lap), Rose Bay's harbour
 wall, the stone wall behind its shops and the blocks of its race barriers
 (one every 80 m there), and at Westfield the sides of
