@@ -5,7 +5,9 @@
 - **Before every update that will be deployed, save the live leaderboard**,
   so the redeploy doesn't start it empty:
   `DRIFT_CLUB_URL=https://drift-club-mvq1.onrender.com npm run save-boards`,
-  then commit `server/boards.json` with the update. Behind a proxy (cloud
+  then commit `server/boards.json` and `server/paths.json` (the laps' racing
+  lines: without them every update wiped the lines and the record ghost)
+  with the update. Behind a proxy (cloud
   sessions), run `npm i --no-save https-proxy-agent` first. If the game is
   asleep and doesn't answer, ship anyway: players' browsers hand their copies
   back.

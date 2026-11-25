@@ -1309,8 +1309,34 @@ function ghostButton() {
   const b = $('#btn-recghost'), who = app.recLap && app.recWho;
   if (b) b.textContent = !app.recGhostOn ? "Record holder's ghost: off" : who ? `Ghost on: ${who.name}  ${fmtTime(who.ms)}` : "Record holder's ghost: on (no lap here has one yet)";
 }
+// ---- Keeping lines. The server keeps how each leaderboard lap was driven, but one with no database forgets
+// them all when it restarts (and the live one restarts with every update). So this browser keeps a copy of the
+// lines it has had to do with, its own laps' first and then any it has watched or chased, each with the
+// server's signature, and hands one back when the lap is on the board without its line ('pathseed').
+const LINES_KEPT = 16;
+try { const o = JSON.parse(localStorage.getItem('dc-lines') || '[]'); app.lines = Array.isArray(o) ? o.filter((e) => e && typeof e.k === 'string' && typeof e.n === 'string' && Number.isInteger(e.ms) && typeof e.p === 'string' && typeof e.s === 'string').slice(0, LINES_KEPT) : []; } catch { app.lines = []; }
+function keepLine(k, n, ms, p, s, mine) {
+  if (typeof s !== 'string' || typeof p !== 'string' || !Number.isInteger(ms)) return;
+  const same = (e) => e.k === k && e.n.toLowerCase() === String(n).toLowerCase();
+  const had = app.lines.find(same);
+  if (had && had.ms === ms && had.s === s) return;
+  app.lines = [{ k, n, ms, p, s, ...(mine || had?.mine ? { mine: 1 } : {}) }, ...app.lines.filter((e) => !same(e))];
+  // (its own laps are the last to go when the list is full: nobody else is as sure to come back with them)
+  while (app.lines.length > LINES_KEPT) { const i = app.lines.findLastIndex((e) => !e.mine); app.lines.splice(i >= 0 ? i : app.lines.length - 1, 1); }
+  try { localStorage.setItem('dc-lines', JSON.stringify(app.lines)); } catch {}
+}
+const linesSent = new Set(); let linesTimer = null;
+function handBackLines() {
+  if (linesTimer) return;
+  const due = app.lines.filter((e) => !linesSent.has(`${e.k}|${e.n}|${e.ms}`) && (app.boards[e.k] || []).some((b) => b.n.toLowerCase() === e.n.toLowerCase() && b.ms === e.ms && !b.g));
+  if (!due.length) return;
+  const e = due[0]; linesSent.add(`${e.k}|${e.n}|${e.ms}`);
+  send({ t: 'pathseed', k: e.k, n: e.n, ms: e.ms, p: e.p, s: e.s });
+  linesTimer = setTimeout(() => { linesTimer = null; handBackLines(); }, 320); // (the server takes one every 200 ms from a player)
+}
 function onPath(msg) {
   if (typeof msg.k !== 'string' || typeof msg.n !== 'string') return;
+  if (msg.p && msg.s) keepLine(msg.k, msg.n, msg.ms, msg.p, msg.s, false);
   const pts = msg.p ? unpackPath(msg.p) : null;
   if (lineView.want && lineView.want.k === msg.k && lineView.want.n.toLowerCase() === msg.n.toLowerCase()) showLine(msg, pts);
   if (app.recKey === `${msg.k}|${msg.n}|${msg.ms}` && pts && app.track && String(app.trackId) === msg.k) {
@@ -6793,6 +6819,7 @@ function stepLocal(car, dt, canDrive) {
           car.lap++;
           const path = app.mode === 'quali' && lapTime === app.bestLap ? packPath(app.ghostLap) : null; // how it was driven, with your best lap: the leaderboard keeps it if the lap gets on
           send({ t: 'lap', time: Math.round(lapTime), sec: lapSec, ...(path ? { path } : {}) }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
+          if (path) app.sentPath = { k: String(app.trackId), ms: Math.round(lapTime), p: path }; // (kept, with the server's signature, if it gets onto the board: 'pathkept')
           notePersonalBest(lapTime);
           if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
@@ -7109,10 +7136,11 @@ function handle(msg) {
     }
     case 'best': app.bests?.set(msg.id, msg.time); break;
     case 'sector': if (app.sec && msg.n >= 0 && msg.n < 3 && (app.sec.session[msg.n] == null || msg.time < app.sec.session[msg.n])) app.sec.session[msg.n] = msg.time; break;
-    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); app.secRec = msg.sec && typeof msg.sec === 'object' ? msg.sec : {}; keepSectors(app.secRec); break;
+    case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); app.secRec = msg.sec && typeof msg.sec === 'object' ? msg.sec : {}; keepSectors(app.secRec); handBackLines(); break;
     case 'srec': if (typeof msg.k === 'string' && Array.isArray(msg.list)) { app.secRec[msg.k] = msg.list; keepSectors({ [msg.k]: msg.list }); } break;
-    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); wantRecordGhost(); } break;
+    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); wantRecordGhost(); handBackLines(); } break;
     case 'path': onPath(msg); break;
+    case 'pathkept': if (app.sentPath && msg.k === app.sentPath.k && msg.ms === app.sentPath.ms) keepLine(msg.k, app.name, msg.ms, app.sentPath.p, msg.s, true); break;
     case 'record': {
       const where = TRACKS[msg.track]?.short || 'this track';
       if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
