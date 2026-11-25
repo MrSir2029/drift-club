@@ -305,7 +305,7 @@ names. Its `sea` in `tracks.js` also says how high the land sits inland
 that no islands get dotted over the water (`clear`); `urban` keeps the
 landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
 card in the lobby. It isn't walled in all round: like the older tracks it gets
-rails and tyres on the outside of corners, marshal posts and spectators behind
+rails on the outside of corners, marshal posts and spectators behind
 short fences. Its straights have race barriers (3.41, at the owner's asking:
 "more of the new barriers", meaning Westfield's): a sandstone block with a
 wire catch fence on top, in 4.5 m bays, along the land side of the start

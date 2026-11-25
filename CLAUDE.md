@@ -65,6 +65,9 @@
   straight is unbroken ("it just cut off between grandstands" was a
   complaint about gaps in it). Parked cars stay back from
   the road and must look like cars (the owner called the boxy ones "buns").
+- No tyre stacks on corners: the owner had them taken out on every track
+  ("the little black pole things on all the corners"). The rails and their
+  posts stay.
 - The owner likes a built-up background: the detailed city and Opera House
   across the water, and at Rose Bay "some buildings in it like what we did
   with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare

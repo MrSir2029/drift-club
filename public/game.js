@@ -1931,23 +1931,17 @@ function buildProps(track) {
   // --- barriers on the outside of every real corner (solid) ---
   const railMat = lam(0xc9ced6);
   const baleMat = lam(0xd9b752);
-  const tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8);
-  const tyreMats = [lam(0xe6453a), lam(0xf6f2e8), lam(0x1d2230)];
   const boardGeo = new THREE.BoxGeometry(1.6, 1.1, 0.12), legGeo = new THREE.BoxGeometry(0.12, 1.4, 0.12);
   const boardMats = [lam(0xf6f2e8), lam(0xffd23f), lam(0xe6453a)];
   const railPostGeo = new THREE.BoxGeometry(0.2, 1.0, 0.2);
-  // (on a street circuit the walls do this job: just tyres stacked against them)
+  // (On a street circuit the walls do this job. There used to be stacks of two tyres standing in front of the
+  // barrier on every sharp corner, on every track: the owner had them taken out, "the little black pole things".)
   const street = !!track.def.walls;
   let n = 0, wasCorner = false, prev = null, firstRail = null, lastRail = null;
   for (let i = 0; i < N; i += 4) {
     const s = samples[i], corner = Math.abs(turn[i]) > 0.22;
     const outside = turn[i] > 0 ? 1 : -1;      // outside of a right-hander is the left side
     let here = null;
-    if (street && corner && Math.abs(turn[i]) > 0.5 && i % 8 === 0) {
-      const q = at(s, outside * (hw + 2.75));
-      for (let h = 0; h < 2; h++) { const t = new THREE.Mesh(tyreGeo, tyreMats[(n + h) % 3]); t.position.set(q.x, s.p.y + 0.43 + h * 0.85, q.z); t.castShadow = true; worldGroup.add(t); }
-      n++;
-    }
     if (corner && flat(i) && !street) {
       const p = at(s, outside * (hw + 5.2));
       if (isFree(track, p.x, p.z, 0.6, hw + 3)) {
@@ -1955,14 +1949,6 @@ function buildProps(track) {
         if (!firstRail) firstRail = here;
         lastRail = here;
         if (!gravel) { const post = new THREE.Mesh(railPostGeo, postMat); post.position.set(p.x, p.y + 0.4, p.z); worldGroup.add(post); }
-        if (!gravel && Math.abs(turn[i]) > 0.5 && i % 8 === 0) {
-          const q = at(s, outside * (hw + 4.1));
-          for (let h = 0; h < 2; h++) {
-            const t = new THREE.Mesh(tyreGeo, tyreMats[(n + h) % 3]);
-            t.position.set(q.x, q.y + 0.43 + h * 0.85, q.z); t.castShadow = true; worldGroup.add(t);
-          }
-          n++;
-        }
       }
     }
     // join this barrier post to the last one so the rail has no gaps or overlaps
@@ -1999,7 +1985,7 @@ function buildProps(track) {
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), lam(0xf1c9a5)); head.position.set(0, 2.2, 0.2); g.add(head);
         const arm = new THREE.Group(); arm.position.set(0.3, 1.9, 0.3);
         const stick = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), postMat); stick.position.y = 0.65; arm.add(stick);
-        const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.04), lam(n % 2 ? 0xffd23f : 0x3d8bff)); cloth.position.set(0.48, 1.0, 0); arm.add(cloth);
+        const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.04), lam(n++ % 2 ? 0xffd23f : 0x3d8bff)); cloth.position.set(0.48, 1.0, 0); arm.add(cloth); // (yellow and blue flags, turn about)
         arm.userData.dyn = true; mergeStatic(arm);
         g.add(arm);
         g.position.copy(mp);
@@ -4446,7 +4432,7 @@ function buildRoseBay(track, rnd, randIn) {
     // of a rail on posts); at each end it turns back to the sea wall, or runs into the tunnel's wall, so
     // there's no way round it. Being a proper barrier, it carries a sponsor's banner every 18 m or so.
     {
-      const stone = lam(0xcdb88a), coping = lam(0xb9a878), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
+      const stone = lam(0xcdb88a), coping = lam(0xb9a878), QRAIL = hw + 2.7;
       const span = (a, b) => {
         const m = strut(V(a[0], a[1] + 0.5, a[2]), V(b[0], b[1] + 0.5, b[2]), 0.5, 1.15, stone, true), top = strut(V(a[0], a[1] + 1.13, a[2]), V(b[0], b[1] + 1.13, b[2]), 0.66, 0.12, coping, true);
         m.castShadow = true; worldGroup.add(m, top); walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 });
@@ -4454,7 +4440,7 @@ function buildRoseBay(track, rnd, randIn) {
       let lengths = 0;
       const on = (i) => !!onQuay(i, 1) && !inTunnel(i, 0);
       const end = (j, i, sd, y) => { if (inTunnel(j, 0)) { const [x, z] = P(j, sd * TUN); return [x, y, z]; } const e = nearEdge(i); return e && [e.x, y, e.z]; }; // what the rail meets beyond sample i, towards j
-      let prev = null, nt = 0;
+      let prev = null;
       for (let k = 1; k <= N; k++) {
         const i = wrap(start + k), sd = onQuay(i, 1);
         if (!on(i)) { prev = null; continue; }
@@ -4473,9 +4459,6 @@ function buildRoseBay(track, rnd, randIn) {
         } else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
         if (last) { const e = end(i + 1, i, sd, q[1]); if (e) span(q, e); }
         prev = last ? null : q;
-        // tyres at the sharpest of a corner the water is on the outside of
-        const b = samples[wrap(i + 14)], turn = s.th.x * b.th.z - s.th.z * b.th.x;
-        if (Math.abs(turn) > 0.5 && (turn > 0 ? 1 : -1) === sd && i % 8 === 0) { const [tx, tz] = P(i, sd * (hw + 1.95)); for (let h = 0; h < 2; h++) add(worldGroup, tyreGeo, tyres[(nt + h) % 3], tx, s.p.y + 0.43 + h * 0.85, tz); nt++; }
       }
     }
   }
