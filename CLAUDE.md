@@ -15,10 +15,13 @@
   - Shop signs at Rose Bay and Westfield: real local names in plain lettering,
     never logos.
   - The trackside sponsors on posters and barrier banners (`SPONSOR_ART` in
-    `game.js`): nine kilometre, PWD and Glory Dates (puns on Nine Mile, PwC
-    and Glory Days), and Tenth Floor Chambers and Frangos as themselves, each
-    drawn in its company's own colours and lettering (in code and open-licence
-    fonts, never a logo file). Don't swap them for made-up names, or add
+    `game.js`): Nine Mile, Tenth Floor Chambers and Frangos as themselves, and
+    PWD and Glory Dates (puns on PwC and Glory Days), each drawn in its
+    company's own colours and lettering (in code and open-licence fonts, never
+    a picture file). Nine Mile's is its real wordmark, traced from the picture
+    the owner sent and said to use. Don't swap them for made-up names, or add
     others, unless asked.
+  - Sponsors' banners go on barriers only (the rails on the outside of
+    corners, walls): never on fences or on the railings of bridges and ramps.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.

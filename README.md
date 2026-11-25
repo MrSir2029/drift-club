@@ -306,17 +306,17 @@ Thredbo; the real corner names on signs and campers round their fires at Mount
 Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD.
 The posters, and the banners along the barriers, carry the trackside sponsors,
-which the owner chose: nine kilometre, PWD and Glory Dates (puns on Nine Mile,
-PwC and Glory Days), and Tenth Floor Chambers and Frangos as themselves, each
-in its company's own colours and lettering (`SPONSOR_ART` in `game.js`). They
-are on every billboard (each turned to face the cars coming) and on Sydney
-CBD's lit boards, and as banners on the
-rails on the outside of corners, on bridge railings, on Sydney CBD's walls and
-on Rose Bay's guard rail and stone wall. Nothing is a picture: the boards are
-drawn in the browser, in open-licence typefaces from `public/vendor/fonts`
-(nine kilometre's letters are drawn one by one, `NM_GLYPHS`), onto two sheets
-that every poster and banner in the world shares. Cars still only carry
-made-up names.
+which the owner chose: Nine Mile, Tenth Floor Chambers and Frangos as
+themselves, and PWD and Glory Dates (puns on PwC and Glory Days), each in its
+company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
+every billboard (each turned to face the cars coming) and on Sydney CBD's lit
+boards, and as banners on the barriers: the rails on the outside of corners,
+Sydney CBD's walls, and Rose Bay's guard rail and stone wall. Fences and the
+railings of bridges and ramps are left bare. Nothing is a picture: the boards
+are drawn in the browser, in open-licence typefaces from `public/vendor/fonts`,
+onto two sheets that every poster and banner in the world shares. Nine Mile's
+is its real wordmark, traced letter by letter from the picture the owner sent
+(`NM_LETTERS`). Cars still only carry made-up names.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.

@@ -949,12 +949,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   const railing = (p, q, i) => {
     track.walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 });
     for (const h of [0.55, 1.0]) worldGroup.add(strut(V(p.x, p.y + h, p.z), V(q.x, q.y + h, q.z), 0.12, 0.12, railMat, true));
-    if (i % 3 === 0) { const post = new THREE.Mesh(railPost, railMat); post.position.set(p.x, p.y + 0.55, p.z); worldGroup.add(post); }
-    // a sponsor's banner on every other bay (a bay is three samples, post to post), hung on the road side of the rails
-    if (Math.floor(i / 3) % 2 === 0) {
-      const s = samples[i], f = (i % 3) / 3, nx = s.p.x - p.x, nz = s.p.z - p.z, nl = Math.hypot(nx, nz) || 1, in8 = (v) => ({ x: v.x + (nx / nl) * 0.09, y: v.y, z: v.z + (nz / nl) * 0.09 });
-      addBanner(Math.floor(i / 6), in8(p), in8(q), 0.12, 0.96, f, f + 1 / 3, s.p.x, s.p.z);
-    }
+    if (i % 3 === 0) { const post = new THREE.Mesh(railPost, railMat); post.position.set(p.x, p.y + 0.55, p.z); worldGroup.add(post); } // (no sponsors' banners here: the owner wants them on barriers, not on fences)
   };
   for (let i = 0; i < N; i++) {
     const s = samples[i], a = edges[i], b = edges[(i + 1) % N];
@@ -1350,14 +1345,14 @@ function mulberry32(a) {
 
 // ---------------------------------------------------------------------------
 // The trackside sponsors: on every poster, and on banners along the barriers.
-// They're the owner's choice: three puns on real companies (nine kilometre for
-// Nine Mile, PWD for PwC, Glory Dates for Glory Days) and two real ones as
-// themselves (Tenth Floor Chambers and Frangos). Each is lettered in the
-// company's own look, as the owner asked. No picture of a logo is used:
-// everything is drawn here, in open-licence typefaces served from
-// /vendor/fonts (see the README there), except "nine kilometre", whose
-// letters are drawn one by one, below, after Nine Mile's own. Cars are
-// another matter: they only ever carry made-up names.
+// They're the owner's choice: three real ones as themselves (Nine Mile, Tenth
+// Floor Chambers and Frangos) and two puns on real companies (PWD for PwC,
+// Glory Dates for Glory Days). Each is in the company's own look, as the
+// owner asked. No picture file is used: everything is drawn here, in
+// open-licence typefaces served from /vendor/fonts (see the README there),
+// except Nine Mile's wordmark, whose letters are drawn one by one, below.
+// Banners go on barriers (rails and walls), never on fences or bridge
+// railings. Cars are another matter: they only ever carry made-up names.
 // ---------------------------------------------------------------------------
 const SPONSOR_FONTS = { charis: ['DC Charis', 'charis-sil-700.woff2', '700'], overpass: ['DC Overpass', 'overpass-800.woff2', '800'], caprasimo: ['DC Caprasimo', 'caprasimo-400.woff2', '400'], cormorant: ['DC Cormorant', 'cormorant-garamond-600.woff2', '600'], anton: ['DC Anton', 'anton-400.woff2', '400'] };
 const sponsorFace = (k, size) => `${SPONSOR_FONTS[k][2]} ${Math.round(size)}px "${SPONSOR_FONTS[k][0]}", ${k === 'charis' || k === 'cormorant' || k === 'caprasimo' ? 'Georgia, "Times New Roman", serif' : '"Arial Narrow", Arial, sans-serif'}`;
@@ -1367,64 +1362,63 @@ const fitSize = (c, k, text, wide, max, gap = 0) => { let s = max; for (; s > 8;
 const spaced = (c, text, cx, y, size, gap) => { const ws = [...text].map((ch) => c.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + gap * size * (text.length - 1); let x = cx - total / 2; c.textAlign = 'left'; [...text].forEach((ch, i) => { c.fillText(ch, x, y); x += ws[i] + gap * size; }); c.textAlign = 'center'; };
 const roundedPath = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
 
-// Nine Mile's lettering, near enough, for "nine kilometre": a round, heavy lower case, measured off the company's
-// logo. Corners are round outside and square inside, the dots on the i's are square, and the stem of an n, m or r
-// stops a step short, touching its shoulder at one corner only. Just the letters those two words need. Sizes are in
-// x-heights, y going up from the baseline; every piece of a letter is wound clockwise, so they fill as one shape.
-const NM_T = 0.216, NM_ASC = 1.365, NM_R = 0.35, NM_O = 0.52, NM_GAP = 0.185, NM_SPACE = 0.44, NM_LAP = 0.012;
+// Nine Mile's wordmark, which the owner sent and said to use: "nine mile" in a round, heavy lower case. It is
+// drawn here, not kept as a picture, so it stays sharp at any size; every measurement was taken off that picture,
+// in x-heights, y going up from the baseline. Corners are round outside and square inside, the dots on the i's
+// are square, and the stem of an n or m stops short, touching its shoulder at one corner only. Each piece of a
+// letter is wound clockwise (as a rect is), so pieces that overlap fill as one shape.
+const NM_T = 0.218, NM_ASC = 1.357, NM_R = 0.365; // how thick a stroke is, how tall the l and the dots stand, and the round of a shoulder
 const nmBox = (c, x0, y0, x1, y1) => c.rect(x0, -y1, x1 - x0, y1 - y0); // (the canvas's y goes down)
-const nmPoly = (c, pts) => { pts.forEach(([x, y], i) => (i ? c.lineTo(x, -y) : c.moveTo(x, -y))); c.closePath(); };
-const nmStem = (c) => nmBox(c, 0, 0, NM_T, 1 - NM_T + NM_LAP); // the stem that stops short of its shoulder
+const nmStem = (c, x) => nmBox(c, x, 0, x + NM_T, 0.787); // the stem that stops short of its shoulder
 // a shoulder: from x0 along the top, round the corner and down a stem to the baseline at x1
 const nmArch = (c, x0, x1) => {
-  c.moveTo(x0, NM_T - 1); c.lineTo(x0, -1); c.lineTo(x1 - NM_R, -1); c.arc(x1 - NM_R, NM_R - 1, NM_R, -Math.PI / 2, 0);
-  c.lineTo(x1, 0); c.lineTo(x1 - NM_T, 0); c.lineTo(x1 - NM_T, NM_T - 1); c.closePath();
+  c.moveTo(x0, 0.22 - 1); c.lineTo(x0, -1); c.lineTo(x1 - NM_R, -1); c.arc(x1 - NM_R, NM_R - 1, NM_R, -Math.PI / 2, 0);
+  c.lineTo(x1, 0); c.lineTo(x1 - NM_T, 0); c.lineTo(x1 - NM_T, 0.22 - 1); c.closePath();
 };
-const NM_N = NM_T * 2 + 0.434, NM_M = NM_T + 0.415; // how wide an n is, and how far apart the stems of an m are
-// each letter: its width, how to draw it, and how much closer its left and right neighbours may sit
-const NM_GLYPHS = {
-  n: [NM_N, (c) => { nmStem(c); nmArch(c, NM_T - NM_LAP, NM_N); }],
-  m: [NM_M * 2 + NM_T, (c) => { nmStem(c); nmArch(c, NM_T - NM_LAP, NM_M + NM_T); nmArch(c, NM_M + NM_T - 0.04, NM_M * 2 + NM_T); }],
-  r: [0.6, (c) => { nmStem(c); nmBox(c, NM_T - NM_LAP, 1 - NM_T, 0.6, 1); }, 0, -0.05],
-  i: [NM_T, (c) => { nmBox(c, 0, 0, NM_T, 1); nmBox(c, 0, NM_ASC - NM_T, NM_T, NM_ASC); }],
-  l: [NM_T, (c) => nmBox(c, 0, 0, NM_T, NM_ASC)],
-  t: [0.6, (c) => { nmBox(c, 0.13, 0, 0.13 + NM_T, 1.27); nmBox(c, 0, 1 - NM_T, 0.6, 1); }, -0.03, -0.055],
-  k: [0.92, (c) => { nmBox(c, 0, 0, NM_T, NM_ASC); nmPoly(c, [[0.196, 0.3], [0.196, 0.614], [0.562, 1], [0.86, 1]]); nmPoly(c, [[0.247, 0.511], [0.397, 0.669], [0.92, 0], [0.646, 0]]); }, 0, -0.06],
-  o: [NM_O * 2, (c) => { c.moveTo(NM_O * 2, -0.5); c.arc(NM_O, -0.5, NM_O, 0, Math.PI * 2); c.moveTo(NM_O * 2 - NM_T, -0.5); c.arc(NM_O, -0.5, NM_O - NM_T, Math.PI * 2, 0, true); }, -0.035, -0.035],
-  e: [NM_O * 2, (c) => { // a ring with a bar across it, open through a slit under the bar on the right
-    const ri = NM_O - NM_T, bar0 = 0.14, bar1 = -0.05, cut = 0.26; // the bar's underside and top, and the end of the tail, below the middle
-    c.moveTo(NM_O + Math.sqrt(NM_O * NM_O - cut * cut), cut - 0.5); c.arc(NM_O, -0.5, NM_O, Math.asin(cut / NM_O), Math.PI * 2 + Math.asin(bar0 / NM_O)); // round the outside, from the tail to the bar's end
-    c.arc(NM_O, -0.5, ri, Math.PI - Math.asin(bar0 / ri), Math.asin(cut / ri), true); c.closePath(); // back under the bar and round the inside
-    c.moveTo(NM_O + Math.sqrt(ri * ri - bar1 * bar1), bar1 - 0.5); c.arc(NM_O, -0.5, ri, Math.asin(bar1 / ri), -Math.PI - Math.asin(bar1 / ri), true); c.closePath(); // the eye, the other way round: a hole
-  }, -0.035, -0.035],
-};
-// lays the letters out along x, calling each(letter, x); returns the width of the lot
-function nineMileLay(text, each) {
-  let x = 0, prev = null;
-  for (const ch of text) {
-    if (ch === ' ') { x += NM_SPACE; prev = null; continue; }
-    const g = NM_GLYPHS[ch];
-    if (prev) x += NM_GAP + (prev[3] || 0) + (g[2] || 0);
-    each?.(g, x); x += g[0]; prev = g;
+// Part of a quarter of an oval about (cx, cy), a wide and b tall, as a run of short lines: the quarter towards
+// (sx, sy), from angle t0 to t1 (0 at its side, a right angle at its top or bottom). n is how square it is: 2 is
+// an ellipse, more is fuller in the corner. `move` starts a new outline there.
+const nmQuarter = (c, cx, cy, a, b, n, sx, sy, t0, t1, move) => {
+  for (let k = 0; k <= 16; k++) {
+    const t = t0 + ((t1 - t0) * k) / 16, x = cx + sx * a * Math.max(0, Math.cos(t)) ** (2 / n), y = -(cy + sy * b * Math.max(0, Math.sin(t)) ** (2 / n));
+    if (move && !k) c.moveTo(x, y); else c.lineTo(x, y);
   }
-  return x;
-}
-// the words centred on (cx, cy), with an x-height of `xh` pixels, in the current fill colour
-function nineMileWords(c, text, cx, cy, xh) {
-  c.save(); c.translate(cx - (nineMileLay(text) * xh) / 2, cy + xh / 2); c.scale(xh, xh); c.beginPath();
-  nineMileLay(text, (g, x) => { c.save(); c.translate(x, 0); g[1](c); c.restore(); });
+};
+const nmTurn = (d, b, n) => Math.asin(Math.min(1, (d / b) ** (n / 2))); // the angle at which such a quarter is d above or below its middle
+const NM_LETTERS = {
+  n: (c, x) => { nmStem(c, x); nmArch(c, x + 0.212, x + 0.855); },
+  m: (c, x) => { nmStem(c, x); nmArch(c, x + 0.212, x + 0.855); nmArch(c, x + 0.822, x + 1.461); },
+  i: (c, x) => { nmBox(c, x, 0, x + NM_T, 1); nmBox(c, x, 1.142, x + NM_T, NM_ASC); },
+  l: (c, x) => nmBox(c, x, 0, x + NM_T, NM_ASC),
+  // The e is not quite round: a little taller than wide, fuller at the bottom right where the tail is, with a
+  // bar across the middle and a slit under the bar on the right.
+  e: (c, x) => {
+    const cx = x + 0.4995, cy = 0.4945, A = 0.4995, B = 0.5265, Q = Math.PI / 2;
+    const under = 0.0875, over = 0.0975, tail = 0.2165; // below the middle: the underside of the bar; above it: the bar's top; below it: the top of the tail
+    // the outside, clockwise from the tip of the tail: round the bottom, up the left, over the top, down the right to the underside of the bar
+    nmQuarter(c, cx, cy, A, B, 2.33, 1, -1, nmTurn(tail, B, 2.33), Q, true); nmQuarter(c, cx, cy, A, B, 2, -1, -1, Q, 0); nmQuarter(c, cx, cy, A, B, 2, -1, 1, 0, Q); nmQuarter(c, cx, cy, A, B, 2, 1, 1, Q, 0); nmQuarter(c, cx, cy, A, B, 2.33, 1, -1, 0, nmTurn(under, B, 2.33));
+    // then the inside of the bowl: back along under the bar, down its left side, round the bottom and up to the tail
+    nmQuarter(c, cx, cy, 0.283, 0.3205, 2.05, -1, -1, nmTurn(under, 0.3205, 2.05), Q); nmQuarter(c, cx, cy, 0.3, 0.3205, 2.45, 1, -1, Q, nmTurn(tail, 0.3205, 2.45)); c.closePath();
+    // and the eye, the other way round, which makes it a hole
+    nmQuarter(c, cx, cy, 0.283, 0.3285, 2.25, 1, 1, nmTurn(over, 0.3285, 2.25), Q, true); nmQuarter(c, cx, cy, 0.283, 0.3285, 2.25, -1, 1, Q, nmTurn(over, 0.3285, 2.25)); c.closePath();
+  },
+};
+const NM_WORDS = [['n', 0], ['i', 1.048], ['n', 1.455], ['e', 2.459], ['m', 3.873], ['i', 5.523], ['l', 5.928], ['e', 6.296]], NM_WIDE = 7.294; // where each letter starts, and how wide the lot is
+// the wordmark in the current fill colour, its x-height `xh` pixels, sitting about (cx, cy) as it sits in its own logo
+function nineMile(c, cx, cy, xh) {
+  c.save(); c.translate(cx - (NM_WIDE / 2) * xh, cy + 0.57 * xh); c.scale(xh, xh); c.beginPath();
+  for (const [ch, x] of NM_WORDS) NM_LETTERS[ch](c, x);
   c.fill(); c.restore();
 }
 
 // each draws itself into a rectangle of a canvas, as a poster (about 10 : 3) or a banner (about 10.7 : 1, the name twice)
 const SPONSOR_ART = [
-  { name: 'nine kilometre', // a pun on Nine Mile: its lower-case lettering, aqua on deep blue, and nothing else
+  { name: 'Nine Mile', // themselves: their own wordmark, aqua on deep blue, and nothing else
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#272d9f'; c.fillRect(x, y, w, h);
       c.fillStyle = '#54edd9';
-      const wide = nineMileLay('nine kilometre');
-      if (banner) { for (const f of [0.25, 0.75]) nineMileWords(c, 'nine kilometre', x + w * f, y + h * 0.55, Math.min(h * 0.4, (w * 0.42) / wide)); }
-      else nineMileWords(c, 'nine kilometre', x + w / 2, y + h * 0.54, Math.min(h * 0.3, (w * 0.86) / wide));
+      if (banner) { for (const f of [0.25, 0.75]) nineMile(c, x + w * f, y + h / 2, Math.min(h * 0.44, (w * 0.4) / NM_WIDE)); }
+      else nineMile(c, x + w / 2, y + h / 2, Math.min(h * 0.34, (w * 0.72) / NM_WIDE));
     } },
   { name: 'PWD', // a pun on PwC: lower-case serif letters and a stack of warm blocks
     draw(c, x, y, w, h, banner) {

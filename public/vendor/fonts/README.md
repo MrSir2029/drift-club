@@ -14,5 +14,5 @@ and copyright notice is beside it here.
 | `cormorant-garamond-600.woff2` | Cormorant Garamond SemiBold | Tenth Floor Chambers |
 | `anton-400.woff2` | Anton | Frangos |
 
-The fifth sponsor, nine kilometre, isn't set in a typeface: its letters are
-drawn in code (`NM_GLYPHS` in `game.js`).
+The fifth sponsor, Nine Mile, isn't set in a typeface: its wordmark is drawn in
+code (`NM_LETTERS` in `game.js`).
