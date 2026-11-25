@@ -167,12 +167,15 @@ keeps the path of every lap that is on a board (`paths` in `server/core.js`,
 dropped when the lap leaves the board) and marks those laps `g: 1`. Anyone
 can ask for one (`path` message): the leaderboard shows a **line** button on
 those laps, which draws the track from above with the lap on it, red where
-it's slow through to green where it's fast; and in Polytrack mode the fastest
-lap on the track's board that has a path (the record itself, once it has been
-set since 3.34) drives round with you as a gold see-through car with its
-driver's name and time over it, and as a gold dot on the minimap. A message
-says whose lap it is when it joins. Its switch is in Settings and in the
-Polytrack pause menu, which also says whose ghost it is. With Upstash
+it's slow through to green where it's fast; and in Polytrack mode, for a
+player who has switched the record holder's ghost on (it is off by default,
+3.51), the fastest lap on the track's board that has a path (the record
+itself, once it has been set since 3.34) drives round with them as a gold
+see-through car with its driver's name over it, and as a gold dot on the
+minimap. A message says whose lap it is when it joins. Its switch is in
+Settings and in the Polytrack pause menu, which also says whose ghost it is.
+Your own best-lap ghost gives way wherever the two are in the same place
+(3.49: drawn through each other they flickered). With Upstash
 the paths are kept in a hash beside the leaderboard (`drift-club:boards:paths`,
 one field a lap); without it they last until the server restarts. They are
 not in `server/boards.json`, and laps from before 3.34, or set in a race,
