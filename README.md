@@ -394,8 +394,8 @@ Each track also has a bit of the real place it's named after (`local` in
 `tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
 match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
 black swans at Centennial Park; a chairlift across the track, skiers and A-frame lodges at
-Thredbo; Mount Panorama's corner names on signs and campers round their fires at
-Pinto Speedway (which had that mountain's name until 3.55); surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
+Thredbo; campers round their fires at Pinto Speedway (it was Mount Panorama until 3.55, and had
+that mountain's corner names on signs until 3.56, when the owner had them taken down); surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD, and a Maccas just past its start line
 (`buildMaccas`: the owner asked for it, golden arches and all, drawn in code;
 it takes the first plot in the row of buildings there, and the building that
