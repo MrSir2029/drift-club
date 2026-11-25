@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.52', date: '26 Nov 2026', title: 'Rose Bay on the home screen',
+    items: [
+      'Rose Bay is the track behind the home screen when the game opens: the harbour, the yachts and the city across the water.',
+    ],
+  },
+  {
     v: '3.51', date: '26 Nov 2026', title: 'The record ghost starts switched off',
     items: [
       'The record holder\'s ghost is off unless you switch it on: in Settings, or in the pause menu in Polytrack mode. If you had already switched it on yourself, it stays on.',
