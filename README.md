@@ -527,8 +527,9 @@ message; clicking it shows another. The tips are `TIPS` near the top of
 home screen. Add an entry at the top whenever you ship something; players
 get a red dot on the button until they've read it.
 
-Its top entry is also the game's version, and that is how a tab that has
-been left open finds out there's an update. A tab keeps running the game as
+Its top entry is also the game's version, shown small beside the game's name
+on the home screen (it was on the What's new button until 3.60), and that is
+how a tab that has been left open finds out there's an update. A tab keeps running the game as
 it was when it was opened. Updating restarts the server, so every open tab
 reconnects, and the server tells each one which version it is (`ver`). A tab
 that is behind puts up "A new update is out" with a Refresh button: on the

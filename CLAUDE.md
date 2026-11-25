@@ -92,6 +92,9 @@
   at the owner's request ("Remove them pls"): don't put them back.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
+  That panel is 520px wide, with the game's version small beside the DRIFT
+  CLUB name and not on the What's new button (the owner: "Make this wider
+  and put the version next to the name, remove it from the what's new").
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
   opens on the Championship from the home screen, and on the picked track's
