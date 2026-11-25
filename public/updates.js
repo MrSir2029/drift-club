@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.48', date: '26 Nov 2026', title: 'No way round the barriers\' ends',
+    items: [
+      'At Rose Bay, where a race barrier came to a corner\'s rail the two passed side by side with room for a car between them. Each barrier now runs in to meet the end of the rail, at all five places, so there\'s no gap to slip through.',
+    ],
+  },
+  {
     v: '3.47', date: '26 Nov 2026', title: 'No more tyre stacks',
     items: [
       'The stacks of two tyres that stood in front of the barrier on the sharp corners have gone, on every track.',
