@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.37', date: '25 Nov 2026', title: 'A tidier leaderboard',
+    items: [
+      'The leaderboard opens on the Championship, and has lost its small print: the tabs, the table and your own place, and that\'s it.',
+    ],
+  },
+  {
     v: '3.36', date: '25 Nov 2026', title: 'Rose Bay gets its suburbs',
     items: [
       'There\'s a town round Rose Bay now, where there were only bare hills: streets of houses and flats beyond the circuit, and hills behind them with houses up the sides and apartment towers along the top.',

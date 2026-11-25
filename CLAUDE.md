@@ -60,6 +60,9 @@
   across the water, and at Rose Bay "some buildings in it like what we did
   with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare
   hills read as unfinished.
+- The owner wants panels plain: no small print or hint paragraphs ("a lot
+  of the grey text at the bottom and top is irrelevant"). The leaderboard
+  opens on the Championship.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update
