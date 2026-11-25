@@ -1,5 +1,15 @@
 {
   "season": 1,
+  "lay": [
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    1,
+    2
+  ],
   "boards": {
     "0": [
       {
@@ -10,18 +20,18 @@
         "s": "kEO0M4PmYr_d"
       },
       {
+        "n": "speewandker",
+        "ms": 31846,
+        "c": "open",
+        "num": 8,
+        "s": "wA98BYpT1Dod"
+      },
+      {
         "n": "Luca",
         "ms": 32116,
         "c": "open",
         "num": 1,
         "s": "GgTCAB_9HFdE"
-      },
-      {
-        "n": "speewandker",
-        "ms": 32117,
-        "c": "open",
-        "num": 8,
-        "s": "Ti9epXuuJt-D"
       },
       {
         "n": "TheBearKing",
@@ -74,17 +84,17 @@
     "1": [
       {
         "n": "speewandker",
-        "ms": 37081,
+        "ms": 36718,
         "c": "open",
         "num": 8,
-        "s": "N8O8A1S251Pq"
+        "s": "uFJRJFEPQnQ1"
       },
       {
         "n": "Luca",
-        "ms": 37118,
+        "ms": 37017,
         "c": "open",
         "num": 1,
-        "s": "t9oB9u8WLQut"
+        "s": "9RKX2CIJ0JMK"
       },
       {
         "n": "DeviousOwenJ",
@@ -483,78 +493,6 @@
         "num": 1,
         "s": "X1Vjj0DQjS2m"
       }
-    ],
-    "7": [
-      {
-        "n": "speewandker",
-        "ms": 32567,
-        "c": "open",
-        "num": 8,
-        "s": "s5UOSHKyJ585"
-      },
-      {
-        "n": "TheBearKing",
-        "ms": 32781,
-        "c": "open",
-        "num": 72,
-        "s": "hgrVKlutEaED"
-      },
-      {
-        "n": "JacksonP",
-        "ms": 33283,
-        "c": "open",
-        "num": 69,
-        "s": "4XZpMRn5NChJ"
-      },
-      {
-        "n": "zac",
-        "ms": 33326,
-        "c": "open",
-        "num": 25,
-        "s": "OdMQ-JloWmsT"
-      },
-      {
-        "n": "Luca",
-        "ms": 33450,
-        "c": "open",
-        "num": 68,
-        "s": "W7BJOoOLE5C2"
-      },
-      {
-        "n": "Patrick",
-        "ms": 33783,
-        "c": "open",
-        "num": 5,
-        "s": "ANi1vxId-nXj"
-      },
-      {
-        "n": "HarryR",
-        "ms": 34850,
-        "c": "open",
-        "num": 1,
-        "s": "0rEvphLYjy_k"
-      },
-      {
-        "n": "DeviousOwenJ",
-        "ms": 36117,
-        "c": "open",
-        "num": 1,
-        "s": "eFxf2myjcsAz"
-      },
-      {
-        "n": "hi",
-        "ms": 36435,
-        "c": "open",
-        "num": 69,
-        "s": "xEJeio98esDd"
-      },
-      {
-        "n": "oj",
-        "ms": 36884,
-        "c": "open",
-        "num": 13,
-        "s": "bfx383RxraOE"
-      }
     ]
   },
   "sec": {
@@ -565,9 +503,9 @@
         "s": "54elBCagdGcR"
       },
       {
-        "n": "TheBearKing",
-        "ms": 11366,
-        "s": "VKd4iJWad7Tv"
+        "n": "speewandker",
+        "ms": 11284,
+        "s": "ZxE2qNLsY460"
       },
       {
         "n": "Luca",
@@ -577,9 +515,9 @@
     ],
     "1": [
       {
-        "n": "TheBearKing",
-        "ms": 11983,
-        "s": "PS76bZLpt2Ym"
+        "n": "Luca",
+        "ms": 11884,
+        "s": "DvMgt0v9bW0y"
       },
       {
         "n": "TheBearKing",
@@ -588,8 +526,8 @@
       },
       {
         "n": "Luca",
-        "ms": 10467,
-        "s": "jho3fnJrwonB"
+        "ms": 10400,
+        "s": "ZCiXAbeTyOCD"
       }
     ],
     "2": [
@@ -675,23 +613,6 @@
         "n": "Luca",
         "ms": 10651,
         "s": "xt_PSZm_50sq"
-      }
-    ],
-    "7": [
-      {
-        "n": "speewandker",
-        "ms": 9735,
-        "s": "gtHW5kug-_5A"
-      },
-      {
-        "n": "JacksonP",
-        "ms": 12267,
-        "s": "4eD0qPfpxx3V"
-      },
-      {
-        "n": "speewandker",
-        "ms": 10362,
-        "s": "KiI-EJT1cVmu"
       }
     ]
   }

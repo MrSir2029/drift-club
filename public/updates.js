@@ -8,6 +8,36 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.31', date: '25 Nov 2026', title: 'The Drift King\'s car',
+    items: [
+      'Whoever leads the Drift King championship now drives the Drift King\'s car: gold over black with a crimson line, a crown behind the driver and DRIFT KING on the rear wing.',
+      'It goes with the name, whatever colour you picked, and passes on when someone else takes the lead.',
+    ],
+  },
+  {
+    v: '3.30', date: '25 Nov 2026', title: 'A longer run-up in Polytrack mode',
+    items: [
+      'Polytrack mode starts about 480 m before the line, up from 200 to 320: you come to your first lap through the last corners at full speed, like any other lap. Thanks to the players who asked.',
+    ],
+  },
+  {
+    v: '3.29', date: '25 Nov 2026', title: 'More to see at Westfield',
+    items: [
+      'The shops have proper fronts: windows with mannequins and goods on show, and doorways taped off for the race, with shoppers watching from inside.',
+      'The car park roof is full: cars parked along both sides of the start straight, and a few people standing on theirs for a better view. There are two stair towers up there now, and a boom gate at the top of each ramp.',
+      'You can see the cars parked in the lower decks from the ramps and from Oxford Street, and the mall has shop windows, awnings and names along the street.',
+      'Traffic is held up behind the 333 while the race is on.',
+    ],
+  },
+  {
+    v: '3.28', date: '25 Nov 2026', title: 'Westfield takes Oxford Street',
+    items: [
+      'Westfield Mall Circuit has a new section, after the real place: down the ramp, left along Oxford Street between the car park and the mall, under the Westfield bridge, round a hairpin at the 333\'s bus stop, back under the bridge and in through the doors.',
+      'A planted median runs between the two carriageways, with a wall each side to keep cars going opposite ways apart.',
+      'The lap is longer for it (about 1.8 km), so Westfield\'s leaderboard starts again, as Noosa Heads\' and Sydney CBD\'s did. Its Drift King points start again with it.',
+    ],
+  },
+  {
     v: '3.27', date: '25 Nov 2026', title: 'Banners on the walls',
     items: [
       'More sponsors\' banners than 3.26 had, and fewer than before it: about one every 20 m on the walls at Sydney CBD and along Rose Bay\'s harbour wall.',

@@ -9,7 +9,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { createGame, beaconTag } from './server/core.js';
+import { createGame, beaconTag, thisLayoutOnly } from './server/core.js';
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
@@ -92,13 +92,13 @@ async function kv(command) {
 let savedBoards = null;
 try {
   const snap = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'server', 'boards.json'), 'utf8'));
-  savedBoards = snap;
+  savedBoards = thisLayoutOnly(snap); // (without the times of a track that's been laid out again since)
   console.log(`Leaderboard: ${Object.values(snap.boards || {}).reduce((t, l) => t + l.length, 0)} lap times from server/boards.json`);
 } catch {}
 if (KV_URL && KV_TOKEN) {
   try {
     const text = await kv(['GET', KV_KEY]);
-    const kept = text ? JSON.parse(text) : null;
+    const kept = text ? thisLayoutOnly(JSON.parse(text)) : null;
     const n = kept ? Object.values(kept.boards || {}).reduce((t, l) => t + l.length, 0) : 0;
     // both, if there are both: each name keeps its best (the game sorts that out)
     if (kept && savedBoards && kept.season === savedBoards.season) {
