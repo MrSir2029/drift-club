@@ -246,7 +246,7 @@ side streets, always on the outside of the
 circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
 the fairground and the radio mast.
 Rose Bay (the seventh) is Sydney's own Monaco, by day (`buildRoseBay` in
-`game.js`): a walled street circuit along a harbour quay, up Heartbreak Hill,
+`game.js`): a street circuit along a harbour quay, up Heartbreak Hill,
 round two hairpins, down a street of shops and through a tunnel under a hotel
 back onto the quay. Along the quay there's a sea wall with a wide promenade,
 Norfolk pines and marquees, superyachts moored stern-on, a marina, the seaplane
@@ -262,30 +262,39 @@ names. Its `sea` in `tracks.js` also says how high the land sits inland
 (`base`, `hills`), how far above the water the sand goes (`sand`, `fade`) and
 that no islands get dotted over the water (`clear`); `urban` keeps the
 landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
-card in the lobby. Side streets never open onto the sea, and nothing is built
-in the mouth of one. Its walls are race barriers (`walls: 'race'`, as at
-Westfield; Sydney CBD keeps plain concrete with `walls: true`): white concrete
-with a sloping grey foot and a red band along the top, with banners for
-made-up sponsors most of the way along (`BANNERS` in `game.js`). Along a
-bridge deck they stand on its edge in place of the railings.
+card in the lobby. It has no walls round it: like the older tracks it gets
+rails and tyres on the outside of corners, marshal posts and spectators behind
+short fences, with barriers of its own only where a car would otherwise end up
+somewhere it can't be. Those are a guard rail along the harbour side of the
+quay (the promenade is paving over ground that slopes into the sea, so a car
+on it would sink through), the tunnel's own walls, and a stone wall along the
+top of the bank behind the shops (without it you could leave the first
+hairpin, drop down the bank and miss out the second). `quay` in its `sea`
+keeps the usual trackside furniture away from the water, and `blocks` keeps it
+off the tunnel and the lookout.
 Westfield (the eighth) is a shopping centre you race through (`buildMall` in
 `game.js`, theme `mall`). The lap starts on the roof of the car park, comes
 down the ramp, crosses Oxford Street, goes in through the doors and along the
 mall between the shops, round the food court and back out, across Oxford
 Street again and up the other ramp, with the Harbour Bridge and the city dead
-ahead as you come back onto the roof. Inside: walkways behind the barriers,
-shopfronts with signs, a gallery above them, a skylight, boards hanging over
-the road, escalators, benches and shoppers; tables, a juice bar and palms in
-the middle of the food-court hairpin. Outside: parked cars, shade sails and
+ahead as you come back onto the roof. Inside: tiled walkways, shopfronts
+with signs, a gallery above them with shoppers watching from it, a skylight,
+boards hanging over the road, escalators, benches and plants; tables, a juice
+bar and palms in the middle of the food-court hairpin, behind a glass screen. Outside: parked cars, shade sails and
 the lifts on the roof, Oxford Street with its footpaths, zebra crossings,
 walkways overhead and the 333 at its stop, and blocks of shops and flats all
-round. The barriers open at both crossings of Oxford Street, which is the way
-out to the streets and to 9LAT2. As at Rose Bay, the signs are a mix of
-made-up names and real ones in plain lettering. In `tracks.js`: `deckAbove`
-puts road above that height on piers (the ground stays flat under the roof
-and the ramps), `blocks` are the two buildings' footprints and `streets` is
-Oxford Street (nothing else gets put on them), `gaps` says where the barriers
-open, and `bare` leaves out the grandstands, pits and paddock.
+round. Oxford Street is the way out to the streets and to 9LAT2. As at Rose
+Bay, the signs are a mix of made-up names and real ones in plain lettering,
+and there are no walls along the road: the car park roof is open to drive on,
+out to the low wall round its edge (parked cars, lamps and the lifts are
+solid), the ramps have railings because they're bridges, the shopfronts are
+the walls inside, and the glass screen keeps cars out of the food court. In
+`tracks.js`: `deckAbove` puts road above that height on piers (the ground
+stays flat under the roof and the ramps), `roofs` are the car park's flat
+roofs, which a car up at their level drives on (`surfaceAt` in `game.js`),
+`blocks` are the two buildings' footprints and `streets` is Oxford Street
+(nothing else gets put on them), and `bare` leaves out the grandstands, pits
+and paddock.
 Each track also has a bit of the real place it's named after (`local` in
 `tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
 match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
