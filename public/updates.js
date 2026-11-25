@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.35', date: '25 Nov 2026', title: 'Rose Bay\'s tunnel floor',
+    items: [
+      'The floor on the left as you come out of Rose Bay\'s tunnel doesn\'t flicker any more.',
+    ],
+  },
+  {
     v: '3.34', date: '25 Nov 2026', title: 'Ghosts on the leaderboard',
     items: [
       'In Polytrack mode the record holder\'s ghost drives round with you: a gold see-through car with their name and time over it. Settings turns it off.',
