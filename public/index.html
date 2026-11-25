@@ -176,8 +176,16 @@
       <div id="board-tracks" class="seg"></div>
       <ol id="board-list" class="board-list"></ol>
       <div id="board-pb" class="board-pb"></div>
-      <div class="hint">Every lap counts, in races and Polytrack mode. The ten fastest names make the board, so pick yours on the home screen. The Drift King leads the championship: points over all the boards, 25 for a record, 18 for second, down to 1 for tenth.</div>
+      <div class="hint">Every lap counts, in races and Polytrack mode. The ten fastest names make the board, so pick yours on the home screen. The Drift King leads the championship: points over all the boards, 25 for a record, 18 for second, down to 1 for tenth. A lap with a <b>line</b> button shows how it was driven; in Polytrack mode the record holder's ghost drives round with you.</div>
       <button id="btn-board-close" class="btn primary">Close</button>
+    </div>
+  </div>
+
+  <div id="lineview" class="overlay hidden">
+    <div class="panel linepanel">
+      <div class="label"><span id="line-title"></span> <span id="line-sub" class="muted"></span></div>
+      <canvas id="line-canvas" width="760" height="470"></canvas>
+      <button id="btn-line-close" class="btn primary">Close</button>
     </div>
   </div>
 
@@ -187,6 +195,7 @@
       <div class="setrow"><b>Graphics</b><div id="seg-gfx" class="seg"><button data-v="auto">Auto</button><button data-v="max">Max</button><button data-v="high">High</button><button data-v="medium">Medium</button><button data-v="low">Low</button></div></div>
       <div class="setrow"><b>Sound</b><div id="seg-sound" class="seg"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
       <div class="setrow"><b>Volume</b><div class="volrow"><input id="vol" type="range" min="0" max="100" step="5" aria-label="Volume"><span id="vol-val">100%</span></div></div>
+      <div class="setrow"><b>Record holder's ghost</b><div id="seg-recghost" class="seg"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
       <div class="setrow"><b>Keys</b><button id="btn-keys" class="btn">Change keys</button></div>
       <div class="setrow"><b>Expanded map &amp; Easter eggs</b><div id="seg-map" class="seg"><button data-v="off">Off</button><button data-v="on">On</button></div></div>
       <div class="warn">&#9888; Adds a lake, fairground, village, windmill and more to explore. It can make the game run slower, especially on school laptops and older computers.</div>

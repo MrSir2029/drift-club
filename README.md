@@ -160,6 +160,21 @@ room). Open it from the home screen or the lobby; the lobby
 also shows the lap time record for the track that's picked, and setting a time on the
 board pops up a message.
 
+**Ghosts and racing lines.** A lap set in Polytrack mode goes to the server
+with how it was driven (`packPath` in `game.js`: ten samples a second of
+where the car was and which way it pointed, about 4 KB as text). The server
+keeps the path of every lap that is on a board (`paths` in `server/core.js`,
+dropped when the lap leaves the board) and marks those laps `g: 1`. Anyone
+can ask for one (`path` message): the leaderboard shows a **line** button on
+those laps, which draws the track from above with the lap on it, red where
+it's slow through to green where it's fast; and in Polytrack mode the lap at
+the top of the track's board drives round with you as a gold see-through car
+with its driver's name and time over it (Settings turns it off). With Upstash
+the paths are kept in a hash beside the leaderboard (`drift-club:boards:paths`,
+one field a lap); without it they last until the server restarts. They are
+not in `server/boards.json`, and laps from before 3.34, or set in a race,
+have none.
+
 **The Drift King championship** ranks every name by its results over all the
 boards. Each board's top ten score as in F1 (25 for the record, then 18, 15,
 12, 10, 8, 6, 4, 2 and 1) and the points add up across the tracks; level on

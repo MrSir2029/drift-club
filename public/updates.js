@@ -8,6 +8,14 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.34', date: '25 Nov 2026', title: 'Ghosts on the leaderboard',
+    items: [
+      'In Polytrack mode the record holder\'s ghost drives round with you: a gold see-through car with their name and time over it. Settings turns it off.',
+      'On the leaderboard, a lap with a line button shows how it was driven: the track from above with the lap drawn on it, red where it\'s slow and green where it\'s fast.',
+      'Only laps set from now on in Polytrack mode have one, so the old records get theirs when someone beats them or sets them again. Thanks to the players who asked.',
+    ],
+  },
+  {
     v: '3.33', date: '25 Nov 2026', title: 'Westfield, the race track',
     items: [
       'Westfield looks like a race track now: lengths of race barrier with catch fences, a grandstand each side of the start line, and crowds down the roof straight, along both sides of Oxford Street, round the hairpin and behind barriers inside the mall.',

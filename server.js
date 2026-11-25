@@ -110,11 +110,28 @@ if (KV_URL && KV_TOKEN) {
 const saveBoards = KV_URL && KV_TOKEN
   ? (b) => kv(['SET', KV_KEY, JSON.stringify(b)]).catch((e) => console.warn(`Leaderboard: couldn't save to Upstash (${e.message})`))
   : null;
+// How each lap on the leaderboard was driven (for ghost cars and racing lines): a hash beside the leaderboard,
+// one field a lap, written when a lap gets onto a board and deleted when it leaves. Without Upstash they last
+// until the server restarts.
+let savedPaths = null;
+if (KV_URL && KV_TOKEN) {
+  try {
+    const flat = await kv(['HGETALL', KV_KEY + ':paths']);
+    savedPaths = {};
+    for (let i = 0; i + 1 < (flat || []).length; i += 2) { try { savedPaths[flat[i]] = JSON.parse(flat[i + 1]); } catch {} }
+    console.log(`Leaderboard: ${Object.keys(savedPaths).length} laps' paths loaded from Upstash`);
+  } catch (e) { console.warn(`Leaderboard: couldn't load the laps' paths from Upstash (${e.message})`); }
+}
+const savePath = KV_URL && KV_TOKEN
+  ? (key, g) => kv(g ? ['HSET', KV_KEY + ':paths', key, JSON.stringify(g)] : ['HDEL', KV_KEY + ':paths', key]).catch((e) => console.warn(`Leaderboard: couldn't save a lap's path to Upstash (${e.message})`))
+  : null;
 const game = createGame({
   note: 'The totals start again from zero whenever the server restarts.',
   sign: (text) => crypto.createHmac('sha256', LB_KEY).update(text).digest('base64url').slice(0, 12),
   boards: savedBoards,
   saveBoards,
+  paths: savedPaths,
+  savePath,
 });
 
 // ---------- static files, /stats ----------

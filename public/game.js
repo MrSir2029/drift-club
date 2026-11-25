@@ -334,6 +334,7 @@ try {
   localStorage.setItem('dc-defaults', '3');
 } catch {}
 try { app.expanded = localStorage.getItem('dc-map') !== 'off'; } catch { app.expanded = true; }
+try { app.recGhostOn = localStorage.getItem('dc-recghost') !== 'off'; } catch { app.recGhostOn = true; } // the record holder's ghost in Polytrack mode
 
 // (the landmarks used to hide stars to find; forget the ones found)
 try { localStorage.removeItem('dc-found'); } catch {}
@@ -697,6 +698,7 @@ function renderSettings() {
   document.querySelectorAll('#seg-gfx button').forEach(b => b.classList.toggle('on', b.dataset.v === gfx.mode));
   document.querySelectorAll('#seg-map button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.expanded));
   document.querySelectorAll('#seg-sound button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === audio.on));
+  document.querySelectorAll('#seg-recghost button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.recGhostOn));
   const pct = Math.round(audio.vol * 100);
   $('#vol').value = pct; $('#vol-val').textContent = pct + '%';
 }
@@ -1225,6 +1227,118 @@ function collideCars(car) {
     }
   }
   return hit;
+}
+
+// ---- a lap's path, packed small enough to keep with the leaderboard: a four-byte header (version, hundredths of
+// a second between samples), then five bytes a sample (x and z in tenths of a metre, the heading in 256ths of a
+// turn), as base64. Ten samples a second; fewer on a very long lap, so it never passes about 12,000 characters ----
+function packPath(rec) {
+  if (!rec || rec.length < 20) return null;
+  const total = rec[rec.length - 1].t, step = Math.min(2550, Math.max(100, Math.ceil(total / 1800 / 10) * 10)), n = Math.floor(total / step) + 1;
+  const b = new Uint8Array(4 + n * 5), v = new DataView(b.buffer);
+  b[0] = 1; b[1] = step / 10;
+  for (let k = 0, j = 0; k < n; k++) {
+    const t = k * step;
+    while (j < rec.length - 2 && rec[j + 1].t <= t) j++;
+    const a = rec[j], c = rec[j + 1] || a, u = c.t > a.t ? clamp((t - a.t) / (c.t - a.t), 0, 1) : 0;
+    v.setInt16(4 + k * 5, clamp(Math.round(lerp(a.x, c.x, u) * 10), -32767, 32767)); v.setInt16(6 + k * 5, clamp(Math.round(lerp(a.z, c.z, u) * 10), -32767, 32767));
+    b[8 + k * 5] = Math.round((lerpAngle(a.h, c.h, u) / (2 * Math.PI)) * 256) & 255;
+  }
+  let str = ''; for (let i = 0; i < b.length; i += 3000) str += String.fromCharCode(...b.subarray(i, i + 3000));
+  return btoa(str);
+}
+function unpackPath(p) {
+  try {
+    const raw = atob(p), b = Uint8Array.from(raw, (ch) => ch.charCodeAt(0)), v = new DataView(b.buffer);
+    if (b[0] !== 1 || !b[1] || (b.length - 4) % 5 || b.length < 24) return null;
+    const out = [];
+    for (let k = 0; 4 + k * 5 < b.length; k++) out.push({ t: k * b[1] * 10, x: v.getInt16(4 + k * 5) / 10, z: v.getInt16(6 + k * 5) / 10, h: (b[8 + k * 5] / 256) * 2 * Math.PI });
+    return out;
+  } catch { return null; }
+}
+// The record holder's ghost: in Polytrack mode the lap at the top of the track's leaderboard drives round with
+// you, a see-through gold car with its driver's name and time over it, setting off as you cross the line. The
+// server keeps how each leaderboard lap was driven (laps set since 3.34) and sends it when asked.
+function wantRecordGhost() {
+  if (!app.room || app.mode !== 'quali' || !app.recGhostOn) return;
+  const top = boardList(app.trackId)[0];
+  const key = top && top.g ? `${app.trackId}|${top.n}|${top.ms}` : null;
+  if (!key) { app.recLap = null; app.recKey = null; return; }
+  if (key === app.recKey) return;
+  app.recKey = key; app.recLap = null;
+  send({ t: 'path', k: String(app.trackId), n: top.n });
+}
+function onPath(msg) {
+  if (typeof msg.k !== 'string' || typeof msg.n !== 'string') return;
+  const pts = msg.p ? unpackPath(msg.p) : null;
+  if (lineView.want && lineView.want.k === msg.k && lineView.want.n.toLowerCase() === msg.n.toLowerCase()) showLine(msg, pts);
+  if (app.recKey === `${msg.k}|${msg.n}|${msg.ms}` && pts && app.track && String(app.trackId) === msg.k) {
+    // where each sample is on this track: the road's height there (the path only has x and z) and how far round the lap
+    let hint = 0, y = app.track.samples[0].p.y;
+    app.recLap = pts.map((q) => { const loc = locate(app.track, { x: q.x, y, z: q.z }, hint, 60); if (loc) { hint = loc.i; y = loc.y; } return { ...q, y, i: hint }; });
+    app.recWho = { name: msg.n, ms: msg.ms, c: (boardList(app.trackId)[0] || {}).c };
+    if (app.recGhost) { carsGroup.remove(app.recGhost.group); disposeTree(app.recGhost.group); app.recGhost = null; }
+    app.recI = 0;
+  }
+}
+function updateRecGhost(now) {
+  const car = app.local, lap = app.recLap;
+  const on = car && lap && app.recGhostOn && app.mode === 'quali' && app.phase === 'racing';
+  if (!on) { if (app.recGhost) app.recGhost.group.visible = false; return; }
+  if (!app.recGhost) {
+    const who = app.recWho || {};
+    app.recGhost = makeCarMesh(2, '', true, CAR_NAMES[who.c] ? who.c : app.carClass, false, null);
+    app.recGhost.group.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.5; m.material.color?.setHex(0xffd76a); m.material.depthWrite = false; m.castShadow = false; } });
+    const label = makeLabel(`${who.name || 'Record'}  ${fmtTime(who.ms || 0)}`, '#ffd23f'); label.position.y = 2.6; app.recGhost.group.add(label);
+    carsGroup.add(app.recGhost.group);
+  }
+  const t = car.armed ? 0 : now - car.lapStart, g = app.recGhost.group;
+  let i = app.recI || 0;
+  if (i >= lap.length || lap[i].t > t) i = 0;
+  while (i < lap.length - 2 && lap[i + 1].t <= t) i++;
+  app.recI = i;
+  const a = lap[i], b = lap[i + 1];
+  if (!b || t > lap[lap.length - 1].t) { g.visible = false; return; }
+  const u = clamp((t - a.t) / (b.t - a.t), 0, 1);
+  g.position.set(lerp(a.x, b.x, u), lerp(a.y, b.y, u) + 0.02, lerp(a.z, b.z, u));
+  g.rotation.set(0, lerpAngle(a.h, b.h, u), 0);
+  g.visible = (g.position.x - car.pos.x) ** 2 + (g.position.z - car.pos.z) ** 2 > 9; // not when it's sitting on top of you
+}
+// ---- a lap's line, from the leaderboard: the track from above with the lap drawn on it, red where it's slow
+// through yellow to green where it's fast ----
+const lineView = { want: null, tracks: new Map() };
+function askLine(t, name) {
+  lineView.want = { k: String(t), n: name };
+  send({ t: 'path', k: String(t), n: name });
+}
+function showLine(msg, pts) {
+  lineView.want = null;
+  const t = +msg.k, def = TRACKS[t], cv = $('#line-canvas');
+  if (!def || !cv) return;
+  $('#line-title').textContent = `${msg.n}  ${msg.ms ? fmtTime(msg.ms) : ''}`;
+  $('#line-sub').textContent = pts ? def.name : `${def.name}: no line was kept for this lap (it was set before lines were, or in a race)`;
+  if (!lineView.tracks.has(t)) lineView.tracks.set(t, buildTrack(def));
+  const T = lineView.tracks.get(t), S = T.samples, W = cv.width, H = cv.height, pad = 34;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const s of S) { x0 = Math.min(x0, s.p.x); x1 = Math.max(x1, s.p.x); z0 = Math.min(z0, s.p.z); z1 = Math.max(z1, s.p.z); }
+  const k = Math.min((W - 2 * pad) / (x1 - x0), (H - 2 * pad) / (z1 - z0)), ox = (W - (x1 - x0) * k) / 2 - x0 * k, oz = (H - (z1 - z0) * k) / 2 - z0 * k;
+  const X = (x) => x * k + ox, Z = (z) => z * k + oz, c = cv.getContext('2d');
+  c.fillStyle = '#1d2230'; c.fillRect(0, 0, W, H);
+  c.lineJoin = c.lineCap = 'round';
+  c.beginPath(); S.forEach((s, i) => (i ? c.lineTo(X(s.p.x), Z(s.p.z)) : c.moveTo(X(s.p.x), Z(s.p.z)))); c.closePath();
+  c.strokeStyle = '#4a5160'; c.lineWidth = Math.max(5, T.hw * 2 * k); c.stroke();
+  { const s = S[0]; c.strokeStyle = '#f6f2e8'; c.lineWidth = 3; c.beginPath(); c.moveTo(X(s.p.x + s.left.x * T.hw), Z(s.p.z + s.left.z * T.hw)); c.lineTo(X(s.p.x - s.left.x * T.hw), Z(s.p.z - s.left.z * T.hw)); c.stroke(); } // the start line
+  if (pts && pts.length > 2) {
+    const v = pts.map((q, i) => { const o = pts[Math.min(pts.length - 1, i + 1)], b = pts[Math.max(0, i - 1)]; return Math.hypot(o.x - b.x, o.z - b.z) / Math.max(1, o.t - b.t); });
+    const sorted = [...v].sort((a, b) => a - b), lo = sorted[Math.floor(sorted.length * 0.04)], hi = sorted[Math.floor(sorted.length * 0.97)] || 1;
+    const shade = (u) => { const a = u < 0.5 ? [230, 69, 58] : [255, 210, 63], b = u < 0.5 ? [255, 210, 63] : [126, 217, 87], w = u < 0.5 ? u * 2 : u * 2 - 1; return `rgb(${a.map((x, j) => Math.round(x + (b[j] - x) * w)).join(',')})`; };
+    c.lineWidth = 3.2;
+    for (let i = 1; i < pts.length; i++) { c.strokeStyle = shade(clamp((v[i] - lo) / Math.max(1e-6, hi - lo), 0, 1)); c.beginPath(); c.moveTo(X(pts[i - 1].x), Z(pts[i - 1].z)); c.lineTo(X(pts[i].x), Z(pts[i].z)); c.stroke(); }
+    const g = c.createLinearGradient(W - 190, 0, W - 60, 0); g.addColorStop(0, 'rgb(230,69,58)'); g.addColorStop(0.5, 'rgb(255,210,63)'); g.addColorStop(1, 'rgb(126,217,87)');
+    c.fillStyle = g; c.fillRect(W - 190, H - 24, 130, 8);
+    c.fillStyle = '#c9ced6'; c.font = '600 13px "Segoe UI", Arial, sans-serif'; c.textBaseline = 'middle'; c.textAlign = 'right'; c.fillText('slow', W - 196, H - 20); c.textAlign = 'left'; c.fillText('fast', W - 54, H - 20);
+  }
+  $('#lineview').classList.remove('hidden');
 }
 
 // Qualifying ghost: your best lap so far, replayed as a see-through car that
@@ -5728,6 +5842,7 @@ function clearCars() {
   if (app.local) { carsGroup.remove(app.local.mesh.group); disposeTree(app.local.mesh.group); }
   app.local = null;
   if (app.ghost) { carsGroup.remove(app.ghost.group); disposeTree(app.ghost.group); app.ghost = null; }
+  if (app.recGhost) { carsGroup.remove(app.recGhost.group); disposeTree(app.recGhost.group); app.recGhost = null; }
 }
 
 // Polytrack mode's rolling start: the grid moved well back from the line, to where a straight begins between 420
@@ -6331,7 +6446,8 @@ function stepLocal(car, dt, canDrive) {
           if (lapTime === app.bestLap) app.ghostLap = app.rec;
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          send({ t: 'lap', time: Math.round(lapTime), sec: lapSec }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
+          const path = app.mode === 'quali' && lapTime === app.bestLap ? packPath(app.ghostLap) : null; // how it was driven, with your best lap: the leaderboard keeps it if the lap gets on
+          send({ t: 'lap', time: Math.round(lapTime), sec: lapSec, ...(path ? { path } : {}) }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
           notePersonalBest(lapTime);
           if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
@@ -6646,7 +6762,8 @@ function handle(msg) {
     case 'sector': if (app.sec && msg.n >= 0 && msg.n < 3 && (app.sec.session[msg.n] == null || msg.time < app.sec.session[msg.n])) app.sec.session[msg.n] = msg.time; break;
     case 'lbs': app.boards = msg.boards && typeof msg.boards === 'object' ? msg.boards : {}; keepBoards(app.boards); boardsChanged(); app.secRec = msg.sec && typeof msg.sec === 'object' ? msg.sec : {}; keepSectors(app.secRec); break;
     case 'srec': if (typeof msg.k === 'string' && Array.isArray(msg.list)) { app.secRec[msg.k] = msg.list; keepSectors({ [msg.k]: msg.list }); } break;
-    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); } break;
+    case 'lb': if (typeof msg.k === 'string') { app.boards[msg.k] = Array.isArray(msg.list) ? msg.list : []; keepBoards({ [msg.k]: app.boards[msg.k] }); boardsChanged(msg.k); wantRecordGhost(); } break;
+    case 'path': onPath(msg); break;
     case 'record': {
       const where = TRACKS[msg.track]?.short || 'this track';
       if (msg.id === app.myId) raceToast(msg.place === 1 ? `New track record! ${fmtTime(msg.time)}` : `#${msg.place} on the ${where} leaderboard! ${fmtTime(msg.time)}`, 3500);
@@ -6671,6 +6788,7 @@ function beginRace(msg) {
   app.bests = new Map();
   app.myLaps = [];
   app.rec = []; app.ghostLap = null; app.recFrom = null; app.dI = 0; app.ghostDelta = null;
+  app.recLap = null; app.recKey = null; app.recI = 0; wantRecordGhost(); // (the record holder's ghost, if the leaderboard has their lap's path)
   app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Lap time' : 'Time';
   if (worldStale(msg.trackId, msg.car)) buildWorld(msg.trackId, msg.car || 'open');
@@ -6832,7 +6950,7 @@ function renderBoard() {
   }
   const list = boardList(board.track);
   $('#board-list').innerHTML = list.length
-    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="rnum" title="Race number">${Number.isInteger(e.num) ? e.num : ''}</span>${e.n.toLowerCase() === kingKey ? crown : ''}<span class="name">${esc(e.n)}</span><span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
+    ? list.map((e, i) => `<li class="${e.n.toLowerCase() === me ? 'me' : ''} ${i === 0 ? 'first' : ''}"><span class="place">${i + 1}</span><span class="rnum" title="Race number">${Number.isInteger(e.num) ? e.num : ''}</span>${e.n.toLowerCase() === kingKey ? crown : ''}<span class="name">${esc(e.n)}</span>${e.g ? `<button class="linebtn" data-n="${esc(e.n)}" title="See how this lap was driven">line</button>` : ''}<span class="car">${CAR_NAMES[e.c] || ''}</span><span class="time">${fmtTime(e.ms)}</span></li>`).join('')
     : '<li class="empty">No laps yet. Set the first one!</li>';
   const pb = app.pbs[String(board.track)];
   $('#board-pb').textContent = pb ? `Your best here: ${fmtTime(pb)}` : '';
@@ -7403,6 +7521,11 @@ function wireUI() {
   $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').classList.add('hidden'); });
   document.querySelectorAll('#seg-gfx button').forEach(b => b.addEventListener('click', () => setGfxMode(b.dataset.v)));
   document.querySelectorAll('#seg-map button').forEach(b => b.addEventListener('click', () => setExpanded(b.dataset.v === 'on')));
+  document.querySelectorAll('#seg-recghost button').forEach(b => b.addEventListener('click', () => {
+    app.recGhostOn = b.dataset.v === 'on';
+    try { localStorage.setItem('dc-recghost', app.recGhostOn ? 'on' : 'off'); } catch {}
+    renderSettings(); wantRecordGhost();
+  }));
   // laps (host only)
   const setLaps = (e, d) => { e.currentTarget.blur(); if (app.room?.hostId === app.myId) send({ t: 'laps', laps: (app.room.laps || 3) + d }); };
   $('#laps-minus').addEventListener('click', (e) => setLaps(e, -1));
@@ -7412,6 +7535,9 @@ function wireUI() {
   $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
   $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = b.dataset.t === 'champ' ? 'champ' : +b.dataset.t; renderBoard(); } });
   $('#board-king').addEventListener('click', () => { board.track = 'champ'; renderBoard(); }); // the king's banner opens the championship too
+  $('#board-list').addEventListener('click', (e) => { const b = e.target.closest('.linebtn'); if (b && board.track !== 'champ') askLine(board.track, b.dataset.n); });
+  $('#btn-line-close').addEventListener('click', () => $('#lineview').classList.add('hidden'));
+  $('#lineview').addEventListener('click', (e) => { if (e.target.id === 'lineview') $('#lineview').classList.add('hidden'); });
   for (const id of ['#btn-feedback', '#btn-feedback-pause']) {
     $(id).classList.toggle('hidden', !FEEDBACK_URL);
     $(id).addEventListener('click', (e) => { e.currentTarget.blur(); window.open(FEEDBACK_URL, '_blank', 'noopener'); });
@@ -7776,7 +7902,7 @@ function frame(now) {
         if (!r.length || t - r[r.length - 1].t >= 50) r.push({ t, x: c.pos.x, y: c.pos.y, z: c.pos.z, h: c.h, i: c.idx });
       }
     }
-    updateGhost(now);
+    updateGhost(now); updateRecGhost(now);
     updateHud(now);
     updateAudio(app.local, dt);
     if (now - app.lastSend >= 1000 / SEND_HZ - 4 && app.phase !== 'results') {
