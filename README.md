@@ -318,20 +318,23 @@ black swans at Centennial Park; a chairlift across the track, skiers and A-frame
 Thredbo; the real corner names on signs and campers round their fires at Mount
 Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD.
-The posters, and a few banners on walls, carry the trackside sponsors, which
+The posters, and the banners on walls, carry the trackside sponsors, which
 the owner chose: 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and
 Glory Days), and Tenth Floor Chambers and Frangos as themselves, each in its
 company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
 every billboard (each turned to face the cars coming) and on Sydney CBD's lit
-boards. Banners go on solid walls only, one every 60 m or so: Sydney CBD's
-walls, and Rose Bay's harbour wall and the stone wall behind its shops. Rails
-on posts, fences and the railings of bridges and ramps are left bare. Nothing
-is a picture: the boards are drawn in the browser, in open-licence typefaces
-from `public/vendor/fonts`, onto two sheets that every poster and banner in
-the world shares (each sponsor's artwork kept apart on its sheet, and drawn a
-touch nearer than it is, so nothing flickers from far off). 9 Meter is in Nine
-Mile's own lettering: the m and e traced from the logo the owner sent, the 9,
-t and r drawn to match (`NM_LETTERS`). Cars still only carry made-up names.
+boards. Banners go on solid walls only, one every 25 to 30 m or so: five along
+the pit wall, Sydney CBD's walls (about 70 round the lap), Rose Bay's harbour
+wall and the stone wall behind its shops, and the wall round Westfield's roof
+where the cars drive straight at it (the end of the start straight and the top
+of the ramp up). Rails on posts, fences and the railings of bridges and ramps
+are left bare. Nothing is a picture: the boards are drawn in the browser, in
+open-licence typefaces from `public/vendor/fonts`, onto two sheets that every
+poster and banner in the world shares (each sponsor's artwork kept apart on
+its sheet, and drawn a touch nearer than it is, so nothing flickers from far
+off). 9 Meter is in Nine Mile's own lettering: the m and e traced from the
+logo the owner sent, the 9, t and r drawn to match (`NM_LETTERS`). Cars still
+only carry made-up names.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.

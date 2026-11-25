@@ -21,10 +21,14 @@
     never a picture file). 9 Meter is in Nine Mile's own lettering: the m and
     e traced from the logo the owner sent, the 9, t and r drawn to match.
     Don't swap them for made-up names, or add others, unless asked.
-  - The owner wants few ads, and none on fences: posters on the billboards,
-    and banners only on solid walls (Sydney CBD's, and Rose Bay's two
-    sandstone walls), one every 60 m or so. Never on a rail on posts (the
-    owner calls those fences), a fence, or the railings of a bridge or ramp.
+  - The owner wants a middling number of ads, and none on fences: posters on
+    the billboards, and banners only on solid walls (the pit wall, Sydney
+    CBD's walls, Rose Bay's two sandstone walls, the wall round Westfield's
+    roof), one every 25 to 30 m or so. One every 9 m was far too many ("we
+    don't need THIS many") and one every 60 m too few ("not that little").
+    Never on a rail on posts (the owner calls those fences), a fence, or the
+    railings of a bridge or ramp, and only where a driver can see the whole
+    banner (not behind parked cars or another wall).
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
     welcome there where a barrier is needed, in place of a rail on posts.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
