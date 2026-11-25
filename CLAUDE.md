@@ -14,15 +14,19 @@
   exceptions, both at the owner's request:
   - Shop signs at Rose Bay and Westfield, and the hotel over Rose Bay's tunnel
     (The InterContinental): real local names in plain lettering, never logos.
-  - The trackside sponsors on posters and barrier banners (`SPONSOR_ART` in
-    `game.js`): Nine Mile, Tenth Floor Chambers and Frangos as themselves, and
-    PWD and Glory Dates (puns on PwC and Glory Days), each drawn in its
-    company's own colours and lettering (in code and open-licence fonts, never
-    a picture file). Nine Mile's is its real wordmark, traced from the picture
-    the owner sent and said to use. Don't swap them for made-up names, or add
-    others, unless asked.
-  - Sponsors' banners go on barriers only (the rails on the outside of
-    corners, walls): never on fences or on the railings of bridges and ramps.
+  - The trackside sponsors on posters and wall banners (`SPONSOR_ART` in
+    `game.js`): 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and Glory
+    Days), and Tenth Floor Chambers and Frangos as themselves, each drawn in
+    its company's own colours and lettering (in code and open-licence fonts,
+    never a picture file). 9 Meter is in Nine Mile's own lettering: the m and
+    e traced from the logo the owner sent, the 9, t and r drawn to match.
+    Don't swap them for made-up names, or add others, unless asked.
+  - The owner wants few ads, and none on fences: posters on the billboards,
+    and banners only on solid walls (Sydney CBD's, and Rose Bay's two
+    sandstone walls), one every 60 m or so. Never on a rail on posts (the
+    owner calls those fences), a fence, or the railings of a bridge or ramp.
+  - The owner likes the sandstone walls at Rose Bay: a wall in that style is
+    welcome there where a barrier is needed, in place of a rail on posts.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update

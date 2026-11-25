@@ -6,13 +6,14 @@
 // where things ended up that day, not every step on the way.
 export const UPDATES = [
   {
-    v: '3.25', date: '25 Nov 2026', title: 'Rose Bay, Westfield and the Drift King',
+    v: '3.26', date: '25 Nov 2026', title: 'Rose Bay, Westfield and the Drift King',
     items: [
       'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the InterContinental.',
       'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
       'And another, Westfield Mall Circuit: start on the roof of the car park, down the ramp, across Oxford Street, in through the doors and flat out between the shops, round the food court and back up the other ramp, with the Harbour Bridge dead ahead. The 333 is waiting at its stop.',
-      'Neither has walls all the way round: like the older tracks, there are rails on the outside of corners and open ground everywhere else. Rose Bay keeps a guard rail along the harbour, and at Westfield you can drive all over the car park roof.',
-      'New trackside sponsors, on every billboard and along the barriers: Nine Mile, pwd, Glory Dates, Tenth Floor Chambers and Frangos. The billboards are turned to face you as you drive up to them, too.',
+      'Neither has walls all the way round: like the older tracks, there are rails on the outside of corners and open ground everywhere else. Rose Bay has a low sandstone wall along the harbour, and at Westfield you can drive all over the car park roof.',
+      'New trackside sponsors on the billboards, and here and there on a wall: 9 meter, pwd, Glory Dates, Tenth Floor Chambers and Frangos. The billboards are turned to face you as you drive up to them, too.',
+      'The Opera House has proper sails, and the city behind it has windows: across the water from Rose Bay, on the horizon at Westfield and at Sydney CBD.',
       'You can\'t crash into a checkpoint any more: clip a gate post, or a post of the start arch, and you go straight through it.',
       'The Drift King championship: every track\'s top ten scores like F1 (25 for the record, 18 for second, down to 1 for tenth), and the points add up over all eight tracks. Whoever leads is the Drift King and wears the crown on the leaderboard, where the new Championship tab shows everyone\'s points.',
       'The leaderboard has a tab for each of the eight tracks, in two rows.',

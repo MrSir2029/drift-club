@@ -270,7 +270,8 @@ the wharf, Catalina on its stilts and Shark Island. Up the hill: big houses
 with pools, the convent school with its tower, and a golf course in the
 middle. Across the water to the north-west, placed so they're in view on the
 way down the hill (whose outer side is left open as a lookout): the city, the
-Opera House and the Harbour Bridge (`buildSydneyIcons`, shared with Sydney
+Opera House (sails that are solid shapes, glazed at the mouth) and the Harbour
+Bridge (`buildSydneyIcons`, shared with Sydney
 CBD). The shops' signs are made-up local names plus a few real Rose Bay ones in
 plain lettering, which the owner asked for; cars still only carry made-up
 names. Its `sea` in `tracks.js` also says how high the land sits inland
@@ -280,9 +281,9 @@ landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
 card in the lobby. It has no walls round it: like the older tracks it gets
 rails and tyres on the outside of corners, marshal posts and spectators behind
 short fences, with barriers of its own only where a car would otherwise end up
-somewhere it can't be. Those are a guard rail along the harbour side of the
-quay (the promenade is paving over ground that slopes into the sea, so a car
-on it would sink through), the tunnel's own walls, and a stone wall along the
+somewhere it can't be. Those are a low sandstone wall along the harbour side
+of the quay (the promenade is paving over ground that slopes into the sea, so
+a car on it would sink through), the tunnel's own walls, and a stone wall along the
 top of the bank behind the shops (without it you could leave the first
 hairpin, drop down the bank and miss out the second). `quay` in its `sea`
 keeps the usual trackside furniture away from the water, and `blocks` keeps it
@@ -317,18 +318,20 @@ black swans at Centennial Park; a chairlift across the track, skiers and A-frame
 Thredbo; the real corner names on signs and campers round their fires at Mount
 Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD.
-The posters, and the banners along the barriers, carry the trackside sponsors,
-which the owner chose: Nine Mile, Tenth Floor Chambers and Frangos as
-themselves, and PWD and Glory Dates (puns on PwC and Glory Days), each in its
+The posters, and a few banners on walls, carry the trackside sponsors, which
+the owner chose: 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and
+Glory Days), and Tenth Floor Chambers and Frangos as themselves, each in its
 company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
 every billboard (each turned to face the cars coming) and on Sydney CBD's lit
-boards, and as banners on the barriers: the rails on the outside of corners,
-Sydney CBD's walls, and Rose Bay's guard rail and stone wall. Fences and the
-railings of bridges and ramps are left bare. Nothing is a picture: the boards
-are drawn in the browser, in open-licence typefaces from `public/vendor/fonts`,
-onto two sheets that every poster and banner in the world shares. Nine Mile's
-is its real wordmark, traced letter by letter from the picture the owner sent
-(`NM_LETTERS`). Cars still only carry made-up names.
+boards. Banners go on solid walls only, one every 60 m or so: Sydney CBD's
+walls, and Rose Bay's harbour wall and the stone wall behind its shops. Rails
+on posts, fences and the railings of bridges and ramps are left bare. Nothing
+is a picture: the boards are drawn in the browser, in open-licence typefaces
+from `public/vendor/fonts`, onto two sheets that every poster and banner in
+the world shares (each sponsor's artwork kept apart on its sheet, and drawn a
+touch nearer than it is, so nothing flickers from far off). 9 Meter is in Nine
+Mile's own lettering: the m and e traced from the logo the owner sent, the 9,
+t and r drawn to match (`NM_LETTERS`). Cars still only carry made-up names.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.

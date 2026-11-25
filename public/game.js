@@ -1345,14 +1345,15 @@ function mulberry32(a) {
 
 // ---------------------------------------------------------------------------
 // The trackside sponsors: on every poster, and on banners along the barriers.
-// They're the owner's choice: three real ones as themselves (Nine Mile, Tenth
-// Floor Chambers and Frangos) and two puns on real companies (PWD for PwC,
-// Glory Dates for Glory Days). Each is in the company's own look, as the
-// owner asked. No picture file is used: everything is drawn here, in
-// open-licence typefaces served from /vendor/fonts (see the README there),
-// except Nine Mile's wordmark, whose letters are drawn one by one, below.
-// Banners go on barriers (rails and walls), never on fences or bridge
-// railings. Cars are another matter: they only ever carry made-up names.
+// They're the owner's choice: three puns on real companies (9 Meter for Nine
+// Mile, PWD for PwC, Glory Dates for Glory Days) and two real ones as
+// themselves (Tenth Floor Chambers and Frangos). Each is in the company's
+// own look, as the owner asked. No picture file is used: everything is drawn
+// here, in open-licence typefaces served from /vendor/fonts (see the README
+// there), except 9 Meter, whose letters are drawn one by one, below.
+// Posters go on the billboards. Banners go on solid walls only (Sydney CBD's,
+// and the stone wall at Rose Bay), a few of them: never on rails, fences or
+// bridge railings. Cars are another matter: they only ever carry made-up names.
 // ---------------------------------------------------------------------------
 const SPONSOR_FONTS = { charis: ['DC Charis', 'charis-sil-700.woff2', '700'], overpass: ['DC Overpass', 'overpass-800.woff2', '800'], caprasimo: ['DC Caprasimo', 'caprasimo-400.woff2', '400'], cormorant: ['DC Cormorant', 'cormorant-garamond-600.woff2', '600'], anton: ['DC Anton', 'anton-400.woff2', '400'] };
 const sponsorFace = (k, size) => `${SPONSOR_FONTS[k][2]} ${Math.round(size)}px "${SPONSOR_FONTS[k][0]}", ${k === 'charis' || k === 'cormorant' || k === 'caprasimo' ? 'Georgia, "Times New Roman", serif' : '"Arial Narrow", Arial, sans-serif'}`;
@@ -1362,12 +1363,13 @@ const fitSize = (c, k, text, wide, max, gap = 0) => { let s = max; for (; s > 8;
 const spaced = (c, text, cx, y, size, gap) => { const ws = [...text].map((ch) => c.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + gap * size * (text.length - 1); let x = cx - total / 2; c.textAlign = 'left'; [...text].forEach((ch, i) => { c.fillText(ch, x, y); x += ws[i] + gap * size; }); c.textAlign = 'center'; };
 const roundedPath = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
 
-// Nine Mile's wordmark, which the owner sent and said to use: "nine mile" in a round, heavy lower case. It is
-// drawn here, not kept as a picture, so it stays sharp at any size; every measurement was taken off that picture,
-// in x-heights, y going up from the baseline. Corners are round outside and square inside, the dots on the i's
-// are square, and the stem of an n or m stops short, touching its shoulder at one corner only. Each piece of a
-// letter is wound clockwise (as a rect is), so pieces that overlap fill as one shape.
-const NM_T = 0.218, NM_ASC = 1.357, NM_R = 0.365; // how thick a stroke is, how tall the l and the dots stand, and the round of a shoulder
+// "9 meter", the owner's pun on Nine Mile, in Nine Mile's own lettering: a round, heavy lower case. The m and e
+// are traced from the company's logo (every measurement taken off the picture the owner sent, in x-heights, y
+// going up from the baseline); the 9, t and r aren't in "nine mile", so they're drawn to match. Corners are round
+// outside and square inside, and the stem of an m or r stops short, touching its shoulder at one corner only.
+// It's drawn, not kept as a picture, so it stays sharp at any size. Each piece of a letter is wound clockwise (as
+// a rect is), so pieces that overlap fill as one shape.
+const NM_T = 0.218, NM_ASC = 1.357, NM_R = 0.365; // how thick a stroke is, how tall the 9 stands, and the round of a shoulder
 const nmBox = (c, x0, y0, x1, y1) => c.rect(x0, -y1, x1 - x0, y1 - y0); // (the canvas's y goes down)
 const nmStem = (c, x) => nmBox(c, x, 0, x + NM_T, 0.787); // the stem that stops short of its shoulder
 // a shoulder: from x0 along the top, round the corner and down a stem to the baseline at x1
@@ -1386,10 +1388,7 @@ const nmQuarter = (c, cx, cy, a, b, n, sx, sy, t0, t1, move) => {
 };
 const nmTurn = (d, b, n) => Math.asin(Math.min(1, (d / b) ** (n / 2))); // the angle at which such a quarter is d above or below its middle
 const NM_LETTERS = {
-  n: (c, x) => { nmStem(c, x); nmArch(c, x + 0.212, x + 0.855); },
   m: (c, x) => { nmStem(c, x); nmArch(c, x + 0.212, x + 0.855); nmArch(c, x + 0.822, x + 1.461); },
-  i: (c, x) => { nmBox(c, x, 0, x + NM_T, 1); nmBox(c, x, 1.142, x + NM_T, NM_ASC); },
-  l: (c, x) => nmBox(c, x, 0, x + NM_T, NM_ASC),
   // The e is not quite round: a little taller than wide, fuller at the bottom right where the tail is, with a
   // bar across the middle and a slit under the bar on the right.
   e: (c, x) => {
@@ -1402,10 +1401,21 @@ const NM_LETTERS = {
     // and the eye, the other way round, which makes it a hole
     nmQuarter(c, cx, cy, 0.283, 0.3285, 2.25, 1, 1, nmTurn(over, 0.3285, 2.25), Q, true); nmQuarter(c, cx, cy, 0.283, 0.3285, 2.25, -1, 1, Q, nmTurn(over, 0.3285, 2.25)); c.closePath();
   },
+  // drawn to match: a t and an r in the same strokes
+  t: (c, x) => { nmBox(c, x + 0.13, 0, x + 0.13 + NM_T, 1.27); nmBox(c, x, 0.78, x + 0.6, 1); },
+  r: (c, x) => { nmStem(c, x); nmBox(c, x + 0.212, 0.78, x + 0.6, 1); },
+  // and a 9: a ring, with a tail made like the m's shoulder turned over (down the right side, round the corner
+  // and along the bottom to a square end)
+  9: (c, x) => {
+    const r = 0.43, cx = x + r, cy = NM_ASC - r, xr = x + 2 * r;
+    c.moveTo(cx + r, -cy); c.arc(cx, -cy, r, 0, Math.PI * 2);
+    c.moveTo(cx + 0.212, -cy); c.ellipse(cx, -cy, 0.212, 0.23, 0, Math.PI * 2, 0, true); // (the other way round: a hole)
+    c.moveTo(xr, -cy); c.lineTo(xr, -NM_R); c.arc(xr - NM_R, -NM_R, NM_R, 0, Math.PI / 2); c.lineTo(x + 0.12, 0); c.lineTo(x + 0.12, -0.22); c.lineTo(xr - NM_T, -0.22); c.lineTo(xr - NM_T, -cy); c.closePath();
+  },
 };
-const NM_WORDS = [['n', 0], ['i', 1.048], ['n', 1.455], ['e', 2.459], ['m', 3.873], ['i', 5.523], ['l', 5.928], ['e', 6.296]], NM_WIDE = 7.294; // where each letter starts, and how wide the lot is
-// the wordmark in the current fill colour, its x-height `xh` pixels, sitting about (cx, cy) as it sits in its own logo
-function nineMile(c, cx, cy, xh) {
+const NM_WORDS = [['9', 0], ['m', 1.272], ['e', 2.877], ['t', 3.977], ['e', 4.667], ['r', 5.811]], NM_WIDE = 6.411; // where each letter starts, and how wide the lot is
+// "9 meter" in the current fill colour, its x-height `xh` pixels, sitting about (cx, cy) as Nine Mile's name sits in its logo
+function nmWords(c, cx, cy, xh) {
   c.save(); c.translate(cx - (NM_WIDE / 2) * xh, cy + 0.57 * xh); c.scale(xh, xh); c.beginPath();
   for (const [ch, x] of NM_WORDS) NM_LETTERS[ch](c, x);
   c.fill(); c.restore();
@@ -1413,12 +1423,12 @@ function nineMile(c, cx, cy, xh) {
 
 // each draws itself into a rectangle of a canvas, as a poster (about 10 : 3) or a banner (about 10.7 : 1, the name twice)
 const SPONSOR_ART = [
-  { name: 'Nine Mile', // themselves: their own wordmark, aqua on deep blue, and nothing else
+  { name: '9 Meter', // a pun on Nine Mile, in its own lettering and colours: aqua on deep blue, and nothing else
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#272d9f'; c.fillRect(x, y, w, h);
       c.fillStyle = '#54edd9';
-      if (banner) { for (const f of [0.25, 0.75]) nineMile(c, x + w * f, y + h / 2, Math.min(h * 0.44, (w * 0.4) / NM_WIDE)); }
-      else nineMile(c, x + w / 2, y + h / 2, Math.min(h * 0.34, (w * 0.72) / NM_WIDE));
+      if (banner) { for (const f of [0.25, 0.75]) nmWords(c, x + w * f, y + h / 2, Math.min(h * 0.44, (w * 0.4) / NM_WIDE)); }
+      else nmWords(c, x + w / 2, y + h / 2, Math.min(h * 0.36, (w * 0.72) / NM_WIDE));
     } },
   { name: 'PWD', // a pun on PwC: lower-case serif letters and a stack of warm blocks
     draw(c, x, y, w, h, banner) {
@@ -1491,24 +1501,35 @@ function sponsorMat(kind, night) {
   let m = sponsorMats.get(key);
   if (!m) {
     // lit from inside, as far as the game goes: the same by day whichever way they face, and readable at night
-    m = new THREE.MeshBasicMaterial({ color: night ? (kind === 'poster' ? 0xc4c4c4 : 0x9c9c9c) : 0xe8e8e8, map: sponsorSheets?.[kind] ?? null });
+    // (and drawn as if a touch nearer than they are: from far off, the frame or wall a hand's width behind one
+    // can't be told from it by depth, and the two flickered through each other, worst from the cockpit)
+    m = new THREE.MeshBasicMaterial({ color: night ? (kind === 'poster' ? 0xc4c4c4 : 0x9c9c9c) : 0xe8e8e8, map: sponsorSheets?.[kind] ?? null, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
     m.userData.keep = true; m.userData.kind = kind; // shared by every track: never disposed with one
     sponsorMats.set(key, m);
   }
   return m;
 }
-const posterCell = (k) => { const x = (k % 2) * 1024, y = (k >> 1) * 320; return [x, y, 1024, 308]; };
-const bannerCell = (k) => [0, k * 100, 1024, 96];
+// Where each sponsor's artwork is on its sheet. They're kept apart, and the edge of each is carried on out into the
+// gap: from far off a sheet is read in coarser and coarser copies, and a neighbour's colours would creep in at
+// the edges (a white line down the side of a blue poster, flickering as you drive).
+const POSTER_SHEET = [2048, 1024], BANNER_SHEET = [1024, 1024];
+const posterCell = (k) => [(k % 2) * 1024 + 32, (k >> 1) * 341 + 26, 960, 288];
+const bannerCell = (k) => [0, k * 200 + 52, 1024, 96];
 function drawSponsorSheets() {
-  const sheet = (w, h, cell, banner) => {
+  const sheet = ([w, h], cell, banner) => {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const c = cv.getContext('2d');
-    SPONSOR_ART.forEach((s, k) => { c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 1; s.draw(c, ...cell(k), banner); });
+    SPONSOR_ART.forEach((s, k) => {
+      const [x, y, cw, ch] = cell(k), gx = banner ? 0 : 32, gy = banner ? 52 : 26;
+      c.save(); c.beginPath(); c.rect(x, y, cw, ch); c.clip(); c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 1; s.draw(c, x, y, cw, ch, banner); c.restore();
+      c.drawImage(cv, x, y, cw, 1, x, y - gy, cw, gy); c.drawImage(cv, x, y + ch - 1, cw, 1, x, y + ch, cw, gy); // its top and bottom rows, out into the gap
+      if (gx) { c.drawImage(cv, x, y - gy, 1, ch + 2 * gy, x - gx, y - gy, gx, ch + 2 * gy); c.drawImage(cv, x + cw - 1, y - gy, 1, ch + 2 * gy, x + cw, y - gy, gx, ch + 2 * gy); } // and its sides
+    });
     const tex = cleanTexture(cv);
     tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); // they're read from along the road, at a slant
     return tex;
   };
-  sponsorSheets = { poster: sheet(2048, 1024, posterCell, false), banner: sheet(1024, 512, bannerCell, true) };
+  sponsorSheets = { poster: sheet(POSTER_SHEET, posterCell, false), banner: sheet(BANNER_SHEET, bannerCell, true) };
   for (const m of sponsorMats.values()) { m.map = sponsorSheets[m.userData.kind]; m.needsUpdate = true; }
 }
 Promise.race([
@@ -1517,7 +1538,7 @@ Promise.race([
 ]).then(drawSponsorSheets);
 // A poster: its four corners as someone reading it sees them (bottom-left, bottom-right, top-right, top-left).
 function addPoster(q, k) {
-  const [x, y, w, h] = posterCell(k % SPONSOR_ART.length), u0 = (x + 2) / 2048, u1 = (x + w - 2) / 2048, v1 = 1 - (y + 2) / 1024, v0 = 1 - (y + h - 2) / 1024;
+  const [x, y, w, h] = posterCell(k % SPONSOR_ART.length), u0 = (x + 0.5) / POSTER_SHEET[0], u1 = (x + w - 0.5) / POSTER_SHEET[0], v1 = 1 - (y + 0.5) / POSTER_SHEET[1], v0 = 1 - (y + h - 0.5) / POSTER_SHEET[1];
   const uv = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], Q = sponsorQuads.poster;
   for (const j of [0, 1, 2, 0, 2, 3]) { Q.pos.push(q[j].x, q[j].y, q[j].z); Q.uv.push(uv[j][0], uv[j][1]); }
 }
@@ -1528,7 +1549,7 @@ function addPoster(q, k) {
 function addBanner(k, p, q, y0, y1, fp, fq, tx, tz, twice) {
   const facesP = (tx - p.x) * -(q.z - p.z) + (tz - p.z) * (q.x - p.x) > 0; // is p on the left, seen from the road?
   const [L, R, fL, fR] = facesP ? [p, q, fp, fq] : [q, p, 1 - fq, 1 - fp], span = twice ? 1 : 0.5;
-  const [, y, , h] = bannerCell(k % SPONSOR_ART.length), u0 = 0.002 + fL * (span - 0.004), u1 = 0.002 + fR * (span - 0.004), v1 = 1 - (y + 1.5) / 512, v0 = 1 - (y + h - 1.5) / 512;
+  const [, y, , h] = bannerCell(k % SPONSOR_ART.length), u0 = 0.002 + fL * (span - 0.004), u1 = 0.002 + fR * (span - 0.004), v1 = 1 - (y + 0.5) / BANNER_SHEET[1], v0 = 1 - (y + h - 0.5) / BANNER_SHEET[1];
   const c = [[L.x, L.y + y0, L.z, u0, v0], [R.x, R.y + y0, R.z, u1, v0], [R.x, R.y + y1, R.z, u1, v1], [L.x, L.y + y1, L.z, u0, v1]], Q = sponsorQuads.banner;
   for (const j of [0, 1, 2, 0, 2, 3]) { Q.pos.push(c[j][0], c[j][1], c[j][2]); Q.uv.push(c[j][3], c[j][4]); }
 }
@@ -1779,12 +1800,7 @@ function buildProps(track) {
       const rail = gravel ? strut(V(a.x, a.y + 0.45, a.z), V(b.x, b.y + 0.45, b.z), 1.0, 0.9, baleMat, true) : strut(V(a.x, a.y + 0.78, a.z), V(b.x, b.y + 0.78, b.z), 0.25, 0.5, railMat, true);
       rail.castShadow = true; worldGroup.add(rail);
       wall(a, b);
-      // a sponsor's banner on every other length of rail, on the road side
-      if (!gravel && (here.i >> 2) % 2 === 0) {
-        const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz), nx = s.p.x - (a.x + b.x) / 2, nz = s.p.z - (a.z + b.z) / 2, nl = Math.hypot(nx, nz) || 1, ins = Math.max(0, (len - 4.4) / 2) / len;
-        const on = (f) => ({ x: a.x + dx * f + (nx / nl) * 0.2, y: a.y + (b.y - a.y) * f, z: a.z + dz * f + (nz / nl) * 0.2 }); // (clear of the rail's face even where the rail slopes: a strut on a slope leans a little)
-        addBanner(here.i >> 3, on(ins), on(1 - ins), 0.14, 0.96, 0, 1, s.p.x, s.p.z);
-      }
+      // (no sponsors' banners here: a rail on posts is a fence to the owner's eye, and banners go on solid walls only)
     }
     prev = here;
     // three boards counting down to a corner that follows a straight
@@ -1846,7 +1862,7 @@ function buildProps(track) {
     grp.rotation.y = rot;
     worldGroup.add(grp);
     grp.updateMatrixWorld();
-    for (const [z, k] of [[0.16, bb], [-0.16, bb + 2]]) addPoster([[-5, 2.5], [5, 2.5], [5, 5.5], [-5, 5.5]].map(([x, y]) => V(z > 0 ? x : -x, y, z).applyMatrix4(grp.matrixWorld)), k);
+    for (const [z, k] of [[0.22, bb], [-0.22, bb + 2]]) addPoster([[-5, 2.5], [5, 2.5], [5, 5.5], [-5, 5.5]].map(([x, y]) => V(z > 0 ? x : -x, y, z).applyMatrix4(grp.matrixWorld)), k);
     for (const e of [-0.8, 0.8]) solid({ x: p.x + ex * e, z: p.z + ez * e, y: p.y }, 0.45);
     const pole = at(s, -side * (hw + 6));
     if (!gravel && isFree(track, pole.x, pole.z, 1, hw + 3)) {
@@ -1942,7 +1958,7 @@ function insideLoop(track, x, z) {
 }
 
 // A street circuit (Sydney CBD): concrete walls down both sides of the road,
-// just past the kerbs, with the sponsors' banners along them. Side
+// just past the kerbs, with a sponsor's banner on them now and then. Side
 // streets break them now and then, always on the outside of the circuit, so
 // there's a way out to the rest of the city (and 9LAT2) but no short cut
 // across the middle. track.gaps keeps the buildings out of those streets.
@@ -2006,9 +2022,9 @@ function buildStreetWalls(track) {
       const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
       const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
       const blk = Math.floor(a.i / 10), k = a.i % 10, face = concrete;
-      if (blk % 3 === 1 && k < 9 && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // sponsors' banners: three to a stretch, each three samples long
-        const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.03, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.03 }), c = samples[a.i].p;
-        addBanner(blk + Math.floor(k / 3) + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
+      if (blk % 4 === 1 && k >= 3 && k < 6 && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 60 m
+        const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.08, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.08 }), c = samples[a.i].p;
+        addBanner((blk >> 2) + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
       }
       if (side > 0) { pushQuad(pos, col, A0, A1, B1, B0, face); pushQuad(pos, col, A1, C1, D1, B1, topC); pushQuad(pos, col, C0, D0, D1, C1, backC); }
       else { pushQuad(pos, col, A0, B0, B1, A1, face); pushQuad(pos, col, A1, B1, D1, C1, topC); pushQuad(pos, col, C0, C1, D1, D0, backC); }
@@ -2518,7 +2534,7 @@ function buildLocal(track) {
     // the Harbour Bridge across it and the Opera House on the far side
     const px = -oz, pz = ox, cx = hx + ox * -(HR * 0.35), cz = hz + oz * -(HR * 0.35);
     const ohx = hx + ox * (HR * 0.3) + px * (HR * 0.45), ohz = hz + oz * (HR * 0.3) + pz * (HR * 0.45);
-    const DECK = buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, Math.atan2(px, pz) + 0.4);
+    const DECK = buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, Math.atan2(px, pz) + 0.4, 1, true);
     spots.push({ name: 'bridge', x: cx, z: cz, h: DECK });
     spots.push({ name: 'opera', x: ohx, z: ohz, h: 30 });
   }
@@ -3670,12 +3686,12 @@ function buildMall(track, rnd) {
 
   // ---- on the horizon from the roof: the harbour, the Bridge, the Opera House and the city; hills the other ways ----
   {
-    const far = at(0, 0, 0, 0), TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196], WX = samples[i1].p.x;
+    const far = at(0, 0, 0, 0), TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196, 0xc2b49a, 0x5f7790, 0xb7c3cf], WX = samples[i1].p.x;
     flatQ(lit, WX - 900, 700, WX + 900, 1000, 0.4, C(0x3aa6c4));
-    for (let k = 0; k < 30; k++) { const w = 22 + rnd() * 22, h = 60 + rnd() * 150; box(far, w, h, w, TOWERS[k % TOWERS.length], WX - 600 + rnd() * 400, h / 2, 930 + rnd() * 110).castShadow = false; }
+    for (let k = 0; k < 30; k++) { const w = 22 + rnd() * 22, h = 60 + rnd() * 150; cityTower(far, WX - 600 + rnd() * 400, 930 + rnd() * 110, w, h, TOWERS[k % TOWERS.length]); }
     add(far, new THREE.CylinderGeometry(3, 4, 230, 8), 0xb9bdc5, WX - 380, 115, 950).castShadow = false; add(far, new THREE.CylinderGeometry(11, 11, 18, 12), 0xd9b44a, WX - 380, 222, 950).castShadow = false; add(far, new THREE.CylinderGeometry(0.8, 1.4, 50, 6), 0xb9bdc5, WX - 380, 256, 950).castShadow = false;
     for (let k = 0; k < 12; k++) { const m = add(far, new THREE.IcosahedronGeometry(1, 1), [0x5f9c58, 0x6aa85e, 0x548f50][k % 3], WX - 760 + k * 140, -6, 1040 + rnd() * 40); m.scale.set(120, 26 + rnd() * 14, 80); m.castShadow = false; }
-    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14, h = 30 + rnd() * 60; box(far, w, h, w, TOWERS[k % TOWERS.length], WX + 190 + rnd() * 200, h / 2 + 8, 1010 + rnd() * 40).castShadow = false; }
+    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14, h = 30 + rnd() * 60; cityTower(far, WX + 190 + rnd() * 200, 1010 + rnd() * 40, w, h, TOWERS[k % TOWERS.length], 8); }
     buildSydneyIcons(WX, 850, 1, 0, 0.4, WX - 215, 770, 0.2, 1.4);
     for (let i = 0; i < 20; i++) { // hazy hills all round
       const a = (i / 20) * 6.2832 + rnd() * 0.25; if (Math.sin(a) > 0.55) continue;
@@ -3699,7 +3715,56 @@ function buildMall(track, rnd) {
 // The Harbour Bridge and the Opera House, for a far shore. The bridge is
 // centred on (cx, cz) and runs along the unit vector (px, pz), its deck 48 m
 // over the water at WL; the Opera House stands at (ohx, ohz), turned by ohRy.
-function buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, ohRy, ohScale = 1) {
+// One sail of the Opera House, as a closed shape: its ridge rises in a curve from a foot at the back to a peak at
+// the front, where the shell is cut off (the glass wall); across it, it's a pointed arch all the way along, so it
+// narrows to its foot. H is the peak's height, L its length on the ground. The mouth faces +z and leans out over
+// its own foot. Returns the shell and the mouth as two geometries (they're different colours).
+function sailGeometry(H, L) {
+  const N = 7, M = 4, RATIO = 2.6, LEAN = 0.22;
+  const arch = (t) => { // the arch at t along the ridge (0 the foot, 1 the mouth): points from the ground on one side, over the top, to the ground on the other
+    const top = Math.max(1e-3, H * Math.sin((t * Math.PI) / 2)), w = top / RATIO, k = (w * (RATIO * RATIO - 1)) / 2, R = w + k, A = Math.acos(k / R), out = [];
+    for (let j = -M; j <= M; j++) { const a = A * (1 - Math.abs(j) / M), y = R * Math.sin(a); out.push([Math.sign(j) * (R * Math.cos(a) - k), y, -L * (1 - t) + LEAN * y]); }
+    return out;
+  };
+  const shell = [], mouth = [], tri = (to, a, b, c) => to.push(...a, ...b, ...c);
+  for (let i = 0; i < N; i++) {
+    const a = arch(i / N), b = arch((i + 1) / N);
+    for (let j = 0; j < 2 * M; j++) { tri(shell, a[j], b[j], b[j + 1]); tri(shell, a[j], b[j + 1], a[j + 1]); }
+  }
+  const front = arch(1);
+  for (let j = 0; j < 2 * M; j++) tri(mouth, [0, 0, 0], front[j], front[j + 1]);
+  const geo = (p) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); return g; };
+  return { shell: geo(shell), mouth: geo(mouth) };
+}
+
+// A city tower seen from far off, with enough to it to read as a building: rows of windows as darker bands (or
+// upright strips), and a top of its own (a set-back upper part, a plant room, a mast, a fin, or just a cap). All
+// plain boxes in flat colours, so they go into the one merged mesh with everything else. `far` is the group to
+// put it in, c its colour, y0 the height of its foot; which kind it is follows from where it stands.
+function cityTower(far, x, z, w, h, c, y0 = 0) {
+  const r = (n) => { const v = Math.sin(x * 12.9898 + z * 78.233 + n * 37.719) * 43758.5453; return v - Math.floor(v); }; // a number from 0 to 1 that goes with the place
+  const base = new THREE.Color(c), dark = base.clone().multiplyScalar(0.62).lerp(new THREE.Color(0x24384f), 0.25), pale = base.clone().lerp(new THREE.Color(0xffffff), 0.4);
+  const mat = (col) => new THREE.MeshLambertMaterial({ color: col, flatShading: true });
+  const box = (bw, bh, bd, col, bx, by, bz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mat(col)); m.position.set(x + bx, y0 + by, z + bz); m.castShadow = false; far.add(m); };
+  const d = w * (0.7 + 0.5 * r(1)), kind = r(2), upright = r(3) < 0.3;
+  // the body, with its windows
+  const body = (bw, bd, from, to) => {
+    box(bw, to - from, bd, base, 0, (from + to) / 2, 0);
+    if (upright) { for (const f of [-0.31, 0, 0.31]) { box(bw * 0.17, to - from - 6, bd + 0.8, dark, bw * f, (from + to) / 2, 0); box(bw + 0.8, to - from - 6, bd * 0.17, dark, 0, (from + to) / 2, bd * f); } }
+    else for (let y = from + 8; y < to - 4; y += 14) box(bw + 0.8, 4.4, bd + 0.8, dark, 0, y, 0);
+  };
+  if (kind < 0.3 && h > 90) { // the upper part set back
+    const cut = h * (0.62 + 0.14 * r(4));
+    body(w, d, 0, cut); body(w * 0.7, d * 0.7, cut, h); box(w * 0.7 + 1.2, 2.2, d * 0.7 + 1.2, pale, 0, h + 1.1, 0);
+  } else {
+    body(w, d, 0, h);
+    if (kind < 0.55) { box(w * 0.58, 8, d * 0.58, pale, 0, h + 4, 0); if (r(5) < 0.6) box(1.5, 22 + 16 * r(6), 1.5, pale, w * 0.12, h + 8 + 14, 0); } // a plant room, and often a mast
+    else if (kind < 0.75) box(w * 0.2, h + 7, d + 1.2, pale, -w * 0.32, (h + 7) / 2, 0); // a fin up one side, standing above the roof
+    else box(w + 1.4, 2.6, d + 1.4, pale, 0, h + 1.3, 0); // a cap
+  }
+}
+
+function buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, ohRy, ohScale = 1, night = false) {
   const mats = new Map();
   const lam = (c, e = 0, side = THREE.FrontSide) => { const k = `${c}|${e}|${side}`; let m = mats.get(k); if (!m) mats.set(k, m = new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true, side })); return m; };
   const ax = -pz, az = px, DECK = WL + 48, SPAN = 140; // (ax, az): across the bridge
@@ -3720,13 +3785,16 @@ function buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, ohRy, ohScale = 1) {
     if (k % 2 === 0) { const l = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), lit); l.position.copy(bp(u0, ac, yTop(u0) + 1.2)); worldGroup.add(l); }
   }
   for (let k = 0; k <= SEG; k += 2) { const u = -SPAN + (2 * SPAN * k) / SEG; worldGroup.add(strut(bp(u, -11, yTop(u)), bp(u, 11, yTop(u)), 0.7, 0.7, steel)); }
-  // the Opera House: white shells on a stone podium, lit up at night
+  // The Opera House: on a stone podium, two halls side by side, each a run of white sails stepping down from the
+  // harbour end with one more facing the other way at the land end. The sails are closed shapes with glass across
+  // their mouths (as open sheets they were hollow from the side, with daylight under them). Lit up at night.
   const oh = new THREE.Group(); oh.position.set(ohx, WL, ohz); oh.rotation.y = ohRy; oh.scale.setScalar(ohScale); worldGroup.add(oh);
-  const podium = new THREE.Mesh(new THREE.BoxGeometry(84, 7, 52), lam(0xc9a98a, 0x3a3026)); podium.position.y = 3.5; podium.castShadow = true; oh.add(podium);
-  for (const [row, zz] of [[0, -11], [1, 13]]) [32, 26, 18].forEach((r, k) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(r - row * 4, 10, 6, 0, Math.PI / 3, 0, Math.PI / 2), lam(0xf4f2ec, 0xb4b2ac, THREE.DoubleSide));
-    m.position.set(-28 + k * 20, 7, zz); m.rotation.set(0, Math.PI / 2 - Math.PI / 6, -0.35 - k * 0.05); m.castShadow = true; oh.add(m);
-  });
+  for (const [w, h, d, y, c] of [[98, 3, 62, 1.5, 0xb89a7c], [84, 4, 52, 5, 0xc9a98a]]) { const step = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lam(c, night ? 0x3a3026 : 0)); step.position.y = y; step.castShadow = true; oh.add(step); }
+  const white = lam(0xf7f5ef, night ? 0x8f8d87 : 0x4a4946, THREE.DoubleSide), glass = lam(0x62758c, night ? 0xa8742c : 0x1c2530, THREE.DoubleSide);
+  for (const [zc, sc] of [[-12, 1], [14, 0.84]]) for (const [H, L, x, dir] of [[40, 30, -33, -1], [31, 25, -13, -1], [23, 20, 5, -1], [17, 16, 36, 1]]) {
+    const { shell, mouth } = sailGeometry(H * sc, L * sc);
+    for (const [geo, mat] of [[shell, white], [mouth, glass]]) { const m = new THREE.Mesh(geo, mat); m.position.set(x, 7, zc); m.rotation.y = dir * Math.PI / 2; m.castShadow = true; oh.add(m); }
+  }
   return DECK;
 }
 
@@ -3809,12 +3877,14 @@ function buildRoseBay(track, rnd, randIn) {
     if (lp.length) { const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); worldGroup.add(new THREE.Mesh(lg, new THREE.MeshBasicMaterial({ color: 0xfff1c9, side: THREE.DoubleSide }))); }
     for (let i = t0 + 3; i < t1 - 2; i += 8) { // the hotel standing over it, in blocks that follow the bend
       const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i), s.p.y + TH);
+      // its name, on the face of the first block that cars come up to: between two rows of windows and a little
+      // proud of the wall (on a plane of its own it ran into the wall at one end, the blocks being turned to the bend)
+      if (i === t0 + 3) sign(g, 'THE INTERCONTINENTAL', '#1d2b5c', '#f6e7c8', 15.4, 2.2, 0, 5.25, -7.75, Math.PI); // (the owner's choice of name, in plain lettering like the shops' signs)
       box(g, 2 * (hw + 9), 18, 15, 0xe8dcc0, 0, 9, 0);
       for (const y of [3, 7.5, 12, 16]) box(g, 2 * (hw + 9) + 0.2, 1.3, 15.2, 0x3b556e, 0, y, 0);
       box(g, 2 * (hw + 9) + 0.6, 0.6, 15.6, 0x8f949e, 0, 18.3, 0);
     }
     for (const i of [t0, t1]) { const s = samples[wrap(i)], g = at(s.p.x, s.p.z, along(i), s.p.y); box(g, 2 * TW + 3, 1.8, 1.4, 0x6b7078, 0, TH + 0.5, 0); for (const lx of [-TW - 0.7, TW + 0.7]) box(g, 1.4, TH + 0.8, 1.4, 0x6b7078, lx, TH / 2, 0); }
-    { const s = samples[wrap(t0)], g = at(s.p.x - s.th.x * 3.3, s.p.z - s.th.z * 3.3, along(t0) + Math.PI, s.p.y); sign(g, 'THE INTERCONTINENTAL', '#1d2b5c', '#f6e7c8', 13, 2.2, 0, TH + 4.2, 0); } // (the owner's choice of name, in plain lettering like the shops' signs)
     for (let i = t0 - 4; i < t1 + 4; i += 3) for (const sd of [1, -1]) for (const lat of [hw + 9, hw + 15]) { const [x, z] = P(i, sd * lat); claim(x, z, 4.5); }
     // its walls are solid, and so are the posts at each end
     for (let i = t0; i < t1; i += 2) for (const sd of [1, -1]) { const [ax, az] = P(i, sd * TW), [bx, bz] = P(Math.min(i + 2, t1), sd * TW); walls.push({ ax, az, bx, bz, y: samples[wrap(i)].p.y }); }
@@ -3874,13 +3944,18 @@ function buildRoseBay(track, rnd, randIn) {
       if (rnd() < 0.2) { const [x, z] = P(i, sd * (hw + 5 + rnd() * 11)); if (free(x, z, 0.5)) people.add(x, y + 0.02, z, rnd() * 6.28); }
     }
     flush();
-    // A guard rail between the road and the promenade, all the way along the water: the promenade is paving
-    // laid over ground that slopes into the sea, so a car on it would sink through. One rail on posts 6 m
-    // apart, like the rails round the outside of corners on the other tracks; at each end it turns back to
-    // the sea wall, or runs into the tunnel's wall, so there's no way round it.
+    // A low wall between the road and the promenade, all the way along the water: the promenade is paving laid
+    // over ground that slopes into the sea, so a car on it would sink through. Sandstone with a coping and a
+    // pier every 6 m, like the wall behind the shops (the owner likes that one, and wanted walls here in place
+    // of a rail on posts); at each end it turns back to the sea wall, or runs into the tunnel's wall, so
+    // there's no way round it. Being a proper barrier, it carries a sponsor's banner every 60 m or so.
     {
-      const railMat = lam(0xc9ced6), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
-      const span = (a, b) => { const m = strut(V(a[0], a[1] + 0.78, a[2]), V(b[0], b[1] + 0.78, b[2]), 0.25, 0.5, railMat, true); m.castShadow = true; worldGroup.add(m); walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 }); };
+      const stone = lam(0xcdb88a), coping = lam(0xb9a878), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
+      const span = (a, b) => {
+        const m = strut(V(a[0], a[1] + 0.5, a[2]), V(b[0], b[1] + 0.5, b[2]), 0.5, 1.15, stone, true), top = strut(V(a[0], a[1] + 1.13, a[2]), V(b[0], b[1] + 1.13, b[2]), 0.66, 0.12, coping, true);
+        m.castShadow = true; worldGroup.add(m, top); walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 });
+      };
+      let lengths = 0;
       const on = (i) => !!onQuay(i, 1) && !inTunnel(i, 0);
       const end = (j, i, sd, y) => { if (inTunnel(j, 0)) { const [x, z] = P(j, sd * TUN); return [x, y, z]; } const e = nearEdge(i); return e && [e.x, y, e.z]; }; // what the rail meets beyond sample i, towards j
       let prev = null, nt = 0;
@@ -3890,14 +3965,14 @@ function buildRoseBay(track, rnd, randIn) {
         const s = samples[i], last = !(on(i + 1) && onQuay(i + 1, 1) === sd);
         if (prev && !last && i % 4) continue;
         const [x, z] = P(i, sd * QRAIL), q = [x, s.p.y - 0.16, z];
-        box(worldGroup, 0.2, 1.0, 0.2, 0x5a6372, x, q[1] + 0.4, z);
+        box(worldGroup, 0.66, 1.32, 0.66, 0xcdb88a, x, q[1] + 0.6, z); // a pier
         if (prev) {
           span(prev, q);
           const dx = q[0] - prev[0], dz = q[2] - prev[2], len = Math.hypot(dx, dz);
-          if (len > 5 && (i >> 2) % 2 === 0) { // a sponsor's banner on every other length of it
+          if (len > 5.4 && lengths++ % 10 === 4) { // a sponsor's banner on one length in ten, on the road side
             const ins = (len - 4.4) / 2 / len, nx = s.p.x - x, nz = s.p.z - z, nl = Math.hypot(nx, nz) || 1;
-            const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.2, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.2 });
-            addBanner(i >> 3, on(ins), on(1 - ins), 0.14, 0.96, 0, 1, s.p.x, s.p.z);
+            const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.33, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.33 });
+            addBanner(lengths, on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
           }
         } else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
         if (last) { const e = end(i + 1, i, sd, q[1]); if (e) span(q, e); }
@@ -4126,9 +4201,9 @@ function buildRoseBay(track, rnd, randIn) {
     const bayClear = (i) => { const [ax, az] = P(i, LAT + 1.6), [bx, bz] = P(i + 3, LAT + 1.6), mx = (ax + bx) / 2, mz = (az + bz) / 2, y = samples[wrap(i + 1)].p.y + TOP - 1; return !solids.some((c) => c.r >= 1.2 && Math.abs(c.y - y) < 3 && Math.hypot(c.x - mx, c.z - mz) < c.r + 2.6); };
     for (let i = w0; i < w1; i++) {
       ribbon(i, 1, LAT, LAT + 0.02, -1.5, TOP, STONE); ribbon(i, 1, LAT + 0.7, LAT + 0.72, -1.5, TOP, STONE); ribbon(i, 1, LAT, LAT + 0.7, TOP, TOP, COPING);
-      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 2 === 1 && bayClear(i - ((i - w0) % 3))) { // beside the road above: sponsors' banners along the top of it, every other 4.5 m
-        const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, LAT + 0.76), [bx, bz] = P(i + 1, LAT + 0.76), [tx, tz] = P(i, LAT + 12), f = ((i - w0) % 3) / 3;
-        addBanner(Math.floor((i - w0) / 6), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
+      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 4 === 1 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 18
+        const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, LAT + 0.82), [bx, bz] = P(i + 1, LAT + 0.82), [tx, tz] = P(i, LAT + 12), f = ((i - w0) % 3) / 3;
+        addBanner(Math.floor((i - w0) / 12), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
       }
       if ((i - w0) % 3 === 0) { // solid from either level
         const y = samples[wrap(i)].p.y, [ax, az] = P(i, LAT + 0.35), [bx, bz] = P(Math.min(i + 3, w1), LAT + 0.35);
@@ -4214,19 +4289,19 @@ function buildRoseBay(track, rnd, randIn) {
   // ---- across the water, to the north-west: the Harbour Bridge, the Opera House in front of its city end and the
   // city behind; the north shore runs on to the right. All of it is placed as seen from the hill down to the tunnel. ----
   {
-    const far = at(0, 0, 0, L), GREEN = [0x5f9c58, 0x6aa85e, 0x548f50], TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196], RAD = Math.PI / 180;
+    const far = at(0, 0, 0, L), GREEN = [0x5f9c58, 0x6aa85e, 0x548f50], TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196, 0xc2b49a, 0x5f7790, 0xb7c3cf], RAD = Math.PI / 180;
     const pol = (deg, d) => [-215 - d * Math.sin(deg * RAD), 120 - d * Math.cos(deg * RAD)]; // `deg` left of straight down the hill, d metres away
     const hill = (x, z, rx, ry, rz, c = GREEN[Math.floor(rnd() * 3)]) => { const m = add(far, new THREE.IcosahedronGeometry(1, 1), c, x, -ry * 0.3, z); m.scale.set(rx, ry, rz); m.castShadow = false; return m; };
-    const block = (x, z, w, h, c, y0 = 0) => { box(far, w, h, w, c, x, y0 + h / 2, z).castShadow = false; };
+    const block = (x, z, w, h, c, y0 = 0) => { box(far, w, h, w, c, x, y0 + h / 2, z).castShadow = false; }; // (houses)
     // the city
     for (const deg of [29, 37, 45, 53, 61, 70]) hill(...pol(deg, 960 + rnd() * 50), 125, 15 + rnd() * 8, 105);
-    for (let k = 0; k < 32; k++) { const w = 22 + rnd() * 22; block(...pol(32 + rnd() * 23, 850 + rnd() * 130), w, 60 + rnd() * 150, TOWERS[k % TOWERS.length], 6); }
+    for (let k = 0; k < 32; k++) { const w = 22 + rnd() * 22, [x, z] = pol(32 + rnd() * 23, 850 + rnd() * 130); cityTower(far, x, z, w, 60 + rnd() * 150, TOWERS[k % TOWERS.length], 6); }
     { const [x, z] = pol(41, 905); add(far, new THREE.CylinderGeometry(3, 4, 230, 8), 0xb9bdc5, x, 121, z).castShadow = false; add(far, new THREE.CylinderGeometry(11, 11, 18, 12), 0xd9b44a, x, 228, z).castShadow = false; add(far, new THREE.CylinderGeometry(0.8, 1.4, 50, 6), 0xb9bdc5, x, 262, z).castShadow = false; } // Sydney Tower
     { const [x, z] = pol(38, 640); add(far, new THREE.CylinderGeometry(86, 94, 5, 12), 0xc9b48c, x, 0.5, z).castShadow = false; hill(...pol(39.5, 800), 70, 14, 60); } // Bennelong Point, under the Opera House
     // the north shore: green heads, a few towers by the bridge
     for (const deg of [13, 6, -2]) hill(...pol(deg, 900 + rnd() * 40), 120, 22 + rnd() * 10, 90);
     for (let k = 0; k < 11; k++) hill(-190 + k * 125, -830 - rnd() * 40, 120, 20 + rnd() * 16, 80);
-    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14; block(...pol(4 + rnd() * 9, 880 + rnd() * 60), w, 30 + rnd() * 70, TOWERS[k % TOWERS.length], 8); }
+    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14, [x, z] = pol(4 + rnd() * 9, 880 + rnd() * 60); cityTower(far, x, z, w, 30 + rnd() * 70, TOWERS[k % TOWERS.length], 8); }
     // the head at the far end of the bay, with houses up it, and a hill behind the town
     { const hx = lim.x + lim.r + 150, hz = -150, rx = 120, rz = 150;
       hill(hx, hz, rx, 30, rz); hill(hx + rx * 0.4, hz + 90, rx * 0.8, 24, rz * 0.7);
