@@ -4266,8 +4266,11 @@ function buildRoseBay(track, rnd, randIn) {
       if (!sd) { flush(); continue; }
       if (edge[i]) run.push(edge[i]);
       if (onQuay(i + 1, 1) === sd) { // the paving, from the kerb out to the wall
-        const b = samples[wrap(i + 1)], [ax, az] = P(i, sd * (hw + 3)), [bx, bz] = P(i + 1, sd * (hw + 3)), ea = nearEdge(i), eb = nearEdge(i + 1);
-        ribbon(i, sd, hw + 1.62, hw + 3, 0.01, PAVE, paving);
+        // (In the tunnel the floor is the tunnel's own, out to its wall: the promenade starts outside that. It
+        // used to be laid through the tunnel as well, and two floors in one place flickered on the way out.)
+        const under = i >= t0 && i < t1, from = under ? TUN + 0.02 : hw + 3;
+        const b = samples[wrap(i + 1)], [ax, az] = P(i, sd * from), [bx, bz] = P(i + 1, sd * from), ea = nearEdge(i), eb = nearEdge(i + 1);
+        if (!under) ribbon(i, sd, hw + 1.62, hw + 3, 0.01, PAVE, paving);
         if (ea && eb) pushQuad(quads.pos, quads.col, V(ax, s.p.y + PAVE, az), V(bx, b.p.y + PAVE, bz), V(eb.x, eb.y + PAVE, eb.z), V(ea.x, ea.y + PAVE, ea.z), paving);
       }
       if (inTunnel(i, 8) || !edge[i]) continue;
