@@ -113,7 +113,7 @@ export function beaconTag(token) {
 // can't tell when a connection has died.
 // pairStates: ask clients to send their positions two at a time (half the
 // messages, a little less smooth), for hosts that count every message.
-export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, sign = null, dropSilent = false } = {}) {
+export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, paths: savedPaths = null, savePath = null, sign = null, dropSilent = false } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
@@ -174,6 +174,21 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     boards.set(k, list);
     return list.indexOf(entry) + 1;
   }
+  // ---------- how each lap on the leaderboard was driven ----------
+  // 'track|name' -> { ms, p }: the path of that lap, as the browser that set it recorded it (base64: a four-byte
+  // header, then five bytes a sample; game.js packs and unpacks it). Kept only for laps that are on a board, so
+  // anyone can watch them: as a ghost car in Polytrack mode, as a line on the leaderboard. Not signed: a path
+  // proves nothing, it's only to look at. Each is saved on its own (savePath), not with the boards.
+  const PATH_MAX = 12400; // characters: about three minutes at ten samples a second
+  const paths = new Map();
+  const pathKey = (k, name) => `${k}|${String(name).toLowerCase()}`;
+  const goodPath = (p) => typeof p === 'string' && p.length >= 24 && p.length <= PATH_MAX && /^[A-Za-z0-9+/]+={0,2}$/.test(p);
+  const onBoard = (key, ms) => { const at = key.indexOf('|'), list = boards.get(key.slice(0, at)) || []; return list.some((e) => e.n.toLowerCase() === key.slice(at + 1) && e.ms === ms); };
+  // tick the laps on board k that have a path (g: 1), and forget the paths of laps that have left it
+  function tidyPaths(k) {
+    for (const e of boards.get(k) || []) { const g = paths.get(pathKey(k, e.n)); if (g && g.ms === e.ms) e.g = 1; else delete e.g; }
+    for (const [key, g] of paths) if (key.startsWith(k + '|') && !onBoard(key, g.ms)) { paths.delete(key); if (savePath) savePath(key, null); }
+  }
   // ---------- the best time ever through each third of each track ----------
   // Purple in Polytrack mode's sector times. They only come with laps that
   // count for the leaderboard (on this server's clock, and adding up to the
@@ -198,6 +213,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   let boardsTimer = null;
   const boardsNow = () => saveBoards({ season: BOARD_SEASON, lay: [...TRACK_VERSION], boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs) });
   function boardChanged(k) {
+    tidyPaths(k);
     const data = JSON.stringify({ t: 'lb', k, list: boards.get(k) });
     for (const p of conns) { try { p.sock.send(data); } catch {} }
     if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; boardsNow(); }, 20000);
@@ -211,6 +227,14 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     for (const [k, list] of Object.entries(savedBoards.sec || {})) {
       if (Array.isArray(list)) list.forEach((e, i) => { if (e && typeof e.n === 'string' && !DROPPED.has(`${cleanName(e.n)}|${+k}|s${i}|${+e.ms}`)) addSector(+k, i, renamed(cleanName(e.n)), +e.ms, 'open'); });
     }
+  }
+  // the saved paths, for the laps that are still on a board (one whose lap has gone is deleted from the store too)
+  if (savedPaths && typeof savedPaths === 'object') {
+    for (const [key, g] of Object.entries(savedPaths)) {
+      if (g && Number.isInteger(g.ms) && goodPath(g.p) && key.includes('|') && onBoard(key, g.ms)) paths.set(key, { ms: g.ms, p: g.p });
+      else if (savePath) savePath(key, null);
+    }
+    for (const k of boards.keys()) tidyPaths(k);
   }
 
   // ---------- helpers ----------
@@ -455,6 +479,8 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         }
         const place = addLap(player.name, room.trackId, room.car, time, player.num);
         if (place) {
+          // how it was driven, if the browser sent that: kept while the lap is on the board
+          if (goodPath(msg.path)) { const key = pathKey(boardKey(room.trackId), player.name), g = { ms: Math.round(time), p: msg.path }; paths.set(key, g); if (savePath) savePath(key, g); }
           boardChanged(boardKey(room.trackId));
           broadcast(room, { t: 'record', id: player.id, name: player.name, place, time: Math.round(time), track: room.trackId, car: room.car });
         }
@@ -476,6 +502,14 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         // has just crossed the line, so their lap starts now
         if (!room || room.phase !== 'racing' || room.mode !== 'quali' || player.finished) return;
         player.lapAt = Date.now();
+        break;
+      }
+      case 'path': { // someone wants to watch a lap that's on the leaderboard
+        const now = Date.now();
+        if (typeof msg.k !== 'string' || typeof msg.n !== 'string' || now - (player.pathAt || 0) < 120) return;
+        player.pathAt = now;
+        const k = msg.k.slice(0, 8), n = msg.n.slice(0, 16), g = paths.get(pathKey(k, n));
+        send(player, { t: 'path', k, n, ms: g ? g.ms : 0, p: g ? g.p : null });
         break;
       }
       case 'lbseed': {

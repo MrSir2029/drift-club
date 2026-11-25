@@ -32,7 +32,7 @@ const liveSec = live.sec; live = live.boards;
 const merged = {};
 for (const k of new Set([...Object.keys(old.boards || {}), ...Object.keys(live)])) {
   const best = new Map();
-  for (const e of [...(old.boards?.[k] || []), ...(live[k] || [])]) {
+  for (const { g, ...e } of [...(old.boards?.[k] || []), ...(live[k] || [])]) { // (g: the live game's mark for a lap it holds the path of; the file doesn't keep paths)
     const name = e.n.toLowerCase();
     if (!best.has(name) || best.get(name).ms > e.ms) best.set(name, e);
   }
