@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createGame, beaconTag, thisLayoutOnly } from './server/core.js';
+import { UPDATES } from './public/updates.js'; // (What's new: its top entry is the game's version)
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
@@ -138,6 +139,7 @@ const game = createGame({
   saveBoards,
   paths: savedPaths,
   savePath,
+  version: UPDATES[0].v, // tabs still running an older one are asked to refresh
 });
 
 // ---------- static files, /stats ----------
