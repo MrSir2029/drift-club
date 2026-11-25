@@ -24,7 +24,7 @@
   - The owner wants a middling number of ads, and none on fences: posters on
     the billboards, and banners only on solid walls (the pit wall, Sydney
     CBD's walls, Rose Bay's two sandstone walls, the wall round Westfield's
-    roof), one every 20 m or so. One every 9 m was far too many ("we don't
+    roof and the sides of its Oxford Street median), one every 20 m or so. One every 9 m was far too many ("we don't
     need THIS many"), one every 60 m too few ("not that little"), and one
     every 30 m nearly right ("you can have a bit more"). Never on a rail on
     posts (the owner calls those fences), a fence, or the railings of a
@@ -38,6 +38,13 @@
   say whose idea it was only by their in-game name.
 - **Players' ideas:** run them by the owner before building any ("run
   everything by me first").
+- **A new layout for a track** restarts its leaderboard (and its Drift King
+  points): say so before doing it. Bump `v` in `tracks.js`, and
+  `TRACK_VERSION` and `TRACK_LENGTH` in `server/core.js`; the saved copies
+  look after themselves (README, "Changing a track's layout").
+- Westfield follows the real one at Bondi Junction (the owner asked: "look
+  at real westfield images and map layouts"): two buildings either side of
+  Oxford Street, the glazed bridge over it, the bus stop outside.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update

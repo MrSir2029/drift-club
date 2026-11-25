@@ -136,8 +136,9 @@ in the lobby, then starts either a race or **Polytrack mode**. Polytrack
 mode is free laps against your ghost with no time limit, until the host ends
 it (if the host leaves, whoever becomes host can end it); the results list
 everyone's best lap. It stands on its own: its times don't change the grid
-for a race. It has a rolling start (the grid moves back down the straight and
-your clock starts at the line) and sector times: each lap in three, counting
+for a race. It has a rolling start (the grid moves about 480 m back from the
+line, so you come to your first lap through the last corners at full speed
+like any other, and your clock starts at the line) and sector times: each lap in three, counting
 up as you drive, purple for the best ever on that track, green for the best
 this session, yellow slower. The best-ever sectors are kept like the
 leaderboard (signed, in the snapshot, handed back by browsers), and only come
@@ -164,7 +165,11 @@ boards. Each board's top ten score as in F1 (25 for the record, then 18, 15,
 12, 10, 8, 6, 4, 2 and 1) and the points add up across the tracks; level on
 points, more records wins, then more second places, and so on. Whoever leads
 is the Drift King: shown with a crown at the top of the leaderboard and beside
-that name in every list. The Championship tab (or a click on the king's
+that name in every list, and their car wears the Drift King's livery (colour
+13, `KING` in `game.js`: gold over black with a crimson line, a crown behind
+the driver and DRIFT KING on the rear wing). Nobody picks it: `makeCarMesh`
+puts it on any car whose driver's name is the leader's, whatever colour they
+chose, and it passes on when someone else takes the lead. The Championship tab (or a click on the king's
 banner) shows the whole table, with your own place under it. Racer, the name
 you get without picking one, isn't in it. It's all worked out in the browser
 from the boards everyone already has (`overallStandings` in `game.js`), so the
@@ -289,17 +294,29 @@ hairpin, drop down the bank and miss out the second). `quay` in its `sea`
 keeps the usual trackside furniture away from the water, and `blocks` keeps it
 off the tunnel and the lookout.
 Westfield (the eighth) is a shopping centre you race through (`buildMall` in
-`game.js`, theme `mall`). The lap starts on the roof of the car park, comes
-down the ramp, crosses Oxford Street, goes in through the doors and along the
-mall between the shops, round the food court and back out, across Oxford
-Street again and up the other ramp, with the Harbour Bridge and the city dead
-ahead as you come back onto the roof. Inside: tiled walkways, shopfronts
-with signs, a gallery above them with shoppers watching from it, a skylight,
-boards hanging over the road, escalators, benches and plants; tables, a juice
-bar and palms in the middle of the food-court hairpin, behind a glass screen. Outside: parked cars, shade sails and
-the lifts on the roof, Oxford Street with its footpaths, zebra crossings,
-walkways overhead and the 333 at its stop, and blocks of shops and flats all
-round. Oxford Street is the way out to the streets and to 9LAT2. As at Rose
+`game.js`, theme `mall`), laid out after the real one at Bondi Junction: the
+two buildings either side of Oxford Street, the glazed bridge between them
+over the street, and the bus stop outside. The lap starts on the roof of the
+car park, comes down the ramp, turns left along Oxford Street under the
+bridge to a hairpin at the 333's stop, comes back under the bridge, goes in
+through the doors and along the mall between the shops, round the food court
+and back out, across Oxford Street and up the other ramp, with the Harbour
+Bridge and the city dead ahead as you come back onto the roof. Inside: tiled
+walkways, shopfronts (windows with mannequins and goods on show, doorways
+taped off with shoppers watching from them, signs), a gallery above them with
+more shoppers, a skylight, boards hanging over the road, escalators, benches
+and plants; tables, a juice bar and palms in the middle of the food-court
+hairpin, behind a glass screen. Outside: parked cars both sides of the start
+straight (a few people standing on theirs), shade sails, stair towers, the
+lifts and a boom gate at the top of each ramp on the roof; cars parked in the
+open decks below; Oxford Street with a carriageway each way where the lap runs
+along it, a planted median between them (its concrete sides are the barrier
+between cars going opposite ways, and carry banners), shop windows, awnings
+and names along the mall's side, a walkway overhead, the 333 at its stop with
+traffic held up behind it, and blocks of shops and flats all round. The
+median and the bridge are in the track's `blocks`, after the car park and the
+mall, so nothing else is put on them. Oxford Street is the way out to the
+streets and to 9LAT2. As at Rose
 Bay, the signs are a mix of made-up names and real ones in plain lettering,
 and there are no walls along the road: the car park roof is open to drive on,
 out to the low wall round its edge (parked cars, lamps and the lifts are
@@ -325,9 +342,9 @@ company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
 every billboard (each turned to face the cars coming) and on Sydney CBD's lit
 boards. Banners go on solid walls only, one every 20 m or so: six along the
 pit wall, Sydney CBD's walls (about 95 round the lap), Rose Bay's harbour
-wall and the stone wall behind its shops, and the wall round Westfield's roof
-where the cars drive straight at it (the end of the start straight and the top
-of the ramp up). Rails on posts, fences and the railings of bridges and ramps
+wall and the stone wall behind its shops, and at Westfield the sides of
+Oxford Street's median and the wall round the roof where the cars drive
+straight at it (the end of the start straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
 are left bare. Nothing is a picture: the boards are drawn in the browser, in
 open-licence typefaces from `public/vendor/fonts`, onto two sheets that every
 poster and banner in the world shares (each sponsor's artwork kept apart on
@@ -430,8 +447,13 @@ get a red dot on the button until they've read it.
   adding an entry to `TRACKS`, bumping `TRACK_COUNT` in `server/core.js` and
   adding its length to `TRACK_LENGTH` there (the leaderboard's check for
   impossible laps). Changing a track's layout? Bump its `v` in `tracks.js` and
-  in `TRACK_VERSION` in `server/core.js`: its leaderboard starts again, and old
-  times don't come back from players' browsers.
+  in `TRACK_VERSION` in `server/core.js`, and put its new length in
+  `TRACK_LENGTH`: its leaderboard starts again. Old times don't come back from
+  players' browsers (the layout is in each time's signature), nor from the
+  saved copies: `server/boards.json` and the copy in Upstash say which layouts
+  their times were set on (`lay`), and `thisLayoutOnly` leaves out a track
+  that's been laid out again since. `npm run save-boards` does the same with
+  the live game's times.
 - `public/vendor/`: Three.js r187, and in `fonts/` the typefaces the sponsors'
   boards are lettered in, all copied from npm so nothing loads from a CDN.
 - `scripts/build-preview.mjs` (`npm run build-preview`): writes

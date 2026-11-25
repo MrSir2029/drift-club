@@ -23,10 +23,22 @@ const BOARD_SEASON = 1;
 // top speed the whole way round (with 10% in hand for cutting the corners).
 // Lengths in metres, one per track in tracks.js; top speeds in m/s, as in
 // CAR_CLASSES in game.js.
-const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1423, 1429, 1575, 1419];
+const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1423, 1429, 1575, 1776];
 // Each track's layout, as 'v' in tracks.js. A new layout starts its board again:
 // the layout goes into each time's signature, so old copies don't come back.
-const TRACK_VERSION = [1, 1, 1, 1, 2, 2, 1, 1];
+const TRACK_VERSION = [1, 1, 1, 1, 2, 2, 1, 2];
+// A saved leaderboard (the file in the repo, the copy kept in Upstash) says which layouts its times were set on,
+// as 'lay'. One saved before that was written into them (25 Nov 2026) was on these:
+const LAYOUTS_UNMARKED = [1, 1, 1, 1, 2, 2, 1, 1];
+// A saved leaderboard without the boards and sector records of any track that has been laid out again since it
+// was saved: those laps were round a different circuit. (A board's key starts with its track's number.)
+export function thisLayoutOnly(snap) {
+  if (!snap || typeof snap !== 'object') return snap;
+  const lay = Array.isArray(snap.lay) ? snap.lay : LAYOUTS_UNMARKED;
+  const keep = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([k]) => (lay[+String(k)[0]] || 1) === (TRACK_VERSION[+String(k)[0]] || 1)));
+  return { ...snap, boards: keep(snap.boards), sec: keep(snap.sec), lay: [...TRACK_VERSION] };
+}
+export { TRACK_VERSION };
 const TOP_SPEED = { open: 71.2, rally: 61.7, camry: 54.7 };
 const minLapMs = (t, c) => 900 * TRACK_LENGTH[t] / TOP_SPEED[c];
 // Names with these in them stay off the leaderboard (everyone sees it, not
@@ -184,12 +196,13 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; boardsNow(); }, 20000);
   }
   let boardsTimer = null;
-  const boardsNow = () => saveBoards({ season: BOARD_SEASON, boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs) });
+  const boardsNow = () => saveBoards({ season: BOARD_SEASON, lay: [...TRACK_VERSION], boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs) });
   function boardChanged(k) {
     const data = JSON.stringify({ t: 'lb', k, list: boards.get(k) });
     for (const p of conns) { try { p.sock.send(data); } catch {} }
     if (saveBoards) boardsTimer ??= setTimeout(() => { boardsTimer = null; boardsNow(); }, 20000);
   }
+  savedBoards = thisLayoutOnly(savedBoards);
   if (savedBoards && savedBoards.season === BOARD_SEASON) {
     for (const [k, list] of Object.entries(savedBoards.boards || {})) {
       const kv = readKey(k);
@@ -592,7 +605,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       if (conns.size > stats.peak) { stats.peak = conns.size; stats.peakAt = Date.now(); }
       statsChanged();
       sweepTimer ??= setInterval(sweep, 20000);
-      send(p, { t: 'lbs', boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs) }); // the leaderboard (and best sectors), to start with
+      send(p, { t: 'lbs', boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs), lay: TRACK_VERSION }); // the leaderboard (and best sectors), to start with, and the layouts they're for
       return {
         message(raw) {
           p.seen = Date.now();

@@ -133,22 +133,28 @@ export const TRACKS = [
     local: 'westfield',
     short: 'Westfield',
     fresh: true,
-    blurb: 'Off the rooftop car park, down the ramp, across Oxford Street, flat out through the shops and round the food court.',
+    blurb: 'Off the rooftop car park, down the ramp, along Oxford Street to the hairpin at the bus stop, then flat out through the shops and round the food court.',
+    v: 2, // the layout: a new one starts its leaderboard again (server/core.js)
     theme: 'mall',
     urban: true,
     bare: true,       // no grandstands, pits or paddock: it's a shopping centre
     width: 14,
     scale: 1,
     deckAbove: 1.5,   // road higher than this stands on piers (the car park roof and its ramps): the ground stays flat under it
-    // the car park and the mall, as [x0, z0, x1, z1]: nothing else gets built on them
-    blocks: [[-205, 50, 175, 215], [-215, -215, 185, -40]],
+    // the car park and the mall, as [x0, z0, x1, z1]: nothing else gets built on them. Then the median between
+    // Oxford Street's two carriageways (from inside the hairpin to where the legs part), and the bridge over the street
+    blocks: [[-205, 50, 175, 215], [-215, -215, 185, -40], [-24, -3.2, 128, 3.2], [26, -40, 54, 50]],
     // Oxford Street, and the view up the ramp to the Harbour Bridge: no landmark lands on them
     streets: [[-700, -20, 700, 20], [-330, 215, -50, 420]],
     // the car park's flat roof, as [x0, z0, x1, z1, height]: cars up there drive on it
     roofs: [[-176, 50, 146, 160, 9.7], [-205, 160, 175, 215, 9.7]],
     points: [
       [-60, 10, 190], [-20, 10, 190], [60, 10, 190], [118, 10, 190], [138, 10, 190], [146.4, 10, 188.3], [153.6, 10, 183.6], [158.3, 10, 176.4],
-      [160, 10, 168], [160, 10, 160], [160, 9.3, 150], [160, 5, 100], [160, 0.7, 50], [160, 0, 40], [160, 0, 28], [160, 0, -20],
+      [160, 10, 168], [160, 10, 160], [160, 9.3, 150], [160, 5, 100], [160, 0.7, 50], [160, 0, 40],
+      // left onto Oxford Street, along it under the bridge, round the hairpin at the 333's stop, back under the bridge, and left in through the doors
+      [157.9, 0, 29.7], [152.1, 0, 20.9], [143.3, 0, 15.1], [133, 0, 13], [110, 0, 13], [60, 0, 13], [10, 0, 13], [-6, 0, 14], [-20, 0, 15],
+      [-30.6, 0, 10.6], [-35, 0, 0], [-30.6, 0, -10.6], [-20, 0, -15], [-6, 0, -14], [10, 0, -13], [60, 0, -13], [110, 0, -13], [133, 0, -13],
+      [143.3, 0, -15.1], [152.1, 0, -20.9], [157.9, 0, -29.7], [160, 0, -40],
       [160, 0, -65], [160, 0, -85], [158.1, 0, -94.6], [152.7, 0, -102.7], [144.6, 0, -108.1], [135, 0, -110], [115, 0, -110], [95, 0, -110],
       [72, 0, -106], [52, 0, -96.5], [32, 0, -88], [10, 0, -85], [-12, 0, -88], [-32, 0, -96.5], [-52, 0, -106], [-75, 0, -110],
       [-98, 0, -110], [-118, 0, -110], [-126.4, 0, -111.7], [-133.6, 0, -116.4], [-138.3, 0, -123.6], [-140, 0, -132], [-140, 0, -150], [-140, 0, -170],

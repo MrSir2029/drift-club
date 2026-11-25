@@ -10,7 +10,7 @@ const VISITED_BEFORE = (() => { try { return localStorage.getItem('dc-defaults')
 // ---------------------------------------------------------------------------
 // constants
 // ---------------------------------------------------------------------------
-const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a]; // the last one is the secret racing green livery (LIVERY_HASH)
+const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a, 0xf0b02e]; // the last two: the secret racing green livery (LIVERY_HASH), and the Drift King's gold (KING)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 // the colours on the home screen: all but brown (10), which was taken out so the
 // secret livery fits on the same row; the numbers don't change
@@ -47,6 +47,11 @@ const RALLY_CODE = 'RALLY';
 const LIVERY_HASH = 1676705160, LIVERY_LEN = 11;
 const hashCode = (s) => { let h = 5381; for (const ch of s) h = ((h << 5) + h + ch.charCodeAt(0)) >>> 0; return h; };
 const LIVERY = 12;
+// The Drift King's own livery (colour 13): gold over black with a crimson line, a crown behind the driver and
+// DRIFT KING on the rear wing. Nobody picks it. It goes on the car of whoever leads the Drift King championship,
+// by name like the crown on the leaderboard, whatever colour they chose, and comes off when someone takes the lead.
+const KING = 13;
+const isDriftKing = (name) => !!(name && app.king && String(name).toLowerCase() === app.king);
 // The sponsor lettering on that livery. Made-up names: no real brands.
 const SPONSORS = { pods: 'DRIFT CLUB', cover: '9MILE', wing: '9LAT2' };
 // Paint and lettering laid flat on the car's blocks, so nothing pokes out of
@@ -185,18 +190,18 @@ const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
 // the pinstripe for each car colour (CAR_COLORS order)
 // (pairs real teams have raced: red and white, papaya and navy, black and gold,
 // powder blue and navy with orange tyres and helmet, like the old Gulf colours)
-const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xd9b44a, 0xf3e3c3, 0x1d2b5c];
+const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xd9b44a, 0xf3e3c3, 0x1d2b5c, 0xc6f432, 0xb3261e];
 // only if the server didn't give one (an older server): one from the name
 function raceNumber(name) { let h = 7; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 2 + (h % 98); }
 function paintLivery(K, g, colorIdx, name, raceNum) {
-  const secret = K.livery;
+  const secret = K.livery, twoTone = secret || K.king;
   const stripe = K.stripe;
   const ink = K.lightCar ? '#1d2230' : '#f2f5f0'; // lettering on the car's own colour
   const num = String(raceNum ?? (secret ? 18 : raceNumber(name)));
   const patches = [], lettering = (m) => patches.push(m);
   for (const sx of [-1, 1]) {
-    if (secret) {
-      // green on top, black underneath, a level lime line (like the real car)
+    if (twoTone) {
+      // green on top, black underneath, a level lime line (like the real car); the Drift King's is gold over black with a crimson line
       onPanel(g, POD, sx, 0, 1, 0, 0.47, K.carbon);            // black lower sidepods
       onPanel(g, COVER, sx, 0, 1, 0, 0.42, K.carbon);          // and engine cover
       onPanel(g, POD, sx, 0.01, 0.99, 0.47, 0.53, stripe);     // the pinstripe along each sidepod,
@@ -220,13 +225,13 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
     // what you see from the cockpit: pinstripes down both top edges of the tub and nose
     onTop(g, TUB, 0.4, 1, sx * 0.72, sx * 0.86, stripe);
     onTop(g, NOSE, 0, 0.96, sx * 0.72, sx * 0.86, stripe); // (meeting the tub's without a step)
+    if (twoTone) onPanel(g, AIRBOX, sx, 0.62, 1, 0, 1, K.carbon); // black airbox sides (the front of the spine)
     if (secret) {
-      onPanel(g, AIRBOX, sx, 0.62, 1, 0, 1, K.carbon);       // black airbox sides (the front of the spine)
       lettering(onPanel(g, COVER, sx, 0.58, 0.85, 0.748, 0.875, null, SPONSORS.cover));
       lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
       lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
     } else {
-      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.pods)); // DRIFT CLUB, big on the rear wing endplates
+      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, K.king ? 'DRIFT KING' : SPONSORS.pods)); // DRIFT CLUB, big on the rear wing endplates (DRIFT KING on the champion's)
       lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
     }
   }
@@ -3393,7 +3398,7 @@ function buildScenery(track) {
 // walls, and the food court has a glass screen round it.
 function buildMall(track, rnd) {
   const { samples, N, hw } = track, lim = track.limit, solids = track.solids, walls = track.walls;
-  const [A, B] = track.def.blocks; // the car park and the mall, each [x0, z0, x1, z1]
+  const [A, B, MEDIAN, SPAN] = track.def.blocks; // the car park and the mall, each [x0, z0, x1, z1]; then Oxford Street's median, and the bridge over the street
   const mats = new Map();
   const lam = (c, e = 0) => { const k = c + '|' + e; let m = mats.get(k); if (!m) mats.set(k, m = new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true })); return m; };
   const add = (g, geo, c, x, y, z, e) => { const m = new THREE.Mesh(geo, lam(c, e)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
@@ -3405,7 +3410,7 @@ function buildMall(track, rnd) {
   const nearestI = (x, z) => { let b = 0, d = Infinity; for (let i = 0; i < N; i++) { const s = samples[i], e = (s.p.x - x) ** 2 + (s.p.z - z) ** 2; if (e < d) { d = e; b = i; } } return b; };
   const along = (i) => { const s = samples[wrap(i)]; return Math.atan2(s.th.x, s.th.z); };
   const facing = (i, sd) => { const s = samples[wrap(i)]; return Math.atan2(-s.left.x * sd, -s.left.z * sd); }; // turned to face the road from side sd
-  const people = makePeople(460, rnd);
+  const people = makePeople(640, rnd);
   const C = (hex) => new THREE.Color(hex);
   // three sheets of flat colour: lit (and casting no shadow: the mall isn't dark inside), glowing, and painted on the ground
   const lit = { pos: [], col: [] }, glow = { pos: [], col: [] }, paint = { pos: [], col: [] };
@@ -3470,10 +3475,27 @@ function buildMall(track, rnd) {
     }
   };
 
+  // a sign on a flat wall, from (x0, z0) to (x1, z1), reading left to right that way
+  const signFlat = (cell, x0, z0, x1, z1, y0, y1) => {
+    const u0 = (cell % COLS) / COLS, u1 = u0 + 1 / COLS, v1 = 1 - Math.floor(cell / COLS) / ROWS, v0 = v1 - 1 / ROWS;
+    const q = [[x0, y0, z0, u0, v0], [x1, y0, z1, u1, v0], [x1, y1, z1, u1, v1], [x0, y1, z0, u0, v1]];
+    for (const k of [0, 1, 2, 0, 2, 3]) { sp.push(q[k][0], q[k][1], q[k][2]); suv.push(q[k][3], q[k][4]); }
+  };
+
   // ---- inside the mall: walkways behind the barriers, shopfronts, a gallery above them, and a roof with a skylight ----
   {
     const TILE = [C(0xe9e2cf), C(0xd9d2c0)], FASCIA = C(0xf6f2e8), SLAB = C(0xcfd6dc), UPPER = C(0xefe9da), CEILING = C(0xd3d9e1), RAIL = C(0xbfe3f5), SKY = C(0xbfe6ff), LAMP = C(0xffffff);
     const GLASS = [0xfff3d6, 0xdff1ff, 0xffe9b8, 0xe6f7ee, 0xfde6ee, 0xf2ecff].map(C), SHOP = 8; // a shop every 8 samples (12 m)
+    const WIN = 0.9, DOOR = 2.4, SILL = PAVE + 0.5, RISER = C(0x6a7280), SHELF = C(0xf6f2e8), TAPE = C(0xe6453a), STAND = C(0xd9dde3), SKIN = C(0xf1c9a5);
+    const ITEM = [0xe6453a, 0x3d8bff, 0xffd23f, 0x7ed957, 0xff6bcb, 0x1d2230, 0xf6f2e8, 0xff8a3d].map(C);
+    // an upright wall across the walkway's line at sample i, from lat0 out to lat1 (the end of a window, the side of a doorway)
+    const cross = (Q, i, sd, lat0, lat1, y0, y1, color) => { const c = samples[wrap(i)], [ax, az] = P(i, sd * lat0), [bx, bz] = P(i, sd * lat1); quad(Q, [ax, c.p.y + y0, az], [bx, c.p.y + y0, bz], [bx, c.p.y + y1, bz], [ax, c.p.y + y1, az], color); };
+    // something on show in a window: a mannequin, or goods stacked on a stand
+    const show = (i, sd, n, m) => {
+      const [ax, az] = P(i, sd * (SHOPS + WIN / 2)), [bx, bz] = P(i + 1, sd * (SHOPS + WIN / 2)), x = (ax + bx) / 2, z = (az + bz) / 2, y = samples[wrap(i)].p.y + SILL, h = (i * 7 + n * 13 + (sd > 0 ? 0 : 3)) % 8;
+      if ((n + m) % 2) { blockQ(lit, x - 0.2, z - 0.2, x + 0.2, z + 0.2, y, y + 1.0, ITEM[h]); blockQ(lit, x - 0.13, z - 0.13, x + 0.13, z + 0.13, y + 1.04, y + 1.3, SKIN); }
+      else { blockQ(lit, x - 0.3, z - 0.3, x + 0.3, z + 0.3, y, y + 0.55, STAND); blockQ(lit, x - 0.2, z - 0.2, x + 0.2, z + 0.2, y + 0.55, y + 0.95, ITEM[h]); blockQ(lit, x - 0.12, z - 0.12, x + 0.12, z + 0.12, y + 0.95, y + 1.2, ITEM[(h + 3) % 8]); }
+    };
     let shop = [0, 0];
     for (let i = i0; i < i1; i++) {
       const s = samples[i], k = i - i0;
@@ -3481,7 +3503,23 @@ function buildMall(track, rnd) {
         ribbon(lit, i, sd, hw + 1.62, hw + 3, 0.01, PAVE, TILE[(k >> 1) % 2]); ribbon(lit, i, sd, hw + 3, SHOPS, PAVE, PAVE, TILE[(k >> 1) % 2]); // tiles from the kerb to the shopfronts
         if (sd === 1 && inU(i)) continue; // the food court is on the inside of the hairpin
         const kk = k + (sd > 0 ? 0 : 4), n = Math.floor(kk / SHOP), first = kk % SHOP === 0, food = inU(i) || inU(i + 20) || inU(i - 20);
-        ribbon(glow, i, sd, SHOPS, SHOPS + 0.02, PAVE, 3.4, GLASS[(n * 5 + (sd > 0 ? 0 : 3)) % GLASS.length]);
+        // the shopfront, 12 m of it to a shop: a pane beside the pillar, a window with things on show, the way in
+        // (taped off for the race, with shoppers watching from inside it), and a longer window
+        const m = kk % SHOP, tint = GLASS[(n * 5 + (sd > 0 ? 0 : 3)) % GLASS.length];
+        if (m === 0) ribbon(glow, i, sd, SHOPS, SHOPS + 0.02, PAVE, 3.4, tint);
+        else if (m === 3 || m === 4) {
+          ribbon(lit, i, sd, SHOPS, SHOPS + DOOR, PAVE, PAVE, TILE[1]); ribbon(glow, i, sd, SHOPS + DOOR, SHOPS + DOOR + 0.02, PAVE, 3.0, tint.clone().multiplyScalar(0.8));
+          ribbon(lit, i, sd, SHOPS, SHOPS + DOOR, 3.0, 3.0, FASCIA); ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, 3.0, 3.4, FASCIA);
+          cross(lit, m === 3 ? i : i + 1, sd, SHOPS, SHOPS + DOOR, PAVE, 3.4, FASCIA);
+          ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, 0.62, 0.74, TAPE);
+          if (rnd() < 0.5) { const [x, z] = P(i, sd * (SHOPS + 0.7 + rnd() * 1.2)); people.add(x, s.p.y + PAVE + 0.02, z, facing(i, sd) + (rnd() - 0.5) * 0.8, undefined, 1.1); }
+        } else {
+          ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, PAVE, SILL, RISER); ribbon(lit, i, sd, SHOPS, SHOPS + WIN, SILL, SILL, SHELF);
+          ribbon(glow, i, sd, SHOPS + WIN, SHOPS + WIN + 0.02, SILL, 3.4, tint); ribbon(lit, i, sd, SHOPS, SHOPS + WIN, 3.4, 3.4, FASCIA);
+          if (m === 1) cross(lit, i, sd, SHOPS, SHOPS + WIN, SILL, 3.4, FASCIA);
+          if (m === SHOP - 1) cross(lit, i + 1, sd, SHOPS, SHOPS + WIN, SILL, 3.4, FASCIA);
+          show(i, sd, n, m);
+        }
         ribbon(lit, i, sd, SHOPS, SHOPS + 0.02, 3.4, 4.9, FASCIA);
         ribbon(glow, i, sd, SHOPS - 1.3, UP, 4.9, 4.9, SLAB);                   // the gallery's floor, sticking out over the walkway
         ribbon(glow, i, sd, SHOPS - 1.3, SHOPS - 1.28, 4.9, 5.7, RAIL);         // its glass balustrade
@@ -3574,6 +3612,16 @@ function buildMall(track, rnd) {
       box(g, 2 * HALF + 2, 0.5, 7, 0xd62f2f, 0, 6.6, 3.2);
       for (const lx of [-HALF - 0.4, HALF + 0.4]) { box(g, 1, 6.6, 1, 0xf6f2e8, lx, 3.3, 6); const [wx, wz] = W(g, lx, 6); solids.push({ x: wx, z: wz, r: 0.8, y: 0 }); }
     }
+    // along Oxford Street between the two doorways: shop windows with an awning and the shop's name over each
+    {
+      const AWN = [0xd62f2f, 0x1f6fb5, 0x2f6b4a, 0xff8a3d, 0x16204a, 0x8a5a2b], LITW = [0xfff3d6, 0xdff1ff, 0xffe9b8, 0xe6f7ee, 0xfde6ee];
+      for (let x = doors[0] + HALF + 9, k = 0; x < doors[1] - HALF - 8; x += 13, k++) {
+        box(world, 9.4, 2.6, 0.3, LITW[k % LITW.length], x, 1.75, B[3] + 0.1, 0x6a5f48).castShadow = false;
+        for (const lx of [-1.6, 1.6]) box(world, 0.14, 2.6, 0.34, 0x3b4250, x + lx, 1.75, B[3] + 0.12).castShadow = false;
+        box(world, 10, 0.22, 2.3, AWN[k % AWN.length], x, 3.38, B[3] + 1.15);
+        signFlat((k * 5 + 3) % MAIN.length, x - 4, B[3] + 0.08, x + 4, B[3] + 0.08, 3.95, 4.95);
+      }
+    }
     // on the roof: glass over the mall, air-conditioners
     for (let k = 0; k < 9; k++) blockQ(lit, -100 + k * 26, -112, -82 + k * 26, -92, ROOF, ROOF + 1.6, C(0x9ad0ff), C(0xbfe3f5));
     for (let k = 0; k < 14; k++) { const ux = B[0] + 30 + rnd() * (B[2] - B[0] - 60), uz = B[1] + 14 + rnd() * 40; blockQ(lit, ux, uz, ux + 5, uz + 3, ROOF, ROOF + 1.8, C(0x9aa3ad)); }
@@ -3594,6 +3642,26 @@ function buildMall(track, rnd) {
       box(world, strip[2] - strip[0] - 8, 1.7, 0.4, DARK, (strip[0] + strip[2]) / 2, y, strip[3] + 0.1);
       for (const x of [strip[0] - 0.1, strip[2] + 0.1]) box(world, 0.4, 1.7, strip[3] - strip[1] - 8, DARK, x, y, (strip[1] + strip[3]) / 2);
     }
+    // in the open decks you drive past (the side along Oxford Street, and the two beside the ramps): a parapet,
+    // a column every 8 m, and the backs of the cars parked on that level
+    {
+      const rndK = mulberry32(6102), CARC = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a].map(C), CABC = C(0x26303f);
+      // one face, from a to b along it; (ox, oz) points out of the building
+      const deckFace = (ax, az, bx, bz, ox, oz) => {
+        const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len, bays = Math.floor(len / 8), pad = (len - bays * 8) / 2;
+        for (const y of [2.6, 6.2]) {
+          const floor = y - 0.85, mx = (ax + bx) / 2, mz = (az + bz) / 2;
+          { const m = box(world, Math.abs(ux) * len + Math.abs(uz) * 0.5, 0.6, Math.abs(uz) * len + Math.abs(ux) * 0.5, CONC, mx + ox * 0.34, floor + 0.3, mz + oz * 0.34); m.castShadow = false; }
+          for (let k = 0; k <= bays; k++) { const d = pad + k * 8, m = box(world, Math.abs(ux) * 0.7 + Math.abs(uz) * 0.5, 1.7, Math.abs(uz) * 0.7 + Math.abs(ux) * 0.5, CONC, ax + ux * d + ox * 0.36, y, az + uz * d + oz * 0.36); m.castShadow = false; }
+          for (let k = 0; k < bays; k++) for (let j = 0; j < 3; j++) {
+            if (rndK() < 0.4) continue;
+            const d = pad + k * 8 + 1.45 + j * 2.55, px = ax + ux * d + ox * 0.33, pz = az + uz * d + oz * 0.33, c = CARC[Math.floor(rndK() * CARC.length)];
+            wallQ(lit, px - ux * 0.9, pz - uz * 0.9, px + ux * 0.9, pz + uz * 0.9, floor + 0.6, floor + 0.98, c); wallQ(lit, px - ux * 0.78, pz - uz * 0.78, px + ux * 0.78, pz + uz * 0.78, floor + 0.98, floor + 1.5, CABC);
+          }
+        }
+      };
+      deckFace(main[0] + 4, main[1], main[2] - 4, main[1], 0, -1); deckFace(main[0], main[1] + 5, main[0], main[3] - 5, -1, 0); deckFace(main[2], main[1] + 5, main[2], main[3] - 5, 1, 0);
+    }
     // a low wall round the edge of the roof, solid: the roof is open to drive on, and this is where it stops
     for (const [x0, z0, x1, z1] of [[strip[0], strip[3], strip[2], strip[3]], [strip[0], strip[1], strip[0], strip[3]], [strip[2], strip[1], strip[2], strip[3]],
       [strip[0], strip[1], rampW - RW, strip[1]], [rampW + RW, strip[1], main[0], strip[1]], [main[2], strip[1], rampE - RW, strip[1]], [rampE + RW, strip[1], strip[2], strip[1]],
@@ -3609,19 +3677,25 @@ function buildMall(track, rnd) {
       for (let k = 0; k < 3; k++) { const x = rampW + (k - 1) * 6; addBanner(k + 3, { x: x - 2.25, y: DECK, z: zn }, { x: x + 2.25, y: DECK, z: zn }, 0.14, 0.98, 0, 1, x, zn - 20); }
       for (let k = 0; k < 2; k++) { const z = strip[1] + 9 + k * 9; addBanner(k + 1, { x: xw, y: DECK, z: z - 2.25 }, { x: xw, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xw + 20, z); }
     }
-    // parked cars in marked bays, some under shade sails
-    const body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 4.2), new THREE.MeshLambertMaterial({ flatShading: true }), 420), cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.6, 2.1), lam(0x26303f), 420);
+    // parked cars in marked bays, some under shade sails: both sides of the start straight, all the way along it.
+    // (Their own run of random numbers, like the town's and the skyline's further down: a change to one of them
+    // no longer reshuffles the others.)
+    const rndP = mulberry32(4421), CAP = 640, STAIRS = [-100, 62];
+    const body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 4.2), new THREE.MeshLambertMaterial({ flatShading: true }), CAP), cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.6, 2.1), lam(0x26303f), CAP);
     const M = new THREE.Matrix4(), col = new THREE.Color(), CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a, 0xf6f2e8, 0xb9c0cc];
     let n = 0;
-    const white = C(0xf6f2e8);
+    const white = C(0xf6f2e8), lampBay = (x) => Math.abs((((x - strip[0] - 20) % 45) + 45) % 45) < 0.1; // (a lamp post stands in that bay of the row north of the road)
     for (const z of [62, 68, 96, 102, 130, 136, 166, 172, 204, 210]) for (let x = (z > 162 ? strip[0] : main[0]) + 8; x < (z > 162 ? strip[2] : main[2]) - 8; x += 3) {
       if (z > 162 && z < 200 && (x > samples[i0].p.x - 34 || x < samples[i1].p.x + 34)) continue; // (the ramps come up through here)
       flatQ(lit, x - 1.55, z - 2.6, x - 1.45, z + 2.6, DECK + 0.03, white);
-      if (rnd() < 0.42 || n >= 420 || (z < 162 && Math.abs(x + 15) < 9)) continue;
-      if (z > 200 && Math.abs(x - rampW) < 11) { rnd(); rnd(); rnd(); continue; } // (nothing parked in front of the banners at the top of the ramp; the three draws leave every other car as it was)
-      M.makeRotationY(rnd() < 0.5 ? 0 : Math.PI); M.setPosition(x, DECK + 0.6, z); body.setMatrixAt(n, M); M.setPosition(x, DECK + 1.25, z + (rnd() < 0.5 ? 0.3 : -0.3)); cab.setMatrixAt(n, M);
-      body.setColorAt(n++, col.set(CARS[Math.floor(rnd() * CARS.length)]));
+      if (rndP() < 0.42 || n >= CAP || (z < 162 && Math.abs(x + 15) < 9)) continue;
+      if (z > 200 && (Math.abs(x - rampW) < 11 || (z === 204 && lampBay(x)) || (z === 210 && STAIRS.some((sx) => Math.abs(x - sx) < 4.8)))) continue; // (nothing parked in front of the banners at the top of the ramp, round a lamp post, or in a stair tower)
+      const cz = z + (rndP() < 0.5 ? 0.3 : -0.3);
+      M.makeRotationY(rndP() < 0.5 ? 0 : Math.PI); M.setPosition(x, DECK + 0.6, z); body.setMatrixAt(n, M); M.setPosition(x, DECK + 1.25, cz); cab.setMatrixAt(n, M);
+      body.setColorAt(n++, col.set(CARS[Math.floor(rndP() * CARS.length)]));
       onRoof(x, z - 1, 1.25); onRoof(x, z + 1, 1.25); // (solid)
+      // in the rows next to the road, some people have climbed onto their cars to watch
+      if ((z === 172 || z === 204) && rndP() < 0.22) people.add(x + (rndP() - 0.5) * 0.5, DECK + 1.56, cz, z < 190 ? 0 : Math.PI);
     }
     body.count = cab.count = n; body.castShadow = true; worldGroup.add(body, cab);
     const sail = new THREE.MeshLambertMaterial({ color: 0xf1e9d6, side: THREE.DoubleSide, flatShading: true });
@@ -3629,6 +3703,19 @@ function buildMall(track, rnd) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([x - 14, DECK + 4.6, z - 8, x + 14, DECK + 3.4, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 4.6, z - 8, x + 14, DECK + 4.6, z + 8, x - 14, DECK + 3.4, z + 8], 3)); g.computeVertexNormals();
       const m = new THREE.Mesh(g, sail); m.castShadow = true; worldGroup.add(m);
       for (const [px, pz] of [[-14, -8], [14, -8], [14, 8], [-14, 8]]) { box(world, 0.25, 4.8, 0.25, 0x8d93a0, x + px, DECK + 2.4, z + pz); onRoof(x + px, z + pz, 0.35); }
+    }
+    // two stair towers against the far wall, and a raised boom gate each side of the top of each ramp
+    for (const x of STAIRS) {
+      const g = at(x, strip[3] - 2.3, 0, DECK);
+      box(g, 6.4, 3.3, 3.4, 0xe9e4d8, 0, 1.65, 0); box(g, 7, 0.4, 4, 0x1f6fb5, 0, 3.5, 0); box(g, 1.5, 2.2, 0.12, 0x3b4250, -1.2, 1.1, -1.72).castShadow = false; box(g, 1.6, 1.0, 0.1, 0x9ad0ff, 1.5, 1.9, -1.72).castShadow = false;
+      solidRect(x - 3.2, strip[3] - 4, x + 3.2, strip[3] - 0.6, DECK);
+    }
+    for (const rx of [rampE, rampW]) for (const sx of [-1, 1]) {
+      const x = rx + sx * (RW + 0.25), z = strip[1] + 0.9;
+      box(world, 0.55, 1.15, 0.55, 0xffd23f, x, DECK + 0.58, z);
+      const arm = strut(V(x, DECK + 1.05, z), V(x - sx * 1.1, DECK + 4.3, z), 0.14, 0.14, lam(0xf6f2e8)); worldGroup.add(arm);
+      const tip = strut(V(x - sx * 0.82, DECK + 3.5, z), V(x - sx * 1.1, DECK + 4.3, z), 0.16, 0.16, lam(0xe6453a)); worldGroup.add(tip);
+      onRoof(x, z, 0.5);
     }
     // the lifts, with the centre's name on them, and lamps along the roof
     const lift = at(-15, 150, 0, DECK);
@@ -3644,54 +3731,110 @@ function buildMall(track, rnd) {
     }
   }
 
-  // ---- Oxford Street: tarmac, a centre line, footpaths, crossings, the 333 at its stop, walkways overhead ----
+  // ---- Oxford Street: where the lap runs along it, a carriageway each way with a planted median between them and
+  // the Westfield bridge over both; beyond the hairpin, the street as it is every other day, the 333 at its stop ----
+  // (the lap's street section: the samples between the foot of the ramp down and the doors in)
+  const street = (() => {
+    const ii = []; for (let i = 0; i < i0; i++) if (samples[i].p.y < 0.3 && Math.abs(samples[i].p.z) < 34) ii.push(i);
+    const apex = ii.reduce((m, i) => (samples[i].p.x < samples[m].p.x ? i : m), ii[0]), mid = ii.find((i) => samples[i].p.x < 62);
+    return { apex, xa: samples[apex].p.x, LN: Math.abs(samples[mid].p.z), xe: samples[i0].p.x };
+  })();
+  const MED = { x0: MEDIAN[0], x1: MEDIAN[2], half: MEDIAN[3], h: 1.05 }; // the median: a planter with concrete sides, from inside the hairpin to where the two legs part
+  const BRIDGE = { x: (SPAN[0] + SPAN[2]) / 2, half: (SPAN[2] - SPAN[0]) / 2 };
   {
     const ROAD = C(0x4f5661), PATH = C(0xc9ced6), LINE = C(0xf6f2e8), X0 = lim.x - lim.r - 180, X1 = lim.x + lim.r + 180;
-    decal(X0, -13, X1, 13, ROAD); decal(X0, 13, X1, 19, PATH, 0.07); decal(X0, -19, X1, -13, PATH, 0.07);
-    for (let x = X0 + 4; x < X1; x += 9) if (roadGap(track, x, 0) > hw + 6) decal(x, -0.15, x + 3.4, 0.15, LINE, 0.08);
-    for (const cx of [-60, 40]) for (let k = -5; k <= 5; k++) decal(cx - 2.2, k * 2.2 - 0.6, cx + 2.2, k * 2.2 + 0.6, LINE, 0.08); // zebra crossings
-    for (const d of [samples[i0].p.x, samples[i1].p.x]) decal(d - 34, B[3], d + 34, -19, C(0xe2dccb), 0.06); // paving outside the doors
-    // the walkways over the street, from the car park to the mall
-    for (const cx of [-60, 40]) {
-      const g = at(cx, (A[1] + B[3]) / 2, 0, 0), len = A[1] - B[3];
+    const R0 = street.xa - 17, R1 = street.xe + 30, WIDE = street.LN + hw + 4; // (the race's part of the street, and how far out its tarmac goes)
+    decal(X0, -13, R0, 13, ROAD); decal(X0, 13, R0, 19, PATH, 0.07); decal(X0, -19, R0, -13, PATH, 0.07);
+    decal(R1, -13, X1, 13, ROAD); decal(R1, 13, X1, 19, PATH, 0.07); decal(R1, -19, X1, -13, PATH, 0.07);
+    decal(R0, -WIDE, R1, WIDE, ROAD); decal(R0, WIDE, R1, WIDE + 6, PATH, 0.07); decal(R0, -WIDE - 6, R1, -WIDE, PATH, 0.07);
+    for (let x = X0 + 4; x < X1; x += 9) if ((x + 3.4 < R0 || x > R1) && roadGap(track, x, 0) > hw + 6) decal(x, -0.15, x + 3.4, 0.15, LINE, 0.08);
+    for (let k = -5; k <= 5; k++) decal(-62.2, k * 2.2 - 0.6, -57.8, k * 2.2 + 0.6, LINE, 0.08); // the zebra crossing under the walkway
+    decal(samples[i0].p.x - 34, B[3], samples[i0].p.x + 30, -WIDE - 6, C(0xe2dccb), 0.06); decal(samples[i1].p.x - 34, B[3], samples[i1].p.x + 34, -19, C(0xe2dccb), 0.06); // paving outside the doors (never under another strip: two that nearly touch flicker)
+    // the median: concrete sides (a proper barrier between cars going opposite ways, so it carries sponsors'
+    // banners), soil and shrubs on top, and lamps with an arm over each carriageway
+    {
+      const { x0, x1, half, h } = MED, cx = (x0 + x1) / 2;
+      box(world, x1 - x0, h, 2 * half, 0xd4d7dc, cx, h / 2, 0); box(world, x1 - x0 - 0.5, 0.14, 2 * half - 0.5, 0x6f8f52, cx, h + 0.03, 0);
+      solidRect(x0, -half, x1, half, 0);
+      for (let k = 0; k < 6; k++) for (const sd of [1, -1]) { // a banner every 22 m on each face, the two faces out of step
+        const x = x0 + 22 + k * 22 + (sd > 0 ? 0 : 11), z = sd * (half + 0.08);
+        if (x + 2.4 > x1) continue;
+        addBanner(k + (sd > 0 ? 0 : 2), { x: x - 2.25, y: 0, z }, { x: x + 2.25, y: 0, z }, 0.14, 0.98, 0, 1, x, sd * street.LN);
+      }
+      for (let x = x0 + 9, k = 0; x < x1 - 4; x += 7, k++) { // shrubs, with a gap under the bridge
+        if (Math.abs(x - BRIDGE.x) < BRIDGE.half + 2) continue;
+        const m = add(world, new THREE.IcosahedronGeometry(1.1, 0), [0x3f9a4a, 0x4fae54, 0x3a8a44][k % 3], x, h + 0.75, ((k % 2) - 0.5) * 1.6); m.scale.y = 0.8;
+      }
+      for (let x = x0 + 16; x < x1 - 6; x += 33) {
+        if (Math.abs(x - BRIDGE.x) < BRIDGE.half + 4) continue;
+        box(world, 0.24, 7.2, 0.24, 0x8d93a0, x, h + 3.6, 0); box(world, 0.5, 0.18, 7.4, 0x8d93a0, x, h + 7.2, 0);
+        for (const lz of [-3.4, 3.4]) box(world, 0.7, 0.16, 1.5, 0xfff3c4, x, h + 7.05, lz, 0x8a7a40);
+      }
+    }
+    // the Westfield bridge between the two buildings: two glazed storeys, wide enough to drive under for a moment
+    // like the real one's underpass. It stands on the median and on the footpaths; lights under it
+    {
+      const zc = (A[1] + B[3]) / 2, len = A[1] - B[3], g = at(BRIDGE.x, zc, 0, 0), w = 2 * BRIDGE.half;
+      box(g, w, 0.6, len, 0xd9dde3, 0, 5.5, 0); box(g, w + 0.2, 6.2, len - 0.4, 0x9ad0ff, 0, 8.9, 0); box(g, w + 0.5, 0.5, len, 0xf6f2e8, 0, 8.9, 0); box(g, w + 0.6, 0.6, len, 0xf6f2e8, 0, 12.3, 0);
+      for (let lz = -len / 2 + 6; lz < len / 2 - 2; lz += 6) box(g, w + 0.36, 6.2, 0.26, 0xd9dde3, 0, 8.9, lz).castShadow = false; // mullions
+      const name = sign(g, 'WESTFIELD', '#ffffff', '#d62f2f', 24, 3, BRIDGE.half + 0.24, 10.65, -zc, Math.PI / 2);
+      const other = name.clone(); other.position.x = -BRIDGE.half - 0.24; other.rotation.y = -Math.PI / 2; g.add(other);
+      for (const lx of [-9, 9]) for (const wz of [0, WIDE + 3, -WIDE - 3]) {
+        box(g, 1.4, wz ? 5.2 : 5.2 - MED.h, 1.4, 0xb9bdc5, lx, wz ? 2.6 : (5.2 + MED.h) / 2, wz - zc);
+        if (wz) solids.push({ x: BRIDGE.x + lx, z: wz, r: 1.1, y: 0 });
+      }
+      for (const sd of [1, -1]) for (const lx of [-9, 0, 9]) flatQ(glow, BRIDGE.x + lx - 2.2, sd * street.LN - 0.7, BRIDGE.x + lx + 2.2, sd * street.LN + 0.7, 5.17, C(0xfff6da));
+    }
+    // the other walkway over the street, from the car park to the mall
+    {
+      const g = at(-60, (A[1] + B[3]) / 2, 0, 0), len = A[1] - B[3];
       box(g, 6, 0.5, len, 0xd9dde3, 0, 5.2, 0); box(g, 6.2, 2.6, len - 0.4, 0x9ad0ff, 0, 6.75, 0); box(g, 6.6, 0.5, len, 0xf6f2e8, 0, 8.3, 0);
       for (const lz of [-22, 22]) { box(g, 1.2, 5.2, 1.2, 0xb9bdc5, 0, 2.6, lz); const [wx, wz] = W(g, 0, lz); solids.push({ x: wx, z: wz, r: 1, y: 0 }); }
     }
-    // the bus
-    const bus = at(-4, -9.2, Math.PI / 2, terrainHeight(-4, -9.2) + 0.05);
+    // the bus, waiting at its stop just past the hairpin: you brake straight at it
+    const BX = street.xa - 37;
+    const bus = at(BX, -8.6, Math.PI / 2, terrainHeight(BX, -8.6) + 0.05);
     box(bus, 2.6, 2.7, 12, 0x1f6fb5, 0, 1.85, 0); box(bus, 2.64, 0.9, 11.2, 0x23303f, 0, 2.35, 0); box(bus, 2.66, 0.5, 12.04, 0xf6f2e8, 0, 3.05, 0);
     for (const lz of [-3.8, 3.6]) for (const lx of [-1.2, 1.2]) add(bus, new THREE.CylinderGeometry(0.5, 0.5, 0.3, 8), 0x1d2230, lx, 0.5, lz).rotation.z = Math.PI / 2;
     sign(bus, '333  BONDI BEACH', '#111318', '#ffb000', 2.2, 0.42, 0, 2.95, 6.04); sign(bus, '333  BONDI BEACH', '#111318', '#ffb000', 4.6, 0.42, -1.34, 2.95, 2.6, -Math.PI / 2);
     for (const lz of [-4, 0, 4]) { const [wx, wz] = W(bus, 0, lz); solids.push({ x: wx, z: wz, r: 1.7, y: 0 }); }
-    const stop = at(-6, -16, 0, terrainHeight(-6, -16) + 0.07);
+    const stop = at(BX - 2, -16, 0, terrainHeight(BX - 2, -16) + 0.07);
     for (const lx of [-3, 3]) box(stop, 0.15, 2.6, 0.15, 0x8d93a0, lx, 1.3, -1); box(stop, 7, 0.15, 2.4, 0x1f6fb5, 0, 2.65, -0.2); box(stop, 6.6, 1.6, 0.08, 0x9ad0ff, 0, 1.3, -1.05); box(stop, 5, 0.12, 0.5, 0x8a5a2b, 0, 0.5, -0.6);
-    for (let k = 0; k < 6; k++) people.add(-8.5 + k * 1.1 + rnd() * 0.3, terrainHeight(-6, -16) + 0.1, -15.4 + rnd() * 0.8, 0);
-    const pole = at(-12, -16.5, 0, terrainHeight(-12, -16.5)); box(pole, 0.14, 3.6, 0.14, 0x8d93a0, 0, 1.8, 0); sign(pole, 'BONDI JUNCTION', '#ff8a3d', '#ffffff', 2.8, 0.5, 0, 3.4, 0.08); sign(pole, 'BONDI JUNCTION', '#ff8a3d', '#ffffff', 2.8, 0.5, 0, 3.4, -0.08, Math.PI);
-    // street signs on the corners where the lap crosses
-    for (const d of [samples[i0].p.x, samples[i1].p.x]) for (const sx of [-1, 1]) {
-      const g = at(d + sx * (hw + 13), -15.5 * sx, 0, terrainHeight(d + sx * (hw + 13), -15.5 * sx));
+    for (let k = 0; k < 6; k++) people.add(BX - 4.5 + k * 1.1 + rnd() * 0.3, terrainHeight(BX - 2, -16) + 0.1, -15.4 + rnd() * 0.8, 0);
+    const pole = at(BX - 8, -16.5, 0, terrainHeight(BX - 8, -16.5)); box(pole, 0.14, 3.6, 0.14, 0x8d93a0, 0, 1.8, 0); sign(pole, 'BONDI JUNCTION', '#ff8a3d', '#ffffff', 2.8, 0.5, 0, 3.4, 0.08); sign(pole, 'BONDI JUNCTION', '#ff8a3d', '#ffffff', 2.8, 0.5, 0, 3.4, -0.08, Math.PI);
+    // traffic held up behind the bus and across the street from it, while the race is on
+    for (const [x, z, c, taxi] of [[BX - 13, -8.6, 0xf6f2e8, 1], [BX - 20, -8.6, 0xe6453a, 0], [BX + 1, 6.4, 0x2b2f3a, 0], [BX - 6.5, 6.4, 0xffd23f, 0], [BX - 14, 6.4, 0xb9c0cc, 0]]) {
+      const y = terrainHeight(x, z) + 0.05;
+      box(world, 4.2, 0.75, 1.8, c, x, y + 0.6, z); box(world, 2.1, 0.6, 1.6, 0x26303f, x - 0.3, y + 1.25, z);
+      if (taxi) box(world, 0.5, 0.2, 0.9, 0xffd23f, x - 0.3, y + 1.65, z, 0x8a6a10);
+      for (const o of [-1, 1]) solids.push({ x: x + o, z, r: 1.25, y: 0 });
+    }
+    // street signs: on the corners where the lap crosses at the west doors, and by the bridge
+    for (const [x, z] of [[samples[i1].p.x + hw + 13, -15.5], [samples[i1].p.x - hw - 13, 15.5], [street.xe + 24, -WIDE - 3], [street.xe + 24, WIDE + 3]]) {
+      const g = at(x, z, 0, terrainHeight(x, z));
       box(g, 0.12, 3.4, 0.12, 0x8d93a0, 0, 1.7, 0); sign(g, 'OXFORD ST', '#2f6b4a', '#ffffff', 2.2, 0.42, 0, 3.2, 0.07); sign(g, 'OXFORD ST', '#2f6b4a', '#ffffff', 2.2, 0.42, 0, 3.2, -0.07, Math.PI);
     }
   }
 
   // ---- the streets round about: blocks of shops and flats, a few towers further off, trees ----
   {
+    const rndT = mulberry32(8807);
     const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ flatShading: true }), 420), bands = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lam(0x3b556e), 900);
     const M = new THREE.Matrix4(), col = new THREE.Color(), WALLS = [0xe8d9b5, 0xd9c6a5, 0xcfd6dc, 0xf1e9d6, 0xc9a98a, 0xb5543c, 0xe2cc95, 0xb9bdc5, 0xd9dde3];
     let n = 0, nb = 0;
     const treeGeo = (() => { const g = new THREE.Group(); add(g, new THREE.CylinderGeometry(0.3, 0.45, 3.4, 6), 0x7a6a58, 0, 1.7, 0); for (const [x, y, z, r, c] of [[0, 4.8, 0, 2.6, 0x4a9a44], [1.5, 4.3, 0.5, 1.9, 0x5aae4e], [-1.4, 4.4, -0.8, 2.0, 0x3f8a3c], [0.2, 6.1, -0.3, 1.8, 0x5aae4e]]) add(g, new THREE.IcosahedronGeometry(r, 0), c, x, y, z).scale.y = 0.75; mergeStatic(g); return g.children[0].geometry; })();
     const trees = new THREE.InstancedMesh(treeGeo, mergedMat(THREE.FrontSide, 0), 260);
     let nt = 0;
-    const tree = (x, z, sc, solid = true) => { if (nt >= 260) return; const y = terrainHeight(x, z); M.makeRotationY(rnd() * 6.28); M.scale(V(sc, sc, sc)); M.setPosition(x, y - 0.2, z); trees.setMatrixAt(nt++, M); if (solid) solids.push({ x, z, r: 0.5 * sc, y }); claim(x, z, 2.4 * sc); };
-    for (let x = lim.x - lim.r - 150; x < lim.x + lim.r + 150; x += 22) for (const z of [-16, 16]) if (roadGap(track, x, z) > hw + 14 && Math.abs(x + 6) > 10 && isFree(track, x, z, 1.5, hw + 10)) tree(x, z, 0.8 + rnd() * 0.3, Math.hypot(x - lim.x, z - lim.z) < lim.r);
+    const tree = (x, z, sc, solid = true) => { if (nt >= 260) return; const y = terrainHeight(x, z); M.makeRotationY(rndT() * 6.28); M.scale(V(sc, sc, sc)); M.setPosition(x, y - 0.2, z); trees.setMatrixAt(nt++, M); if (solid) solids.push({ x, z, r: 0.5 * sc, y }); claim(x, z, 2.4 * sc); };
+    for (let x = lim.x - lim.r - 150; x < lim.x + lim.r + 150; x += 22) for (const z of [-16, 16]) if (roadGap(track, x, z) > hw + 14 && Math.abs(x - street.xa + 39) > 10 && isFree(track, x, z, 1.5, hw + 10)) tree(x, z, 0.8 + rndT() * 0.3, Math.hypot(x - lim.x, z - lim.z) < lim.r);
     const PITCH = 46;
     for (let gx = -13; gx <= 13; gx++) for (let gz = -13; gz <= 13; gz++) {
-      const x = lim.x + gx * PITCH + (rnd() - 0.5) * 8, z = lim.z + gz * PITCH + (rnd() - 0.5) * 8, d = Math.hypot(x - lim.x, z - lim.z), w = 16 + rnd() * 14, dp = 16 + rnd() * 14, inside = d < lim.r - 22;
+      const x = lim.x + gx * PITCH + (rndT() - 0.5) * 8, z = lim.z + gz * PITCH + (rndT() - 0.5) * 8, d = Math.hypot(x - lim.x, z - lim.z), w = 16 + rndT() * 14, dp = 16 + rndT() * 14, inside = d < lim.r - 22;
       if (d > lim.r + 260 || Math.abs(d - lim.r) < 22 || Math.abs(z) < 32 || n >= 420) continue;
       if (!isFree(track, x, z, Math.max(w, dp) * 0.6, hw + 26) || (track.def.blocks || []).some(b => x > b[0] - 22 && x < b[2] + 22 && z > b[1] - 22 && z < b[3] + 22)) continue;
-      if (rnd() < 0.2) { for (let k = 0; k < 3; k++) tree(x + (rnd() - 0.5) * 22, z + (rnd() - 0.5) * 22, 0.8 + rnd() * 0.6, inside); continue; } // a little park instead
-      const tower = !inside && z < 180 && rnd() < 0.09, h = tower ? 40 + rnd() * 40 : z > 230 ? 6 + rnd() * 3 : 7 + rnd() * (inside ? 9 : 16), y = terrainHeight(x, z);
-      M.makeScale(w, h + 2, dp); M.setPosition(x, y + h / 2 - 1, z); blocks.setMatrixAt(n, M); blocks.setColorAt(n++, col.set(WALLS[Math.floor(rnd() * WALLS.length)]));
+      if (rndT() < 0.2) { for (let k = 0; k < 3; k++) tree(x + (rndT() - 0.5) * 22, z + (rndT() - 0.5) * 22, 0.8 + rndT() * 0.6, inside); continue; } // a little park instead
+      const tower = !inside && z < 180 && rndT() < 0.09, h = tower ? 40 + rndT() * 40 : z > 230 ? 6 + rndT() * 3 : 7 + rndT() * (inside ? 9 : 16), y = terrainHeight(x, z);
+      M.makeScale(w, h + 2, dp); M.setPosition(x, y + h / 2 - 1, z); blocks.setMatrixAt(n, M); blocks.setColorAt(n++, col.set(WALLS[Math.floor(rndT() * WALLS.length)]));
       for (let f = 0; f < Math.min(tower ? 9 : 3, Math.floor(h / 3.4)) && nb < 900; f++) { M.makeScale(w + 0.3, 1.3, dp + 0.3); M.setPosition(x, y + 2.1 + f * (tower ? h / 9.5 : 3.4), z); bands.setMatrixAt(nb++, M); }
       claim(x, z, Math.max(w, dp) * 0.75);
       if (inside) solidRect(x - w / 2, z - dp / 2, x + w / 2, z + dp / 2, y);
@@ -3701,16 +3844,17 @@ function buildMall(track, rnd) {
 
   // ---- on the horizon from the roof: the harbour, the Bridge, the Opera House and the city; hills the other ways ----
   {
+    const rndF = mulberry32(1932);
     const far = at(0, 0, 0, 0), TOWERS = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196, 0xc2b49a, 0x5f7790, 0xb7c3cf], WX = samples[i1].p.x;
     flatQ(lit, WX - 900, 700, WX + 900, 1000, 0.4, C(0x3aa6c4));
-    for (let k = 0; k < 30; k++) { const w = 22 + rnd() * 22, h = 60 + rnd() * 150; cityTower(far, WX - 600 + rnd() * 400, 930 + rnd() * 110, w, h, TOWERS[k % TOWERS.length]); }
+    for (let k = 0; k < 30; k++) { const w = 22 + rndF() * 22, h = 60 + rndF() * 150; cityTower(far, WX - 600 + rndF() * 400, 930 + rndF() * 110, w, h, TOWERS[k % TOWERS.length]); }
     add(far, new THREE.CylinderGeometry(3, 4, 230, 8), 0xb9bdc5, WX - 380, 115, 950).castShadow = false; add(far, new THREE.CylinderGeometry(11, 11, 18, 12), 0xd9b44a, WX - 380, 222, 950).castShadow = false; add(far, new THREE.CylinderGeometry(0.8, 1.4, 50, 6), 0xb9bdc5, WX - 380, 256, 950).castShadow = false;
-    for (let k = 0; k < 12; k++) { const m = add(far, new THREE.IcosahedronGeometry(1, 1), [0x5f9c58, 0x6aa85e, 0x548f50][k % 3], WX - 760 + k * 140, -6, 1040 + rnd() * 40); m.scale.set(120, 26 + rnd() * 14, 80); m.castShadow = false; }
-    for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14, h = 30 + rnd() * 60; cityTower(far, WX + 190 + rnd() * 200, 1010 + rnd() * 40, w, h, TOWERS[k % TOWERS.length], 8); }
+    for (let k = 0; k < 12; k++) { const m = add(far, new THREE.IcosahedronGeometry(1, 1), [0x5f9c58, 0x6aa85e, 0x548f50][k % 3], WX - 760 + k * 140, -6, 1040 + rndF() * 40); m.scale.set(120, 26 + rndF() * 14, 80); m.castShadow = false; }
+    for (let k = 0; k < 9; k++) { const w = 18 + rndF() * 14, h = 30 + rndF() * 60; cityTower(far, WX + 190 + rndF() * 200, 1010 + rndF() * 40, w, h, TOWERS[k % TOWERS.length], 8); }
     buildSydneyIcons(WX, 850, 1, 0, 0.4, WX - 215, 770, 0.2, 1.4);
     for (let i = 0; i < 20; i++) { // hazy hills all round
-      const a = (i / 20) * 6.2832 + rnd() * 0.25; if (Math.sin(a) > 0.55) continue;
-      const r = 1300 + rnd() * 800, h = (120 + rnd() * 170) * 0.5, w = 320 + rnd() * 320, m = add(far, new THREE.ConeGeometry(1, 1, 7), track.look.hills, lim.x + Math.cos(a) * r, h / 2 - 4, lim.z + Math.sin(a) * r); m.scale.set(w, h, w); m.castShadow = false;
+      const a = (i / 20) * 6.2832 + rndF() * 0.25; if (Math.sin(a) > 0.55) continue;
+      const r = 1300 + rndF() * 800, h = (120 + rndF() * 170) * 0.5, w = 320 + rndF() * 320, m = add(far, new THREE.ConeGeometry(1, 1, 7), track.look.hills, lim.x + Math.cos(a) * r, h / 2 - 4, lim.z + Math.sin(a) * r); m.scale.set(w, h, w); m.castShadow = false;
     }
   }
 
@@ -5098,15 +5242,17 @@ function faceLamp(K, mat, x, hw, y0, z0, y1, z1, dir, out = 0.015, inn = 0.04) {
 const raceNumberOf = (id) => app.room?.players.find(p => p.id === id)?.num;
 function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, num = null) {
   const g = new THREE.Group();
+  if (isDriftKing(name)) colorIdx = KING; // (whatever colour they picked: the champion drives the champion's car)
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
-  const lightCar = colorIdx === 8 || colorIdx === 2 || colorIdx === 11;
+  const king = colorIdx === KING;
+  const lightCar = colorIdx === 8 || colorIdx === 2 || colorIdx === 11 || king;
   const livery = colorIdx === LIVERY; // racing green with lime trim
   const L = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const K = {
-    g, lightCar, livery,
-    body: L(color), accent: L(livery ? 0x16191f : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
-    tyre: L(0x15181f), rim: L(livery ? 0x1d2230 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
-    helmet: L(livery ? 0xd8e81c : lightCar ? 0xff8a3d : 0xffd23f), stripe: L(livery ? 0xc6f432 : STRIPES[colorIdx] ?? 0xffffff),
+    g, lightCar, livery, king,
+    body: L(color), accent: L(livery || king ? 0x16191f : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
+    tyre: L(0x15181f), rim: L(livery ? 0x1d2230 : king ? 0xd9a520 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
+    helmet: L(livery ? 0xd8e81c : king ? 0xb3261e : lightCar ? 0xff8a3d : 0xffd23f), stripe: L(livery ? 0xc6f432 : STRIPES[colorIdx] ?? 0xffffff),
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
@@ -5118,6 +5264,14 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, 
   K.rod = (a, b, th, mat) => { const m = strut(V(...a), V(...b), th, th, mat); g.add(m); return m; };
 
   const wheelSpec = cls === 'rally' ? buildRallyBody(K) : cls === 'camry' ? buildCamryBody(K) : buildOpenBody(K);
+  if (king) { // the crown, on the highest part of the car behind the driver's head: a gold band, five points, a jewel on each
+    const [y, z] = cls === 'rally' ? [1.5, -0.6] : cls === 'camry' ? [1.48, -0.35] : [1.36, -0.34], gold = L(0xffcc33);
+    K.box(0.34, 0.08, 0.34, gold, 0, y + 0.04, z, false);
+    for (const [px, pz, h] of [[-0.135, -0.135, 0.15], [0.135, -0.135, 0.15], [-0.135, 0.135, 0.15], [0.135, 0.135, 0.15], [0, 0, 0.23]]) {
+      K.add(new THREE.ConeGeometry(0.055, h, 4), gold, px, y + 0.08 + h / 2, z + pz, false).rotation.y = Math.PI / 4;
+      K.box(0.04, 0.04, 0.04, K.flap, px, y + 0.08 + h + 0.012, z + pz, false);
+    }
+  }
   if (cls !== 'rally' && cls !== 'camry') paintLivery(K, g, colorIdx, name, num);
   mergeStatic(g, new Set([K.brake, ...(K.decals || [])])); // ~70 parts into one; the brake lights (and any lettering) stay apart
   const inside = cockpit && (cls === 'rally' || cls === 'camry') ? buildInterior(g, cls) : null;
@@ -5413,17 +5567,17 @@ function clearCars() {
   if (app.ghost) { carsGroup.remove(app.ghost.group); disposeTree(app.ghost.group); app.ghost = null; }
 }
 
-// Polytrack mode's rolling start: the grid moved back to where the straight
-// before the line begins, so everyone is up to speed when their first lap
-// starts, at the line. At least 200 m back (through the last corner, where the
-// straight is short) and at most 320. Pairs of cars 6 m apart, as on a grid.
+// Polytrack mode's rolling start: the grid moved well back from the line, to where a straight begins between 420
+// and 600 m before it (480 if none does), so a car comes to its first lap the way it does to every other: through
+// the last corners at racing speed. (It used to be 200 to 320 m back, on the last straight: from a standstill
+// there a car crossed the line slower than on a flying lap, as a player pointed out.) Never more than 45% of a
+// lap back: the lap starts once the car is in the first half of it. Pairs of cars 6 m apart, as on a grid.
 function rollSlot(track, slot) {
   const { samples, N, hw } = track, step = track.length / N;
-  const turn = (i) => { const a = samples[(i + N) % N].th, b = samples[(i + 14 + N) % N].th; return Math.abs(a.x * b.z - a.z * b.x); };
-  const most = Math.round(320 / step);
-  let back = 40;
-  while (back < most && turn(-back - 14) < 0.05) back++; // back along the straight, until a corner comes up
-  back = Math.max(back, Math.round(200 / step));
+  const turn = (i) => { const a = samples[((i % N) + N) % N].th, b = samples[(((i + 14) % N) + N) % N].th; return Math.abs(a.x * b.z - a.z * b.x); };
+  const most = Math.floor(N * 0.45) - 40, lo = Math.min(most, Math.round(420 / step)), hi = Math.min(most, Math.round(600 / step));
+  let back = Math.min(most, Math.round(480 / step));
+  for (let b = lo; b <= hi; b++) if (turn(-b - 16) >= 0.05 && turn(-b) < 0.05 && turn(-b + 14) < 0.05) { back = b; break; } // a bend just behind, 40 m of straight ahead
   const idx = (N - back - Math.floor(slot / 2) * 4 + N * 2) % N, s = samples[idx];
   const pos = s.p.clone().addScaledVector(s.left, (slot % 2 === 0 ? -1 : 1) * hw * 0.45);
   pos.y += 0.05;
@@ -6025,8 +6179,9 @@ function stepLocal(car, dt, canDrive) {
     }
     // gone well past the next gate without going through it? The warning
     // stays up until you go back through it, or press R.
+    // (Not on the run-up to a Polytrack lap: that starts far enough back to look like a lap with its first gate missed.)
     const past = (car.idx - app.track.cps[car.nextCp] + N) % N;
-    if (past > 12 && past < N * 0.6) car.missedGate = true;
+    if (past > 12 && past < N * 0.6 && !car.armed) car.missedGate = true;
   } else car.missedGate = false;
 
   // ---- visuals: pitch with slope and acceleration, roll with cornering ----
@@ -6455,6 +6610,7 @@ const board = { track: 0 };
 const boardList = (t) => { const l = app.boards[String(t)]; return Array.isArray(l) ? l.filter(e => e && typeof e.n === 'string' && e.ms > 0) : []; };
 function boardsChanged(key) {
   try { localStorage.setItem('dc-lb', JSON.stringify(app.boards)); } catch {}
+  { const top = overallStandings()[0]; app.king = top && top.pts > 0 ? top.name.toLowerCase() : null; } // (whose car wears the Drift King's livery)
   if (!$('#board').classList.contains('hidden')) renderBoard(); // (whichever board changed: the Drift King is worked out from them all)
   renderRecord();
 }
@@ -7500,7 +7656,7 @@ function renderFrame() {
 // ---------------------------------------------------------------------------
 buildWorld(0);
 wireUI();
-window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; // handy for poking at the game from the console
+window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; app.rollSlot = rollSlot; // handy for poking at the game from the console
 $('#btn-create').disabled = true; $('#btn-join').disabled = true;
 connect();
 requestAnimationFrame(frame);
