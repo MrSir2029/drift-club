@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.46', date: '26 Nov 2026', title: 'No gap on the way to Rose Bay\'s tunnel',
+    items: [
+      'The race barrier at Rose Bay carries on round the inside of the corner at the end of the shops\' street, so it runs unbroken from the second hairpin all the way down to the tunnel.',
+    ],
+  },
+  {
     v: '3.45', date: '26 Nov 2026', title: 'Rose Bay\'s tunnel ceiling',
     items: [
       'In Rose Bay\'s tunnel the ceiling sat at exactly the height of the hotel\'s floor above it, so the two flickered and a pale wedge of the hotel showed through near the way in. The ceiling hangs a little lower now and both are gone.',

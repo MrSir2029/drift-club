@@ -311,8 +311,10 @@ short fences. Its straights have race barriers (3.41, at the owner's asking:
 wire catch fence on top, in 4.5 m bays, along the land side of the start
 straight (run in to the pit wall, which carries the fence past the garages),
 the outside of Heartbreak Hill, both sides of the straight along the top and
-of the shops' street, and the shops' side of the hill down, run in to the
-tunnel's wall. The crowd stands behind them on two stone steps wherever
+of the shops' street, the inside of the corner after it, and the shops' side
+of the hill down, run in to the tunnel's wall (so it is unbroken on that side
+from the second hairpin to the tunnel: "there should be a fence on the inside
+here", 3.46). The crowd stands behind them on two stone steps wherever
 nothing else is in the way, or on the footpath in front of the shops; it is a
 set of people of its own with its own random numbers, so the rest of the bay
 stays put. The outside of the top straight has two 12 m ways through: Race to
