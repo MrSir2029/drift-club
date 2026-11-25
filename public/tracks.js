@@ -50,10 +50,10 @@ export const TRACKS = [
     ],
   },
   {
-    name: 'Mount Panorama Circuit',
+    name: 'Pinto Speedway', // (the owner's name for it; it was Mount Panorama Circuit, and Switchback before that)
     local: 'panorama',
-    was: 'Switchback',
-    short: 'Mt Panorama',
+    was: 'Mount Panorama',
+    short: 'Pinto',
     blurb: 'Tight and technical, under the floodlights at night.',
     theme: 'night',
     width: 14,

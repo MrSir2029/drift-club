@@ -79,11 +79,14 @@
   across the water, and at Rose Bay "some buildings in it like what we did
   with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare
   hills read as unfinished.
+- The fourth track is Pinto Speedway (the owner's name for it; it was Mount
+  Panorama Circuit). Its signs still carry Mount Panorama's corner names.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
-  opens on the Championship. Camera and Feedback live in Settings, not on
+  opens on the Championship from the home screen, and on the picked track's
+  board from the lobby. Camera and Feedback live in Settings, not on
   the home screen or the pause menu (the owner asked), and the record
   ghost's switch sits near the top of Settings and in the Polytrack pause
   menu ("too hard to find" where it was, low down in Settings). The record

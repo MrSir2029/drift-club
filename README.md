@@ -275,7 +275,7 @@ the Camry) it's a tarmac road; in the rally car it turns back into a gravel
 stage with two jumps (`trackDef` in `game.js`). Thredbo (the
 third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
-drive off it). Mount Panorama (the fourth) is raced at night, under floodlights,
+drive off it). Pinto Speedway (the fourth; Mount Panorama until 3.55) is raced at night, under floodlights,
 with fireworks overhead, searchlights sweeping the sky and glowing studs
 along the track edges. Noosa Heads (the fifth) is an island: along the seafront, up a clifftop
 headland to a hairpin round the lighthouse, back down and over the start
@@ -394,8 +394,8 @@ Each track also has a bit of the real place it's named after (`local` in
 `tracks.js`, built by `buildLocal` in `game.js`): a footy field, a cricket
 match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
 black swans at Centennial Park; a chairlift across the track, skiers and A-frame lodges at
-Thredbo; the real corner names on signs and campers round their fires at Mount
-Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
+Thredbo; Mount Panorama's corner names on signs and campers round their fires at
+Pinto Speedway (which had that mountain's name until 3.55); surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD, and a Maccas just past its start line
 (`buildMaccas`: the owner asked for it, golden arches and all, drawn in code;
 it takes the first plot in the row of buildings there, and the building that

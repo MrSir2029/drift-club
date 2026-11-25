@@ -8,6 +8,18 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.55', date: '26 Nov 2026', title: 'Pinto Speedway',
+    items: [
+      'Mount Panorama Circuit is Pinto Speedway now. Same track, same lap times.',
+    ],
+  },
+  {
+    v: '3.54', date: '26 Nov 2026', title: 'The leaderboard opens where you are',
+    items: [
+      'In the lobby, the Leaderboard button opens on the board of the track that\'s picked. From the home screen it still opens on the Championship.',
+    ],
+  },
+  {
     v: '3.53', date: '26 Nov 2026', title: 'Racing lines that last',
     items: [
       'The racing lines on the leaderboard, and the record ghost that follows them, used to vanish every time the game was updated. Now they\'re kept with the leaderboard, and your browser hands back the lines of your own laps if the game ever loses them.',
