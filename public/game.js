@@ -903,6 +903,7 @@ function trackDef(trackId, car) {
 }
 const trackVariant = (trackId, car) => (TRACKS[trackId].surface === 'gravel' && car === 'rally' ? 'rally' : 'road');
 // does the world need building again for this track and car?
+const HOME_TRACK = 6; // the track behind the home screen when the game opens: Rose Bay (the owner's choice; it was Queens Park, the first)
 const worldStale = (trackId, car) => app.trackId !== trackId || !app.track || app.track.expanded !== app.expanded || app.track.variant !== trackVariant(trackId, car || 'open');
 function buildWorld(trackId, car = app.worldCar || 'open') {
   // clear old
@@ -8301,7 +8302,7 @@ function renderFrame() {
 // ---------------------------------------------------------------------------
 // boot
 // ---------------------------------------------------------------------------
-buildWorld(0);
+buildWorld(HOME_TRACK);
 wireUI();
 window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; app.rollSlot = rollSlot; app.wantRecordGhost = wantRecordGhost; app.cityTowers = cityTowers; // handy for poking at the game from the console
 $('#btn-create').disabled = true; $('#btn-join').disabled = true;
