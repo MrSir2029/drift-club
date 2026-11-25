@@ -3692,12 +3692,24 @@ function buildMall(track, rnd) {
   const rndC = mulberry32(5150);
   const raceFence = (x0, x1, z, y, out, k = -1) => {
     const len = x1 - x0, mx = (x0 + x1) / 2, STEEL = 0x8d93a0;
-    box(world, len, 1.0, 0.5, 0xd4d7dc, mx, y + 0.5, z); box(world, len + 0.1, 0.08, 0.6, 0xb9bdc5, mx, y + 1.02, z).castShadow = false;
+    box(world, len, 1.6, 0.5, 0xd4d7dc, mx, y + 0.2, z); box(world, len + 0.1, 0.08, 0.6, 0xb9bdc5, mx, y + 1.02, z).castShadow = false; // (the block goes 0.6 m into the ground: beside the road the ground is a little lower than the road, and the block used to stop short of it)
     for (let x = x0; x <= x1 + 0.01; x += len / Math.round(len / 4)) box(world, 0.1, 2.5, 0.1, STEEL, x, y + 2.25, z + out * 0.15).castShadow = false;
     box(world, len, 0.08, 0.08, STEEL, mx, y + 3.5, z + out * 0.15).castShadow = false;
     for (const h of [1.5, 2.0, 2.5, 3.0]) box(world, len, 0.03, 0.03, STEEL, mx, y + h, z + out * 0.15).castShadow = false;
     walls.push({ ax: x0, az: z, bx: x1, bz: z, y });
     if (k >= 0) addBanner(k, { x: mx - 2.25, y, z: z - out * 0.33 }, { x: mx + 2.25, y, z: z - out * 0.33 }, 0.14, 0.98, 0, 1, mx, z - out * 10);
+  };
+  // The same barrier between any two points, for the lengths that don't lie along x. From a to b; `out` is +1 for
+  // the crowd on the side (-dz, dx) of that way (for a length running towards +z, that's the -x side), -1 for the
+  // other. `foot`: how far the block goes into the ground (more where the ground dips).
+  const raceFenceTo = (ax, az, bx, bz, y, out, k = -1, foot = 0.6) => {
+    const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz), g = at((ax + bx) / 2, (az + bz) / 2, Math.atan2(-dz, dx), y), STEEL = 0x8d93a0;
+    box(g, len, 1 + foot, 0.5, 0xd4d7dc, 0, (1 - foot) / 2, 0); box(g, len + 0.1, 0.08, 0.6, 0xb9bdc5, 0, 1.02, 0).castShadow = false;
+    for (let n = Math.max(1, Math.round(len / 4)), j = 0; j <= n; j++) box(g, 0.1, 2.5, 0.1, STEEL, -len / 2 + (len * j) / n, 2.25, out * 0.15).castShadow = false;
+    box(g, len, 0.08, 0.08, STEEL, 0, 3.5, out * 0.15).castShadow = false;
+    for (const h of [1.5, 2.0, 2.5, 3.0]) box(g, len, 0.03, 0.03, STEEL, 0, h, out * 0.15).castShadow = false;
+    walls.push({ ax, az, bx, bz, y });
+    if (k >= 0) { const [px, pz] = W(g, -2.25, -out * 0.33), [qx, qz] = W(g, 2.25, -out * 0.33), [tx, tz] = W(g, 0, -out * 10); addBanner(k, { x: px, y, z: pz }, { x: qx, y, z: qz }, 0.14, 0.98, 0, 1, tx, tz); }
   };
   // n people standing in the rectangle, facing the way `out` points from (towards -out: the track)
   const crowd = (x0, x1, z0, z1, y, n, out, avoid = []) => {
@@ -4114,6 +4126,46 @@ function buildMall(track, rnd) {
     for (const [x, z] of [[samples[i1].p.x + hw + 13, -15.5], [samples[i1].p.x - hw - 13, 15.5], [street.xe + 24, -WIDE - 3], [street.xe + 24, WIDE + 3]]) {
       const g = at(x, z, 0, terrainHeight(x, z));
       box(g, 0.12, 3.4, 0.12, 0x8d93a0, 0, 1.7, 0); sign(g, 'OXFORD ST', '#2f6b4a', '#ffffff', 2.2, 0.42, 0, 3.2, 0.07); sign(g, 'OXFORD ST', '#2f6b4a', '#ffffff', 2.2, 0.42, 0, 3.2, -0.07, Math.PI);
+    }
+    // The crossing at the west doors: out of the mall, over Oxford Street and onto the ramp up to the roof. It had
+    // kerbs and nothing else (the owner, from the middle of it: "this whole area should have barriers"). Now a race
+    // barrier runs down each side, with the crowd on two steps behind it on the closed street. It comes in from
+    // each edge of the doorway, so there's no way round that end; runs straight across the street; and comes in
+    // again to the foot of the ramp, where a concrete parapet carries on up each edge of the ramp as far as the
+    // ramp's own rails. (The street light and the billboard that stood by the crossing still do, behind it.)
+    {
+      const cx = samples[i1].p.x, FENCE = hw + 3.9, DOOR = SHOPS + 0.4, LIP = hw + 1.4, zd = B[3]; // (LIP: the parapet's line, along the outer edge of the kerb)
+      let iFoot = i1; while (samples[wrap(iFoot)].p.z < 46 && iFoot < i1 + 200) iFoot++; // the foot of the ramp, at the height bar
+      let iRail = iFoot; while (Math.max(track.vergeDrop[wrap(iRail)], track.vergeDrop[wrap(iRail + 1)]) <= VERGE_MAX_DROP && iRail < iFoot + 80) iRail++; // where the drop is enough for the ramp to have rails
+      const zf = samples[wrap(iFoot)].p.z, z0 = zd + 10, zm = zf - 9, LENGTHS = 3, step = (zm - z0) / LENGTHS;
+      const fans = makePeople(150, mulberry32(6207)), rndF = mulberry32(6208); // (a set of their own with their own random numbers: nobody else in the centre moves)
+      const par = { pos: [], col: [] }, CONC = C(0xd4d7dc), COPE = C(0xb9bdc5);
+      for (const sd of [1, -1]) { // +1: the side towards +x (the left, going up the ramp)
+        const xf = cx + sd * FENCE;
+        raceFenceTo(cx + sd * DOOR, zd + 0.25, xf, z0, 0, -sd, -1, 1.4); // in from the edge of the doorway
+        for (let k = 0; k < LENGTHS; k++) raceFenceTo(xf, z0 + k * step, xf, z0 + (k + 1) * step, 0, -sd, (k + (sd > 0 ? 0 : 1)) % 2 ? -1 : k + (sd > 0 ? 1 : 3), 1.4); // across the street (a banner on every other length, the two sides out of step)
+        raceFenceTo(xf, zm, cx + sd * LIP, zf, 0.2, -sd, -1, 1.6); // in to the foot of the ramp
+        // two steps for the crowd, and the crowd
+        const STEPS = [[0.7, 0.3, 0xcfd3d8], [2.9, 0.75, 0xb9bdc5]], sz0 = z0 + 0.5, sz1 = zm - 0.5;
+        for (const [d, top, c] of STEPS) box(world, 2.2, top + 1.6, sz1 - sz0, c, xf + sd * (d + 1.1), (top - 1.6) / 2, (sz0 + sz1) / 2);
+        solidRect(Math.min(xf + sd * 0.7, xf + sd * 5.1), sz0, Math.max(xf + sd * 0.7, xf + sd * 5.1), sz1, 0);
+        for (let j = 0; j < 72; j++) {
+          const [d, top] = STEPS[j % 2], x = xf + sd * (d + 0.4 + rndF() * 1.4), z = sz0 + 0.5 + rndF() * (sz1 - sz0 - 1), rot = -sd * Math.PI / 2 + (rndF() - 0.5) * 0.7;
+          if (!solids.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + 0.7)) fans.add(x, top + 0.02, z, rot); // (not standing in the street light)
+        }
+        // the parapet up the edge of the ramp: its inner face, its top, and its outer face down over the edge of the deck
+        for (let i = iFoot; i < iRail; i++) {
+          const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, sd * (LIP - 0.2)), [bx, bz] = P(i + 1, sd * (LIP - 0.2)), [cx2, cz2] = P(i + 1, sd * (LIP + 0.2)), [dx2, dz2] = P(i, sd * (LIP + 0.2));
+          quad(par, [ax, a.p.y - 0.1, az], [bx, b.p.y - 0.1, bz], [bx, b.p.y + 1, bz], [ax, a.p.y + 1, az], CONC);
+          quad(par, [ax, a.p.y + 1, az], [bx, b.p.y + 1, bz], [cx2, b.p.y + 1, cz2], [dx2, a.p.y + 1, dz2], COPE);
+          quad(par, [dx2, a.p.y + 1, dz2], [cx2, b.p.y + 1, cz2], [cx2, b.p.y - 1.4, cz2], [dx2, a.p.y - 1.4, dz2], CONC);
+          if (i === iFoot) quad(par, [ax, a.p.y - 1.4, az], [dx2, a.p.y - 1.4, dz2], [dx2, a.p.y + 1, dz2], [ax, a.p.y + 1, az], CONC);
+          if (i === iRail - 1) quad(par, [bx, b.p.y - 0.1, bz], [cx2, b.p.y - 0.1, cz2], [cx2, b.p.y + 1, cz2], [bx, b.p.y + 1, bz], CONC);
+          { const [wx0, wz0] = P(i, sd * LIP), [wx1, wz1] = P(i + 1, sd * LIP); walls.push({ ax: wx0, az: wz0, bx: wx1, bz: wz1, y: (a.p.y + b.p.y) / 2 }); } // (down its middle, the line the barrier comes in on)
+        }
+      }
+      fans.finish();
+      if (par.pos.length) { const m = flatMesh(par.pos, par.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); }
     }
   }
 

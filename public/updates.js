@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.62', date: '26 Nov 2026', title: 'Barriers at Westfield\'s street crossing',
+    items: [
+      'At Westfield, the stretch where you leave the shops, cross Oxford Street and head up the ramp to the roof used to have nothing either side. Now race barriers run down both sides, with a crowd behind them, and a wall carries on up each edge of the ramp.',
+    ],
+  },
+  {
     v: '3.61', date: '26 Nov 2026', title: 'Feedback is back on the home screen',
     items: [
       'The Feedback button is next to Settings on the home screen again. It had been inside Settings.',
