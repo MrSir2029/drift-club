@@ -85,7 +85,7 @@ const renamed = (n) => RENAMED.get(String(n).toLowerCase()) || n;
 // for a sector), so the copies kept in browsers and in storage don't bring them
 // back; a new time by the same player still counts. LucaC's were set using the
 // walls to get round corners, before a lap with a hard wall hit was deleted
-// (his Mount Panorama lap stays).
+// (his lap at Pinto Speedway, Mount Panorama as it was then, stays).
 const DROPPED = new Set(['LucaC|1|44251', 'LucaC|4|33400', 'LucaC|5|36485', 'LucaC|5|s0|11484', 'LucaC|5|s1|11799', 'LucaC|5|s2|12600']);
 function nameAllowed(name) {
   // (words break at a capital too, so a word hidden in BigAss is found)

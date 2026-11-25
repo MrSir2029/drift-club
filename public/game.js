@@ -2279,7 +2279,7 @@ function signTexture(text, bg, ink, w = 512, h = 128) {
 // cricket match and big Moreton Bay figs. Centennial Park: the Federation
 // Pavilion, horses in a paddock and black swans on the pond. Thredbo: a
 // chairlift across the track with skiers coming down beside it, and A-frame lodges.
-// Mount Panorama: the real corner names on signs round the lap, and campers
+// Pinto Speedway (Mount Panorama until 3.55): Mount Panorama's corner names on signs round the lap, and campers
 // round their fires on the mountain. Noosa Heads: surfers riding the waves in
 // along the headland, koalas in the gum trees on it. Sydney: Sydney Tower at
 // the end of the main straight, the Harbour Bridge and the Opera House across
@@ -7296,8 +7296,10 @@ function notePersonalBest(lapTime) {
   app.pbs[k] = ms;
   try { localStorage.setItem('dc-pb', JSON.stringify(app.pbs)); } catch {}
 }
-function openBoard() {
-  board.track = 'champ'; // it opens on the championship (the owner's choice); the tracks' boards are a tab away
+// From the home screen it opens on the Championship; from the lobby, on the board of the track that's picked there
+// (both the owner's choice). The rest are a tab away.
+function openBoard(track = 'champ') {
+  board.track = track;
   $('#board').classList.remove('hidden');
   renderBoard();
 }
@@ -7906,7 +7908,8 @@ function wireUI() {
   $('#laps-minus').addEventListener('click', (e) => setLaps(e, -1));
   $('#laps-plus').addEventListener('click', (e) => setLaps(e, 1));
   $('#btn-menu').addEventListener('click', (e) => { e.currentTarget.blur(); setMenu(true); });
-  for (const id of ['#btn-board', '#btn-board-lobby']) $(id).addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(); });
+  $('#btn-board').addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(); });
+  $('#btn-board-lobby').addEventListener('click', (e) => { e.currentTarget.blur(); openBoard(Number.isInteger(app.room?.trackId) ? app.room.trackId : 'champ'); });
   $('#btn-board-close').addEventListener('click', () => $('#board').classList.add('hidden'));
   $('#board-tracks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { board.track = b.dataset.t === 'champ' ? 'champ' : +b.dataset.t; renderBoard(); } });
   $('#board-king').addEventListener('click', () => { board.track = 'champ'; renderBoard(); }); // the king's banner opens the championship too
