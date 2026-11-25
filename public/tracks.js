@@ -111,7 +111,7 @@ export const TRACKS = [
     blurb: 'Monaco on Sydney Harbour: along the quay, up Heartbreak Hill, two hairpins, down past the shops and through the tunnel.',
     theme: 'beach',
     urban: true,   // only the landmarks that fit in a town, and none inside the walled-in middle
-    walls: true,
+    walls: 'race',   // race barriers with sponsors' banners, not Sydney CBD's plain concrete
     width: 13,
     scale: 1,
     // the harbour: water right up to the sea wall along the quay (z < 0), none inland
@@ -134,7 +134,7 @@ export const TRACKS = [
     blurb: 'Off the rooftop car park, down the ramp, across Oxford Street, flat out through the shops and round the food court.',
     theme: 'mall',
     urban: true,
-    walls: true,
+    walls: 'race',
     bare: true,       // no grandstands, pits or paddock: it's a shopping centre
     width: 14,
     scale: 1,

@@ -938,6 +938,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   const railMat = new THREE.MeshLambertMaterial({ color: 0xc9ced6, flatShading: true }), railPost = new THREE.BoxGeometry(0.16, 1.1, 0.16);
   const railing = (p, q, i) => {
     track.walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 });
+    if (track.def.walls === 'race') return; // (a race barrier runs along the deck instead: buildStreetWalls)
     for (const h of [0.55, 1.0]) worldGroup.add(strut(V(p.x, p.y + h, p.z), V(q.x, q.y + h, q.z), 0.12, 0.12, railMat));
     if (i % 3 === 0) { const post = new THREE.Mesh(railPost, railMat); post.position.set(p.x, p.y + 0.55, p.z); worldGroup.add(post); }
   };
@@ -1722,14 +1723,39 @@ function insideLoop(track, x, z) {
   return inside;
 }
 
-// A street circuit (Sydney CBD): concrete walls down both sides of the road,
-// just past the kerbs, painted in blocks of colour on the road side. Side
-// streets break them now and then, always on the outside of the circuit, so
-// there's a way out to the rest of the city (and 9LAT2) but no short cut
-// across the middle. track.gaps keeps the buildings out of those streets.
+// The banners on a street circuit's race barriers: made-up sponsors, two to a
+// banner, sixteen rows on one sheet.
+const BANNERS = [['DRIFT CLUB', '#1d2230', '#ff8a3d'], ['DINGO DONUTS', '#ff6bcb', '#ffffff'], ['BILBY BURGERS', '#ffd23f', '#3b2a1e'], ['CROC CRISPS', '#2f6b4a', '#ffe9a8'],
+  ['SUNBURNT SODA', '#3d8bff', '#ffffff'], ['ROO RIDES', '#7ed957', '#1d3b1f'], ['TURBO TEA', '#2ec4b6', '#0f2f3a'], ['GALAH GAMES', '#e6453a', '#ffffff'],
+  ['WOMBAT TYRES', '#26303f', '#ffd23f'], ['KOOKABURRA COLA', '#c0392b', '#ffe9a8'], ['QUOKKA OIL', '#ff8a3d', '#1d2230'], ['EMU ENERGY', '#1f6fb5', '#ffffff']];
+function bannerTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const x = c.getContext('2d'); x.textAlign = 'center'; x.textBaseline = 'middle';
+  BANNERS.forEach(([name, bg, ink], k) => {
+    const y = k * 64;
+    x.fillStyle = bg; x.fillRect(0, y, 1024, 64); x.fillStyle = ink;
+    let size = 46; do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 2; } while (x.measureText(name).width > 440 && size > 16);
+    x.fillText(name, 256, y + 34); x.fillText(name, 768, y + 34);
+    x.globalAlpha = 0.5; x.fillRect(508, y + 14, 8, 36); x.fillRect(0, y + 14, 4, 36); x.fillRect(1020, y + 14, 4, 36); x.globalAlpha = 1; // a bar between the two
+  });
+  const tex = cleanTexture(c);
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); // read along the wall, from low down
+  return tex;
+}
+
+// A street circuit: walls down both sides of the road, just past the kerbs.
+// Sydney CBD's are plain concrete, painted in blocks of colour on the road
+// side. A day circuit (`walls: 'race'` in tracks.js: Rose Bay, Westfield) gets
+// race barriers instead: white concrete with a sloping grey foot and a red
+// band along the top, sponsors' banners along them, carried on along the edge of any bridge deck
+// in place of its railings. Side streets break the walls now and then, always
+// on the outside of the circuit, so there's a way out to the rest of the map
+// (and 9LAT2) but no short cut across the middle. track.gaps keeps buildings
+// out of those streets.
 function buildStreetWalls(track) {
   const { samples, N, hw, cps } = track;
   const IN = hw + 3.4, THICK = 0.6, H = 1.15, SINK = 0.6, GAP = 8; // a side street is 8 samples (12 m) wide
+  const race = track.def.walls === 'race', RH = 1.18, FACE = 1.0, ON_DECK = hw + 1.5; // (a race barrier is 1.18 m high, its face 1 m, and it stands on the kerb's edge along a deck)
   const turn = samples.map((a, i) => { const b = samples[(i + 14) % N]; return a.th.x * b.th.z - a.th.z * b.th.x; });
   const straight = (i) => Math.abs(turn[((i % N) + N - 14) % N]) < 0.02 && Math.abs(turn[i % N]) < 0.02; // straight for 21 m either side
   const nearGate = (i) => cps.some(c => Math.min((i - c + N) % N, (c - i + N) % N) < 14);
@@ -1757,16 +1783,21 @@ function buildStreetWalls(track) {
   const inGap = (side, i) => gaps.some(g => g.side === side && i >= g.a && i <= g.b);
   const adCols = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0xff6bcb, 0x2ec4b6];
   const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e), ad = new THREE.Color();
-  const pos = [], col = [];
+  const WHITE = new THREE.Color(0xf6f3ea), FOOT = new THREE.Color(0xb4b8c0), TOE = new THREE.Color(0x7c828d), BAND = new THREE.Color(0xe6453a), CAP = new THREE.Color(0xc93a30), BACK = new THREE.Color(0xc4c7cd); // a race barrier's paint
+  const pos = [], col = [], bpos = [], buv = [];
   track.wallAt = {}; // which samples have a wall beside them, each side (the city puts its crowds behind them)
   for (const side of [1, -1]) {
     // the wall's road-side face, IN metres out; where the inside of a tight
     // bend folds that line back on itself the points come too near the road
     // and are dropped, and the wall cuts straight across instead
+    // (race barriers run on along a deck, on its edge, and come in over 12 m either side to meet it)
+    const onDeck = (i) => track.vergeDrop[((i % N) + N) % N] > VERGE_MAX_DROP;
+    const latAt = (i) => { if (!race) return IN; let d = 8; for (let k = -8; k <= 8; k++) if (onDeck(i + k)) d = Math.min(d, Math.abs(k)); const t = d / 8; return ON_DECK + (IN - ON_DECK) * t * t * (3 - 2 * t); };
     const P = samples.map((s, i) => {
-      const p = V(s.p.x + s.left.x * side * IN, s.p.y, s.p.z + s.left.z * side * IN);
-      if (inGap(side, i) || track.vergeDrop[i] > VERGE_MAX_DROP || roadGap(track, p.x, p.z) < IN - 0.35) return null; // (a bridge deck has railings instead)
-      return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g: terrainHeight(p.x, p.z) };
+      const lat = latAt(i), deck = onDeck(i), p = V(s.p.x + s.left.x * side * lat, s.p.y, s.p.z + s.left.z * side * lat);
+      if (inGap(side, i) || (deck && !race) || roadGap(track, p.x, p.z) < lat - 0.35) return null; // (a plain wall stops at a bridge deck, which has railings)
+      const g = terrainHeight(p.x, p.z);
+      return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g, n: V(s.left.x * side, 0, s.left.z * side), base: deck ? s.p.y - 0.3 : Math.min(s.p.y - SINK, g - 0.3) };
     });
     // join each point to the next one; across a run of dropped points (but
     // never a side street) only if a straight wall there keeps clear of the road
@@ -1781,6 +1812,31 @@ function buildStreetWalls(track) {
       links.push([P[i], c]); hasOut[i] = 1; hasIn[j] = 1;
     }
     track.wallAt[side] = hasIn.map((v, i) => v | hasOut[i]);
+    if (race) {
+      // the barrier's shape, from the road outwards: a foot, a slope, a near-upright face, a flat top, the back.
+      // at(q, d, h): d metres behind its road-side edge, h above the road (no h: down at its base, which is the
+      // ground, however far under the road that is)
+      const at = (q, d, h) => V(q.p.x + q.n.x * d, h == null ? q.base : q.p.y + h, q.p.z + q.n.z * d);
+      const whole = (i) => { for (let k = 0; k < 6; k++) if (!(P[(i + k) % N] && P[(i + k + 1) % N] && hasOut[(i + k) % N])) return false; return true; }; // room for a banner: six links in a row
+      for (const [a, b] of links) {
+        pushQuad(pos, col, at(a, 0), at(a, 0, 0.08), at(b, 0, 0.08), at(b, 0), TOE);
+        pushQuad(pos, col, at(a, 0, 0.08), at(a, 0.2, 0.4), at(b, 0.2, 0.4), at(b, 0, 0.08), FOOT);
+        pushQuad(pos, col, at(a, 0.25, FACE), at(a, 0.27, RH), at(b, 0.27, RH), at(b, 0.25, FACE), BAND);
+        pushQuad(pos, col, at(a, 0.27, RH), at(a, 0.5, RH), at(b, 0.5, RH), at(b, 0.27, RH), CAP);
+        pushQuad(pos, col, at(a, 0.5, RH), at(a, 0.5), at(b, 0.5), at(b, 0.5, RH), BACK);
+        // the face: six samples of every eight a banner, white between (read from the road, so backwards on the right)
+        const k = a.i % 8 - 1, start = a.i - k, f = [at(a, 0.2, 0.4), at(a, 0.25, FACE), at(b, 0.25, FACE), at(b, 0.2, 0.4)];
+        if (k >= 0 && k < 6 && (b.i - a.i + N) % N === 1 && whole(start)) {
+          const row = (Math.floor(a.i / 8) * 5 + (side > 0 ? 0 : 7)) % BANNERS.length, v1 = 1 - row / 16 - 2 / 1024, v0 = 1 - (row + 1) / 16 + 2 / 1024;
+          const ua = side > 0 ? k / 6 : 1 - k / 6, ub = side > 0 ? (k + 1) / 6 : 1 - (k + 1) / 6, uv = [[ua, v0], [ua, v1], [ub, v1], [ub, v0]];
+          for (const j of [0, 1, 2, 0, 2, 3]) { bpos.push(f[j].x, f[j].y, f[j].z); buv.push(uv[j][0], uv[j][1]); }
+        } else pushQuad(pos, col, f[0], f[1], f[2], f[3], WHITE);
+        track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2 });
+      }
+      // each end of a run, closed off in the barrier's own shape
+      for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) { const q = P[i]; pushQuad(pos, col, at(q, 0), at(q, 0, 0.08), at(q, 0.2, 0.4), at(q, 0.5), BACK); pushQuad(pos, col, at(q, 0.2, 0.4), at(q, 0.27, RH), at(q, 0.5, RH), at(q, 0.5), BACK); }
+      continue;
+    }
     const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
     for (const [a, b] of links) {
       // faces: road side, top, back (each facing out, whichever side of the road)
@@ -1798,6 +1854,13 @@ function buildStreetWalls(track) {
   const mesh = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
   mesh.castShadow = mesh.receiveShadow = true;
   worldGroup.add(mesh);
+  if (bpos.length) { // the banners: one sheet, lit like the barriers they're on
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(bpos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(buv, 2)); g.computeVertexNormals();
+    const banners = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: bannerTexture(), side: THREE.DoubleSide }));
+    banners.receiveShadow = true;
+    worldGroup.add(banners);
+  }
 }
 
 // The sea round Noosa Heads: water out to the horizon, see-through enough that
@@ -1834,10 +1897,11 @@ function buildSea(track) {
 function signTexture(text, bg, ink, w = 512, h = 128) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d');
-  x.fillStyle = bg; x.fillRect(0, 0, w, h); x.strokeStyle = ink; x.lineWidth = 8; x.strokeRect(12, 12, w - 24, h - 24);
+  const inset = Math.min(12, h * 0.1), line = Math.min(8, h * 0.07); // (a long low sign gets a finer frame and smaller letters)
+  x.fillStyle = bg; x.fillRect(0, 0, w, h); x.strokeStyle = ink; x.lineWidth = line; x.strokeRect(inset, inset, w - inset * 2, h - inset * 2);
   x.fillStyle = ink; x.textAlign = 'center'; x.textBaseline = 'middle';
-  let size = 78; do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > w - 70 && size > 20);
-  x.fillText(text, w / 2, h / 2 + 4);
+  let size = Math.min(78, Math.round(h * 0.8)); do { x.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (x.measureText(text).width > w - 70 && size > 12);
+  x.fillText(text, w / 2, h / 2 + Math.min(4, h * 0.035));
   return cleanTexture(c);
 }
 
@@ -3356,12 +3420,12 @@ function buildMall(track, rnd) {
     const lift = at(-15, 150, 0, DECK);
     box(lift, 16, 7, 8, 0xe9e4d8, 0, 3.5, 0); box(lift, 16.6, 0.5, 8.6, 0xd62f2f, 0, 7.2, 0);
     sign(lift, 'WESTFIELD', '#ffffff', '#d62f2f', 13, 2, 0, 4.9, 4.06); sign(lift, 'P  ROOFTOP PARKING', '#1f6fb5', '#ffffff', 13, 1.4, 0, 2.6, 4.06);
-    for (let x = strip[0] + 20; x < strip[2] - 10; x += 45) for (const z of [178, 203]) { box(world, 0.22, 7, 0.22, 0x8d93a0, x, DECK + 3.5, z); box(world, 1.6, 0.2, 0.5, 0xd9dde3, x, DECK + 7, z); }
+    for (let x = strip[0] + 20; x < strip[2] - 10; x += 45) for (const z of [178, 203]) { if (roadGap(track, x, z) < hw + 4.5) continue; box(world, 0.22, 7, 0.22, 0x8d93a0, x, DECK + 3.5, z); box(world, 1.6, 0.2, 0.5, 0xd9dde3, x, DECK + 7, z); } // (never on the road: one used to stand in the corner at the top of the ramp)
     // a height bar at the foot of each ramp
     for (const x of [samples[i0].p.x, samples[i1].p.x]) {
       const g = at(x, 46, 0, 0);
       for (const lx of [-hw - 4.6, hw + 4.6]) { box(g, 0.4, 5.2, 0.4, 0xffd23f, lx, 2.6, 0); const [wx, wz] = W(g, lx, 0); solids.push({ x: wx, z: wz, r: 0.5, y: 0 }); }
-      box(g, 2 * hw + 9.6, 0.7, 0.3, 0xffd23f, 0, 5.2, 0); sign(g, 'CLEARANCE 2.2 m', '#ffd23f', '#111318', 9, 0.6, 0, 5.2, 0.17, 0); sign(g, 'CLEARANCE 2.2 m', '#ffd23f', '#111318', 9, 0.6, 0, 5.2, -0.17, Math.PI);
+      box(g, 2 * hw + 9.6, 1.1, 0.3, 0xffd23f, 0, 5.4, 0); sign(g, 'CLEARANCE 2.2 m', '#ffd23f', '#111318', 9, 0.95, 0, 5.4, 0.17, 0); sign(g, 'CLEARANCE 2.2 m', '#ffd23f', '#111318', 9, 0.95, 0, 5.4, -0.17, Math.PI);
     }
   }
 

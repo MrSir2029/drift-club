@@ -263,7 +263,11 @@ names. Its `sea` in `tracks.js` also says how high the land sits inland
 that no islands get dotted over the water (`clear`); `urban` keeps the
 landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
 card in the lobby. Side streets never open onto the sea, and nothing is built
-in the mouth of one.
+in the mouth of one. Its walls are race barriers (`walls: 'race'`, as at
+Westfield; Sydney CBD keeps plain concrete with `walls: true`): white concrete
+with a sloping grey foot and a red band along the top, with banners for
+made-up sponsors most of the way along (`BANNERS` in `game.js`). Along a
+bridge deck they stand on its edge in place of the railings.
 Westfield (the eighth) is a shopping centre you race through (`buildMall` in
 `game.js`, theme `mall`). The lap starts on the roof of the car park, comes
 down the ramp, crosses Oxford Street, goes in through the doors and along the
