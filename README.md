@@ -426,6 +426,34 @@ track loads (`mergeStatic` in `game.js`), because the number of separate
 objects, not the resolution, is what slows weak laptops down. Anything that
 moves is marked `userData.dyn` so it's left alone.
 
+**Far-off things and depth.** A graphics card tells two surfaces apart by
+depth only down to a step that grows with the square of the distance and
+shrinks with the camera's near plane: with the near plane at 0.5 m the step
+is about 2 cm at 400 m and 12 cm at a kilometre. Two faces closer together
+than that flicker ("City flickers from far away" was the owner's report,
+3.43). So:
+
+- Scenery meant to be seen from far off has nothing lying just in front of
+  anything else. A distant tower (`cityTower`) is one skin with its windows
+  as lengths of the wall, a top the same size as what it stands on, and a fin
+  outside the wall; the suburbs' houses and flats (`suburbGeometry`) are the
+  same. Towers are also moved a few metres as they are placed, so that no
+  wall stands within `CITY_GAP` of a neighbour's that faces the same way and
+  overlaps it (`cityTowers` keeps the blocks placed so far).
+- From the open seater's cockpit the world is drawn with the chase camera's
+  near plane (0.5 m), and the car itself is drawn again afterwards, with the
+  depth cleared and the near plane at 12 cm (`renderFrame`: layer 1, the same
+  second drawing that puts a closed car's interior over its body). With the
+  near plane at 12 cm for everything, the step was four times coarser.
+- The centre line's dashes are drawn with a polygon offset, and cut along the
+  same diagonal as the road's triangles so they lie flat on it
+  (`centreDashes`): laid straight from sample to sample, the road stood proud
+  of them round a hairpin on a slope and buried bits of them (3.44).
+
+To look for surfaces that fight, draw a view with the near plane made 4 and
+16 times smaller (the same as a depth buffer that much coarser) and see what
+changes.
+
 ## Secrets
 
 There's no button for these. The host opens the secrets panel by typing a
