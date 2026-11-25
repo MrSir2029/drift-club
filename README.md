@@ -334,7 +334,11 @@ match and Moreton Bay figs at Queens Park; the Federation Pavilion, horses and
 black swans at Centennial Park; a chairlift across the track, skiers and A-frame lodges at
 Thredbo; the real corner names on signs and campers round their fires at Mount
 Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
-and the Opera House around Sydney CBD.
+and the Opera House around Sydney CBD, and a Maccas just past its start line
+(`buildMaccas`: the owner asked for it, golden arches and all, drawn in code;
+it takes the first plot in the row of buildings there, and the building that
+would have stood on it is put up and taken away again so the rest of the city
+comes out as it always has. Jago serves at the drive-through window).
 The posters, and the banners on walls, carry the trackside sponsors, which
 the owner chose: 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and
 Glory Days), and Tenth Floor Chambers and Frangos as themselves, each in its

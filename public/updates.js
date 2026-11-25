@@ -8,6 +8,13 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.32', date: '25 Nov 2026', title: 'A Maccas at Sydney CBD',
+    items: [
+      'There\'s a Maccas on the right just past the start line at Sydney CBD, golden arches up on a pole and all.',
+      'Jago is on the drive-through window. Pull up and say hello.',
+    ],
+  },
+  {
     v: '3.31', date: '25 Nov 2026', title: 'The Drift King\'s car',
     items: [
       'Whoever leads the Drift King championship now drives the Drift King\'s car: gold over black with a crimson line, a crown behind the driver and DRIFT KING on the rear wing.',
