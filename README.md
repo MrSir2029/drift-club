@@ -306,14 +306,22 @@ walkways, shopfronts (windows with mannequins and goods on show, doorways
 taped off with shoppers watching from them, signs), a gallery above them with
 more shoppers, a skylight, boards hanging over the road, escalators, benches
 and plants; tables, a juice bar and palms in the middle of the food-court
-hairpin, behind a glass screen. Outside: parked cars both sides of the start
-straight (a few people standing on theirs), shade sails, stair towers, the
-lifts and a boom gate at the top of each ramp on the roof; cars parked in the
-open decks below; Oxford Street with a carriageway each way where the lap runs
-along it, a planted median between them (its concrete sides are the barrier
-between cars going opposite ways, and carry banners), shop windows, awnings
-and names along the mall's side, a walkway overhead, the 333 at its stop with
-traffic held up behind it, and blocks of shops and flats all round. The
+hairpin, behind a glass screen; and a crowd barrier outside every other shop
+with people behind it. It's dressed as a race track (the owner: "remember
+this is a racing track"): lengths of race barrier (`raceFence`: a concrete
+block with a wire catch fence on top) with the crowd behind them down both
+sides of the start straight and of Oxford Street's two carriageways, a
+grandstand each side just past the line, and a crowd round the hairpin.
+Outside: a row of parked cars each side of the roof, back behind the crowd,
+and more on the main roof (`parkedCarGeometry`: one shape for all of them, a
+body, a glasshouse and wheels, after the owner called the old boxes buns),
+shade sails, stair towers, the lifts and a boom gate at the top of each ramp;
+columns and parapets in the open decks below; Oxford Street with a
+carriageway each way where the lap runs along it, a planted median between
+them (its concrete sides are the barrier between cars going opposite ways,
+and carry banners), shop windows, awnings and names along the mall's side, a
+walkway overhead, the 333 at its stop with traffic held up behind it, and
+blocks of shops and flats all round. The
 median and the bridge are in the track's `blocks`, after the car park and the
 mall, so nothing else is put on them. Oxford Street is the way out to the
 streets and to 9LAT2. As at Rose
@@ -347,8 +355,9 @@ every billboard (each turned to face the cars coming) and on Sydney CBD's lit
 boards. Banners go on solid walls only, one every 20 m or so: six along the
 pit wall, Sydney CBD's walls (about 95 round the lap), Rose Bay's harbour
 wall and the stone wall behind its shops, and at Westfield the sides of
-Oxford Street's median and the wall round the roof where the cars drive
-straight at it (the end of the start straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
+Oxford Street's median, every other length of race barrier, and the wall
+round the roof where the cars drive straight at it (the end of the start
+straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
 are left bare. Nothing is a picture: the boards are drawn in the browser, in
 open-licence typefaces from `public/vendor/fonts`, onto two sheets that every
 poster and banner in the world shares (each sponsor's artwork kept apart on

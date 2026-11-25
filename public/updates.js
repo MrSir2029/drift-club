@@ -8,6 +8,13 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.33', date: '25 Nov 2026', title: 'Westfield, the race track',
+    items: [
+      'Westfield looks like a race track now: lengths of race barrier with catch fences, a grandstand each side of the start line, and crowds down the roof straight, along both sides of Oxford Street, round the hairpin and behind barriers inside the mall.',
+      'The parked cars are proper cars, and they\'ve moved back from the road to make room for the crowd.',
+    ],
+  },
+  {
     v: '3.32', date: '25 Nov 2026', title: 'A Maccas at Sydney CBD',
     items: [
       'There\'s a Maccas on the right just past the start line at Sydney CBD, golden arches up on a pole and all.',

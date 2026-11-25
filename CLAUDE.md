@@ -29,8 +29,9 @@
     Don't swap them for made-up names, or add others, unless asked.
   - The owner wants a middling number of ads, and none on fences: posters on
     the billboards, and banners only on solid walls (the pit wall, Sydney
-    CBD's walls, Rose Bay's two sandstone walls, the wall round Westfield's
-    roof and the sides of its Oxford Street median), one every 20 m or so. One every 9 m was far too many ("we don't
+    CBD's walls, Rose Bay's two sandstone walls, and at Westfield the wall
+    round the roof, the sides of the Oxford Street median and the concrete
+    blocks of the race barriers), one every 20 m or so. One every 9 m was far too many ("we don't
     need THIS many"), one every 60 m too few ("not that little"), and one
     every 30 m nearly right ("you can have a bit more"). Never on a rail on
     posts (the owner calls those fences), a fence, or the railings of a
@@ -50,7 +51,11 @@
   look after themselves (README, "Changing a track's layout").
 - Westfield follows the real one at Bondi Junction (the owner asked: "look
   at real westfield images and map layouts"): two buildings either side of
-  Oxford Street, the glazed bridge over it, the bus stop outside.
+  Oxford Street, the glazed bridge over it, the bus stop outside. But it is
+  a race track first ("remember this is a racing track, add more fences and
+  barrier and add way more spectator spots"): race barriers with catch
+  fences, grandstands and crowds, not a car park. Parked cars stay back from
+  the road and must look like cars (the owner called the boxy ones "buns").
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update
