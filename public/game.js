@@ -1352,10 +1352,11 @@ function mulberry32(a) {
 // here, in open-licence typefaces served from /vendor/fonts (see the README
 // there), except 9 Meter, whose letters are drawn one by one, below.
 // Posters go on the billboards. Banners go on solid walls only, one every
-// 25 m or so (the pit wall, Sydney CBD's walls, Rose Bay's two sandstone
+// 20 m or so (the pit wall, Sydney CBD's walls, Rose Bay's two sandstone
 // walls, the wall along Westfield's roof): never on rails, fences or bridge
-// railings. The owner found one every 9 m far too many and one every 60 m
-// too few. Cars are another matter: they only ever carry made-up names.
+// railings. The owner found one every 9 m far too many, one every 60 m too
+// few, and one every 30 m nearly right ("you can have a bit more"). Cars
+// are another matter: they only ever carry made-up names.
 // ---------------------------------------------------------------------------
 const SPONSOR_FONTS = { charis: ['DC Charis', 'charis-sil-700.woff2', '700'], overpass: ['DC Overpass', 'overpass-800.woff2', '800'], caprasimo: ['DC Caprasimo', 'caprasimo-400.woff2', '400'], cormorant: ['DC Cormorant', 'cormorant-garamond-600.woff2', '600'], anton: ['DC Anton', 'anton-400.woff2', '400'] };
 const sponsorFace = (k, size) => `${SPONSOR_FONTS[k][2]} ${Math.round(size)}px "${SPONSOR_FONTS[k][0]}", ${k === 'charis' || k === 'cormorant' || k === 'caprasimo' ? 'Georgia, "Times New Roman", serif' : '"Arial Narrow", Arial, sans-serif'}`;
@@ -1744,7 +1745,7 @@ function buildProps(track) {
       wallRect(pit, -26.5, 26.5, -10.6, 2.3);
       // sponsors' banners along the pit wall, under its red stripe: a proper barrier, and the place for them on a circuit
       // (not where street walls stand in front of it, as at Sydney CBD: those carry their own)
-      if (!track.def.walls) for (let k = 0; k < 5; k++) { const x = -20 + k * 10, a = toWorld(pit, x - 1.6, 0, 2.3), b = toWorld(pit, x + 1.6, 0, 2.3), t = toWorld(pit, x, 0, 30); addBanner(k, a, b, 0.07, 0.67, 0, 1, t.x, t.z); }
+      if (!track.def.walls) for (let k = 0; k < 6; k++) { const x = -20 + k * 8, a = toWorld(pit, x - 1.6, 0, 2.3), b = toWorld(pit, x + 1.6, 0, 2.3), t = toWorld(pit, x, 0, 30); addBanner(k, a, b, 0.07, 0.67, 0, 1, t.x, t.z); }
       for (let k = 0; k < 8; k++) for (let j = 0; j < 2; j++) {
         if (rnd() < 0.3) continue;
         const p = toWorld(pit, -22.4 + k * 6.4 + (rnd() - 0.5) * 3, 0, 0.2 + rnd() * 1.1);
@@ -2026,10 +2027,10 @@ function buildStreetWalls(track) {
       // faces: road side, top, back (each facing out, whichever side of the road)
       const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
       const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
-      const blk = Math.floor(a.i / 10), k = a.i % 10, face = concrete;
-      if (blk % 2 === 1 && k >= 3 && k < 6 && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 30 m
+      const blk = Math.floor(a.i / 15), k = a.i % 15, face = concrete;
+      if (k >= 6 && k < 9 && blk * 15 + 9 <= N && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 22.5 m (and never one cut short where the lap's samples run out)
         const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.08, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.08 }), c = samples[a.i].p;
-        addBanner((blk >> 1) + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
+        addBanner(blk + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
       }
       if (side > 0) { pushQuad(pos, col, A0, A1, B1, B0, face); pushQuad(pos, col, A1, C1, D1, B1, topC); pushQuad(pos, col, C0, D0, D1, C1, backC); }
       else { pushQuad(pos, col, A0, B0, B1, A1, face); pushQuad(pos, col, A1, B1, D1, C1, topC); pushQuad(pos, col, C0, C1, D1, D0, backC); }
@@ -3962,7 +3963,7 @@ function buildRoseBay(track, rnd, randIn) {
     // over ground that slopes into the sea, so a car on it would sink through. Sandstone with a coping and a
     // pier every 6 m, like the wall behind the shops (the owner likes that one, and wanted walls here in place
     // of a rail on posts); at each end it turns back to the sea wall, or runs into the tunnel's wall, so
-    // there's no way round it. Being a proper barrier, it carries a sponsor's banner every 24 m or so.
+    // there's no way round it. Being a proper barrier, it carries a sponsor's banner every 18 m or so.
     {
       const stone = lam(0xcdb88a), coping = lam(0xb9a878), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
       const span = (a, b) => {
@@ -3983,7 +3984,7 @@ function buildRoseBay(track, rnd, randIn) {
         if (prev) {
           span(prev, q);
           const dx = q[0] - prev[0], dz = q[2] - prev[2], len = Math.hypot(dx, dz);
-          if (len > 5.4 && lengths++ % 4 === 2) { // a sponsor's banner on one length in four, on the road side
+          if (len > 5.4 && lengths++ % 3 === 1) { // a sponsor's banner on one length in three, on the road side
             const ins = (len - 4.4) / 2 / len, nx = s.p.x - x, nz = s.p.z - z, nl = Math.hypot(nx, nz) || 1;
             const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.33, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.33 });
             addBanner(lengths, on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
@@ -7020,7 +7021,8 @@ function wireUI() {
   // Someone here for the first time starts up to date.
   const latest = UPDATES[0].v, store = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const seen = store('dc-seen'), back = VISITED_BEFORE;
-  const since = UPDATES.findIndex(u => u.v === seen); // entries newer than the one they saw (never looked: just the latest)
+  const vnum = (v) => { const [a, b = 0] = String(v).split('.').map(Number); return a * 1000 + b; }; // (3.9 comes before 3.16)
+  const since = seen == null ? -1 : UPDATES.findIndex(u => vnum(u.v) <= vnum(seen)); // entries newer than the version they saw (never looked: just the latest)
   const fresh = (k) => seen !== latest && k < (since < 0 ? 1 : since);
   $('#ver').textContent = 'v' + latest;
   $('#updates-dot').classList.toggle('hidden', seen === latest);

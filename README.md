@@ -323,8 +323,8 @@ the owner chose: 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and
 Glory Days), and Tenth Floor Chambers and Frangos as themselves, each in its
 company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
 every billboard (each turned to face the cars coming) and on Sydney CBD's lit
-boards. Banners go on solid walls only, one every 25 to 30 m or so: five along
-the pit wall, Sydney CBD's walls (about 70 round the lap), Rose Bay's harbour
+boards. Banners go on solid walls only, one every 20 m or so: six along the
+pit wall, Sydney CBD's walls (about 95 round the lap), Rose Bay's harbour
 wall and the stone wall behind its shops, and the wall round Westfield's roof
 where the cars drive straight at it (the end of the start straight and the top
 of the ramp up). Rails on posts, fences and the railings of bridges and ramps

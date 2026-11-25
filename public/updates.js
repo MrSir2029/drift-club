@@ -1,22 +1,90 @@
-// What's new: one entry per day, newest first. When the game changes, add
-// the change to today's entry and bump its version (or start a new entry on a
-// new day): players see the list behind the "What's new" button on the home
-// screen, it opens by itself for anyone coming back after the top version
-// changed, and the button shows a dot until they've seen it. Each entry says
-// where things ended up that day, not every step on the way.
+// What's new: one entry per version, newest first. Every change gets its own
+// version and its own entry, saying what that version changed: the owner
+// asked for this on 25 Nov 2026 ("break up the new versions properly for
+// every individual change"). The entries before 3.17 are a day each, from
+// when a day's changes were folded into one. Players see the list behind the
+// "What's new" button on the home screen, it opens by itself for anyone coming
+// back after the top version changed, and the button shows a dot until they've
+// seen it.
 export const UPDATES = [
   {
-    v: '3.27', date: '25 Nov 2026', title: 'Rose Bay, Westfield and the Drift King',
+    v: '3.27', date: '25 Nov 2026', title: 'Banners on the walls',
     items: [
-      'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the InterContinental.',
-      'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
-      'And another, Westfield Mall Circuit: start on the roof of the car park, down the ramp, across Oxford Street, in through the doors and flat out between the shops, round the food court and back up the other ramp, with the Harbour Bridge dead ahead. The 333 is waiting at its stop.',
-      'Neither has walls all the way round: like the older tracks, there are rails on the outside of corners and open ground everywhere else. Rose Bay has a low sandstone wall along the harbour, and at Westfield you can drive all over the car park roof.',
-      'New trackside sponsors: 9 meter, pwd, Glory Dates, Tenth Floor Chambers and Frangos. They\'re on the billboards (which are turned to face you as you drive up to them), along the pit wall, and on the walls at Sydney CBD, Rose Bay and Westfield\'s roof. Never on a fence or a rail.',
+      'More sponsors\' banners than 3.26 had, and fewer than before it: about one every 20 m on the walls at Sydney CBD and along Rose Bay\'s harbour wall.',
+      'Six along the pit wall on the older tracks, and a few on the wall round Westfield\'s roof, where you drive straight at it.',
+      'Still none on a fence or a rail.',
+    ],
+  },
+  {
+    v: '3.26', date: '25 Nov 2026', title: 'Fewer ads, a proper Opera House',
+    items: [
+      'Far fewer sponsors\' banners, and only on solid walls: none on fences, rails or the railings of bridges.',
+      'The billboards and banners don\'t flicker from far off any more.',
+      'The first sponsor\'s board now reads 9 meter, in the same lettering.',
       'The Opera House has proper sails, and the city behind it has windows: across the water from Rose Bay, on the horizon at Westfield and at Sydney CBD.',
+      'Rose Bay has a low sandstone wall along the harbour, where the guard rail was.',
+      'The InterContinental\'s name sits on the front of the hotel, clear of the wall.',
+    ],
+  },
+  {
+    v: '3.25', date: '25 Nov 2026', title: 'The InterContinental',
+    items: [
+      'The hotel over Rose Bay\'s tunnel is the InterContinental, and says so.',
+    ],
+  },
+  {
+    v: '3.24', date: '25 Nov 2026', title: 'The Drift King',
+    items: [
+      'The Drift King championship: every track\'s top ten scores like F1 (25 for the record, 18 for second, down to 1 for tenth), and the points add up over all eight tracks.',
+      'Whoever leads is the Drift King and wears the crown on the leaderboard, where the new Championship tab shows everyone\'s points.',
+    ],
+  },
+  {
+    v: '3.23', date: '25 Nov 2026', title: 'Sponsors in their own lettering',
+    items: [
+      'The first sponsor\'s board is drawn in its own lettering.',
+      'Banners only go on barriers: none on the railings of bridges and ramps.',
+    ],
+  },
+  {
+    v: '3.22', date: '25 Nov 2026', title: 'Trackside sponsors',
+    items: [
+      'New trackside sponsors on every billboard and along the barriers: nine kilometre, pwd, Glory Dates, Tenth Floor Chambers and Frangos.',
+      'The billboards are turned to face you as you drive up to them.',
       'You can\'t crash into a checkpoint any more: clip a gate post, or a post of the start arch, and you go straight through it.',
-      'The Drift King championship: every track\'s top ten scores like F1 (25 for the record, 18 for second, down to 1 for tenth), and the points add up over all eight tracks. Whoever leads is the Drift King and wears the crown on the leaderboard, where the new Championship tab shows everyone\'s points.',
+    ],
+  },
+  {
+    v: '3.21', date: '25 Nov 2026', title: 'Open ground at Rose Bay and Westfield',
+    items: [
+      'Neither track has walls all the way round any more: like the older tracks, there are rails on the outside of corners and open ground everywhere else.',
+      'Rose Bay keeps a guard rail along the harbour, and at Westfield you can drive all over the car park roof.',
+    ],
+  },
+  {
+    v: '3.20', date: '25 Nov 2026', title: 'Race barriers',
+    items: [
+      'Rose Bay and Westfield have proper race barriers: white, with a red band along the top.',
+      'A lamp post that stood on the road at the top of Westfield\'s ramp is gone.',
+    ],
+  },
+  {
+    v: '3.19', date: '25 Nov 2026', title: 'Westfield Mall Circuit',
+    items: [
+      'A new track, Westfield Mall Circuit: start on the roof of the car park, down the ramp, across Oxford Street, in through the doors and flat out between the shops, round the food court and back up the other ramp, with the Harbour Bridge dead ahead. The 333 is waiting at its stop.',
       'The leaderboard has a tab for each of the eight tracks, in two rows.',
+    ],
+  },
+  {
+    v: '3.18', date: '25 Nov 2026', title: 'Rose Bay Harbour Circuit',
+    items: [
+      'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the hotel.',
+      'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
+    ],
+  },
+  {
+    v: '3.17', date: '25 Nov 2026', title: 'Thredbo\'s chairlift',
+    items: [
       'The chairlift at Thredbo crosses over the track now: you drive under the chairs just after the start.',
     ],
   },
