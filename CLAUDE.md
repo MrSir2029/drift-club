@@ -44,6 +44,9 @@
     at night they still glow. Rose Bay's race barriers have one every 80 m.
   - Signs are single sided (the owner asked): a billboard has one poster, on
     the face turned to the road and the cars coming, and nothing on its back.
+  - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
+    not illuminated"): they take the scene's light, dim at night. The finish
+    pad and the beam of light in Race to 9LAT2 mode are still there.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
     welcome there where a barrier is needed, in place of a rail on posts.
     Its straights have Westfield's race barrier in that sandstone, with the

@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.59', date: '26 Nov 2026', title: 'The 9LAT2 signs stop glowing',
+    items: [
+      'The signs on the 9LAT2 building aren\'t lit up any more. They catch the daylight like the walls around them, and go dark at night.',
+    ],
+  },
+  {
     v: '3.58', date: '26 Nov 2026', title: 'One-sided billboards',
     items: [
       'The billboards beside the track have their poster on one side only now: the side that faces the road. From behind, a billboard is just the back of a sign.',
