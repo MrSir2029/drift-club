@@ -2279,8 +2279,8 @@ function signTexture(text, bg, ink, w = 512, h = 128) {
 // cricket match and big Moreton Bay figs. Centennial Park: the Federation
 // Pavilion, horses in a paddock and black swans on the pond. Thredbo: a
 // chairlift across the track with skiers coming down beside it, and A-frame lodges.
-// Pinto Speedway (Mount Panorama until 3.55): Mount Panorama's corner names on signs round the lap, and campers
-// round their fires on the mountain. Noosa Heads: surfers riding the waves in
+// Pinto Speedway (Mount Panorama until 3.55): campers round their fires on the mountain (and, until 3.56, signs
+// with Mount Panorama's corner names). Noosa Heads: surfers riding the waves in
 // along the headland, koalas in the gum trees on it. Sydney: Sydney Tower at
 // the end of the main straight, the Harbour Bridge and the Opera House across
 // the water. Built after the landmarks and before the scenery, so the trees,
@@ -2330,7 +2330,6 @@ function buildLocal(track) {
     quad(v(B, f), v(B, -f), v(C, -f), v(C, f)); quad(v(C, f), v(C, -f), v(A, -f), v(A, f)); quad(v(A, f), v(A, -f), v(B, -f), v(B, f));
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.computeVertexNormals(); return g;
   };
-  const label = signTexture; // words on a sign
 
   if (which === 'queens') {
     const crowd = makePeople(70, rnd);
@@ -2579,7 +2578,10 @@ function buildLocal(track) {
   }
 
   if (which === 'panorama') {
-    // the corners' real names, in order round the lap, on lit signs on the outside of each
+    // (Until 3.56 a lit sign stood on the approach to each corner with one of Mount Panorama's corner names on it,
+    // Hell Corner to Murray's Corner. The track is Pinto Speedway now, and the owner had them taken down. Each
+    // sign's place is still found and kept clear, as it always was, so that the trees and everything else on the
+    // track stand exactly where they did.)
     const turn = samples.map((a, i) => { const b = samples[(i + 10) % N]; return a.th.x * b.th.z - a.th.z * b.th.x; });
     const corners = [];
     for (let i = 0; i < N; i++) {
@@ -2590,24 +2592,13 @@ function buildLocal(track) {
       corners.push({ i, k, dir: Math.sign(turn[i]) });
     }
     if (corners.length > 1 && corners[0].i + N - corners[corners.length - 1].i < 45) corners.pop(); // the last bend is the first one again
-    const NAMES = ['HELL CORNER', 'GRIFFINS BEND', 'THE CUTTING', 'REID PARK', 'McPHILLAMY PARK', 'SKYLINE', 'THE ESSES', 'THE DIPPER', "FORREST'S ELBOW", 'THE CHASE', "MURRAY'S CORNER"];
-    const m = Math.min(corners.length, NAMES.length);
-    for (let j = 0; j < m; j++) {
-      const name = j === 0 ? NAMES[0] : j === m - 1 ? NAMES[NAMES.length - 1] : NAMES[1 + Math.round((j - 1) * (NAMES.length - 3) / Math.max(1, m - 3))];
-      const c = corners[j], out = c.dir > 0 ? 1 : -1;
-      // on the approach, on the outside if there's room there, further back or on the inside if not
-      const tries = [];
+    for (const c of corners.slice(0, 11)) {
+      const out = c.dir > 0 ? 1 : -1, tries = [];
       for (const back of [14, 20, 9, 27, 34]) for (const side of [out, -out]) for (let lat = hw + 6; lat < hw + 22; lat += 2) tries.push([back, side, lat]);
       for (const [back, side, lat] of tries) {
         const s = samples[(c.i - back + N) % N], x = s.p.x + s.left.x * side * lat, z = s.p.z + s.left.z * side * lat;
         if (Math.hypot(x - lim.x, z - lim.z) > lim.r - 6 || !isFree(track, x, z, 3.4, hw + 5)) continue;
-        const g = at(x, z, Math.atan2(-s.th.x, -s.th.z));
-        for (const px of [-3.2, 3.2]) box(g, 0.22, 3.4, 0.22, 0x3b4250, px, 1.7, -0.12);
-        box(g, 7.8, 2.1, 0.16, 0x1d2230, 0, 2.75, -0.12);
-        const face = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 1.85), new THREE.MeshBasicMaterial({ map: label(name, '#1f5f3a', '#ffffff'), color: 0xd8d8d8 }));
-        face.position.set(0, 2.75, 0); g.add(face);
-        for (const px of [-3.2, 3.2]) { const [wx, wz] = W(x, z, g.rotation.y, px, 0); solids.push({ x: wx, z: wz, r: 0.3, y: g.position.y }); }
-        claim(x, z, 4); spots.push({ name, x, z, ry: g.rotation.y });
+        claim(x, z, 4);
         break;
       }
     }

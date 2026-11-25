@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.56', date: '26 Nov 2026', title: 'Pinto Speedway\'s old signs come down',
+    items: [
+      'The signs at Pinto Speedway still had Mount Panorama\'s corner names on them. They\'ve been taken down.',
+    ],
+  },
+  {
     v: '3.55', date: '26 Nov 2026', title: 'Pinto Speedway',
     items: [
       'Mount Panorama Circuit is Pinto Speedway now. Same track, same lap times.',

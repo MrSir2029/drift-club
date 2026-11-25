@@ -80,7 +80,8 @@
   with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare
   hills read as unfinished.
 - The fourth track is Pinto Speedway (the owner's name for it; it was Mount
-  Panorama Circuit). Its signs still carry Mount Panorama's corner names.
+  Panorama Circuit). The signs with Mount Panorama's corner names came down
+  at the owner's request ("Remove them pls"): don't put them back.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
