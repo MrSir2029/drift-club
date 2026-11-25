@@ -8,6 +8,20 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.42', date: '26 Nov 2026', title: 'Balloons with their baskets tied on',
+    items: [
+      'The hot-air balloons\' baskets hang from them by ropes now, with a burner in between, instead of floating a little way underneath.',
+    ],
+  },
+  {
+    v: '3.41', date: '26 Nov 2026', title: 'Race barriers at Rose Bay',
+    items: [
+      'Rose Bay has race barriers like Westfield\'s, in the bay\'s own sandstone: a block with a wire catch fence on top. They line the start straight, Heartbreak Hill, both sides of the straight along the top and of the shops\' street, and the run down to the tunnel.',
+      'The crowd stands on stone steps behind them, where you can see them over the wall, and the pit wall has the fence along its top.',
+      'The corners keep their rails and the harbour keeps its view. On the top straight there are two ways through the barrier, for Race to 9LAT2.',
+    ],
+  },
+  {
     v: '3.40', date: '26 Nov 2026', title: 'The record ghost, easier to find',
     items: [
       'The record holder\'s ghost has its switch near the top of Settings now, and in Polytrack mode there\'s one in the pause menu too, which says whose ghost you\'re chasing.',

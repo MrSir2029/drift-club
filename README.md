@@ -304,10 +304,20 @@ names. Its `sea` in `tracks.js` also says how high the land sits inland
 (`base`, `hills`), how far above the water the sand goes (`sand`, `fade`) and
 that no islands get dotted over the water (`clear`); `urban` keeps the
 landmarks to the ones that fit in a town, and `fresh` puts "New track" on its
-card in the lobby. It has no walls round it: like the older tracks it gets
+card in the lobby. It isn't walled in all round: like the older tracks it gets
 rails and tyres on the outside of corners, marshal posts and spectators behind
-short fences, with barriers of its own only where a car would otherwise end up
-somewhere it can't be. Those are a low sandstone wall along the harbour side
+short fences. Its straights have race barriers (3.41, at the owner's asking:
+"more of the new barriers", meaning Westfield's): a sandstone block with a
+wire catch fence on top, in 4.5 m bays, along the land side of the start
+straight (run in to the pit wall, which carries the fence past the garages),
+the outside of Heartbreak Hill, both sides of the straight along the top and
+of the shops' street, and the shops' side of the hill down, run in to the
+tunnel's wall. The crowd stands behind them on two stone steps wherever
+nothing else is in the way, or on the footpath in front of the shops; it is a
+set of people of its own with its own random numbers, so the rest of the bay
+stays put. The outside of the top straight has two 12 m ways through: Race to
+9LAT2 leaves the road there. Then there are the barriers a car needs so as
+not to end up somewhere it can't be: a low sandstone wall along the harbour side
 of the quay (the promenade is paving over ground that slopes into the sea, so
 a car on it would sink through), the tunnel's own walls, and a stone wall along the
 top of the bank behind the shops (without it you could leave the first
@@ -384,7 +394,8 @@ company's own colours and lettering (`SPONSOR_ART` in `game.js`). They are on
 every billboard (each turned to face the cars coming) and on Sydney CBD's lit
 boards. Banners go on solid walls only, one every 20 m or so: six along the
 pit wall, Sydney CBD's walls (about 95 round the lap), Rose Bay's harbour
-wall and the stone wall behind its shops, and at Westfield the sides of
+wall, the stone wall behind its shops and the blocks of its race barriers
+(one every 40 m there), and at Westfield the sides of
 Oxford Street's median, every other length of race barrier, and the wall
 round the roof where the cars drive straight at it (the end of the start
 straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
