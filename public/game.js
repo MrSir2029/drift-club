@@ -2049,15 +2049,22 @@ function buildProps(track) {
     if (![-1, 0, 1].every(e => isFree(track, p.x + ex * e, p.z + ez * e, 1.5, hw + 5))) continue;
     for (const e of [-1, 0, 1]) claim(p.x + ex * e, p.z + ez * e, 2.6);
     const grp = new THREE.Group();
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(10.4, 3.4, 0.3), lam(0x1d2230)); // the frame: a sponsor's poster goes on each face
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(10.4, 3.4, 0.3), lam(0x1d2230)); // the frame: a sponsor's poster goes on the face turned to the road
     panel.position.y = 4; panel.castShadow = true; grp.add(panel);
-    for (const x of [-4, 4]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7, 0.3), postMat); leg.position.set(x, 0, 0); grp.add(leg); }
+    // The board hangs on the front of two posts, with two rails across its back, so from behind it's plainly the back
+    // of a sign and not a board whose poster is missing. (The posts used to stand inside the board, their faces level
+    // with its own: that was hidden while there was a poster on each face.) `back` is which way the back looks.
+    const back = side;
+    for (const x of [-4, 4]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 9, 0.3), postMat); leg.position.set(x, 1, back * 0.3); grp.add(leg); } // (from well under the ground, for slopes, to just short of the top)
+    for (const y of [3.1, 4.9]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.16, 0.12), postMat); rail.position.set(0, y, back * 0.21); grp.add(rail); }
     grp.position.copy(p);
     grp.rotation.y = rot;
     worldGroup.add(grp);
     grp.updateMatrixWorld();
-    for (const [z, k] of [[0.22, bb], [-0.22, bb + 2]]) addPoster([[-5, 2.5], [5, 2.5], [5, 5.5], [-5, 5.5]].map(([x, y]) => V(z > 0 ? x : -x, y, z).applyMatrix4(grp.matrixWorld)), k);
-    for (const e of [-0.8, 0.8]) solid({ x: p.x + ex * e, z: p.z + ez * e, y: p.y }, 0.45);
+    // One poster, on the face that looks at the road and the cars coming. (Until 3.58 the back had one too, a different
+    // sponsor's, facing away over the scenery: the owner asked for the signs to be single sided.)
+    { const z = -back * 0.22; addPoster([[-5, 2.5], [5, 2.5], [5, 5.5], [-5, 5.5]].map(([x, y]) => V(z > 0 ? x : -x, y, z).applyMatrix4(grp.matrixWorld)), bb); }
+    for (const e of [-0.8, 0.8]) solid({ x: p.x + ex * e + Math.sin(rot) * back * 0.3, z: p.z + ez * e + Math.cos(rot) * back * 0.3, y: p.y }, 0.45); // (the posts)
     const pole = at(s, -side * (hw + 6));
     if (!gravel && isFree(track, pole.x, pole.z, 1, hw + 3)) {
       claim(pole.x, pole.z, 1);

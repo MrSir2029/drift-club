@@ -42,6 +42,8 @@
   - By day the signs take the scene's light and shadow (they were lit from
     inside, and the owner found them "way too intrusive and out of place");
     at night they still glow. Rose Bay's race barriers have one every 80 m.
+  - Signs are single sided (the owner asked): a billboard has one poster, on
+    the face turned to the road and the cars coming, and nothing on its back.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
     welcome there where a barrier is needed, in place of a rail on posts.
     Its straights have Westfield's race barrier in that sandstone, with the

@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.58', date: '26 Nov 2026', title: 'One-sided billboards',
+    items: [
+      'The billboards beside the track have their poster on one side only now: the side that faces the road. From behind, a billboard is just the back of a sign.',
+    ],
+  },
+  {
     v: '3.57', date: '26 Nov 2026', title: 'A reminder to refresh',
     items: [
       'When an update comes out while your tab is open, the game now tells you, with a Refresh button. Until now an open tab just kept running the old version.',
