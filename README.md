@@ -367,7 +367,13 @@ wire catch fence on top) with the crowd behind it, unbroken down both sides
 of the start straight from the top of the ramp to the corner at the far end
 (the owner didn't want it cut off between the stands) and in lengths along
 Oxford Street's two carriageways; a grandstand each side just past the line,
-and a crowd round the hairpin.
+and a crowd round the hairpin. Where the lap leaves the west doors, crosses
+Oxford Street and climbs the ramp, there was nothing either side (the owner:
+"this whole area should have barriers"): now the barrier runs down both
+sides, in from each edge of the doorway, across the street with the crowd on
+two steps behind it, and in again to the foot of the ramp, where a concrete
+parapet carries on up each edge as far as the ramp's own rails
+(`raceFenceTo`, the same barrier between any two points).
 Outside: a row of parked cars each side of the roof, back behind the crowd,
 and more on the main roof (`parkedCarGeometry`: one shape for all of them, a
 body, a glasshouse and wheels, after the owner called the old boxes buns),

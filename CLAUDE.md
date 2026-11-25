@@ -78,7 +78,9 @@
   barrier and add way more spectator spots"): race barriers with catch
   fences, grandstands and crowds, not a car park. The barrier down the start
   straight is unbroken ("it just cut off between grandstands" was a
-  complaint about gaps in it). Parked cars stay back from
+  complaint about gaps in it), and the crossing from the west doors over
+  Oxford Street to the ramp has it down both sides, joined to the doorway
+  and to the ramp ("this whole area should have barriers"). Parked cars stay back from
   the road and must look like cars (the owner called the boxy ones "buns").
 - No tyre stacks on corners: the owner had them taken out on every track
   ("the little black pole things on all the corners"). The rails and their
