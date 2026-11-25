@@ -25,3 +25,10 @@
     corners, walls): never on fences or on the railings of bridges and ramps.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
+- **Trying a build before deploying:** the owner likes to play an update
+  before pressing Deploy. `npm run build-preview` writes `preview-build/` (not
+  committed): the game with its server inside the page, one player, nothing
+  touching the live leaderboard. Publish `preview-build/index.html` with the
+  files beside it (all but `local.html`) as a private artifact. There is one
+  already, called Drift Club Preview: find it in the artifact list and update
+  it by its URL instead of making another.
