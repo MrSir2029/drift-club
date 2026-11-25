@@ -10,10 +10,16 @@
   asleep and doesn't answer, ship anyway: players' browsers hand their copies
   back.
 - The secret livery (colour 12) and its code stay out of What's new and the
-  README. Cars only carry made-up sponsor names, never real brands. Two
-  exceptions, both at the owner's request:
+  README. Cars only carry made-up sponsor names, never real brands. Three
+  exceptions, all at the owner's request:
   - Shop signs at Rose Bay and Westfield, and the hotel over Rose Bay's tunnel
     (The InterContinental): real local names in plain lettering, never logos.
+  - The Maccas on Sydney CBD, just past the start (`buildMaccas` in
+    `game.js`): the golden arches, drawn in code like the sponsors' boards
+    (never a picture file), "Macca's" in plain lettering, and Jago serving at
+    the drive-through window with his name on his name tag (first name only:
+    a player asked for him, and the owner said yes). No other real
+    restaurants or real people unless the owner asks.
   - The trackside sponsors on posters and wall banners (`SPONSOR_ART` in
     `game.js`): 9 Meter, PWD and Glory Dates (puns on Nine Mile, PwC and Glory
     Days), and Tenth Floor Chambers and Frangos as themselves, each drawn in

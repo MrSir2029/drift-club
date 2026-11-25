@@ -4883,6 +4883,82 @@ function buildBeach(track, rnd, randIn) {
 // behind them, windows lit at random, neon over the shops and a skyline
 // running off into the night. Every building is in one mesh (the windows are
 // a texture) and the ones inside the map are solid.
+// The Maccas' lettering, on one sheet: the golden arches (a red tile with the M on it in two strokes of gold),
+// the name, and Jago's name tag. Drawn here, like the sponsors' boards: no picture file.
+const MACCAS_ART = { arch: [0, 0, 256, 256], word: [0, 256, 512, 100], tag: [256, 0, 256, 128] };
+function maccasTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const x = c.getContext('2d');
+  x.fillStyle = '#da291c'; x.fillRect(0, 0, 256, 256);
+  x.strokeStyle = '#ffc72c'; x.lineWidth = 30; x.lineCap = 'butt'; x.lineJoin = 'round';
+  x.beginPath(); x.moveTo(40, 216); x.bezierCurveTo(40, 96, 62, 42, 84, 42); x.bezierCurveTo(106, 42, 122, 112, 128, 186); x.bezierCurveTo(134, 112, 150, 42, 172, 42); x.bezierCurveTo(194, 42, 216, 96, 216, 216); x.stroke();
+  x.fillStyle = '#da291c'; x.fillRect(0, 256, 512, 100);
+  x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '900 76px "Segoe UI", Arial, sans-serif'; x.fillText("Macca's", 256, 310);
+  x.fillStyle = '#ffffff'; x.fillRect(256, 0, 256, 128); x.strokeStyle = '#1d2230'; x.lineWidth = 8; x.strokeRect(266, 10, 236, 108);
+  x.fillStyle = '#1d2230'; x.font = '900 70px "Segoe UI", Arial, sans-serif'; x.fillText('JAGO', 384, 68);
+  return cleanTexture(c);
+}
+// A Maccas on the plot `m` (centre, heading along the road, which side of the road, the plot's depth and width):
+// a low restaurant with a red fascia and lit windows, the arches on a tall pole where drivers coming up the
+// straight see them, and a drive-through window on the side facing the road with Jago at it, name tag and all.
+// One of the exceptions to "no real brands" that the owner asked for (CLAUDE.md). It's night, so everything is
+// drawn in its own light: one mesh of flat colours (each face shaded by which way it looks) and one of lettering.
+function buildMaccas(track, m) {
+  track.maccas = m;
+  const f = -m.side, cs = Math.cos(m.ry), sn = Math.sin(m.ry); // f: towards the road, along the plot's x (its z runs along the road, the way the cars go)
+  const W = (x, y, z) => V(m.cx + x * cs + z * sn, m.y + y, m.cz - x * sn + z * cs);
+  const pos = [], col = [], tint = new THREE.Color();
+  const box = (w, h, d, hex, x, y, z) => {
+    const x0 = x - w / 2, x1 = x + w / 2, y0 = y - h / 2, y1 = y + h / 2, z0 = z - d / 2, z1 = z + d / 2, q = (a, b, c, e, k) => pushQuad(pos, col, W(...a), W(...b), W(...c), W(...e), tint.set(hex).multiplyScalar(k).clone());
+    q([x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], 1); q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], 0.5);
+    q([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], 0.9); q([x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], 0.9);
+    q([x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0], 0.74); q([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], 0.74);
+  };
+  const BD = 8, BL = Math.min(11, m.w - 3), H = 3.6, front = f * (m.d / 2 - 0.8), mid = front - f * BD / 2; // the restaurant: 8 m deep, 11 long, its front 0.8 m in from the plot's edge
+  box(BD, H, BL, 0xb7ae98, mid, H / 2, 0);                                     // walls
+  box(BD + 0.7, 0.9, BL + 0.7, 0xda291c, mid, H + 0.45, 0);                    // the red fascia
+  box(BD - 0.6, 0.3, BL - 0.6, 0x23272f, mid, H + 1.05, 0);                    // roof
+  box(BD + 1.3, 0.14, BL + 1.3, 0xffc72c, mid, H - 0.02, 0);                   // a gold line under it
+  const face = front + f * 0.04;
+  box(0.1, 1.7, 3.0, 0xffe7b0, face, 1.95, -0.2);                              // the dining room's window
+  box(0.1, 2.3, 1.4, 0xffe7b0, face, 1.15, -BL / 2 + 1.5);                     // the door
+  box(0.14, 2.4, 0.12, 0x5a5f6a, face, 1.2, -BL / 2 + 2.26); box(0.14, 2.4, 0.12, 0x5a5f6a, face, 1.2, -BL / 2 + 0.74);
+  // the drive-through window, at the far end: a lit opening, a counter, a little red awning
+  const wz = BL / 2 - 1.9;
+  box(0.1, 1.3, 1.7, 0xfff1c9, face, 1.85, wz);
+  box(0.6, 0.1, 1.9, 0x9aa0aa, front + f * 0.3, 1.16, wz);
+  box(0.9, 0.12, 2.2, 0xda291c, front + f * 0.45, 2.66, wz);
+  // Jago, leaning on the counter: dark shirt, red cap, a bag in his hand, his name on his chest
+  const jx = front + f * 0.2;
+  box(0.3, 0.72, 0.52, 0x3b4250, jx, 1.56, wz);                                // shirt
+  box(0.3, 0.3, 0.3, 0xe0b592, jx, 2.07, wz);                                  // head
+  box(0.34, 0.1, 0.34, 0xda291c, jx, 2.27, wz); box(0.16, 0.04, 0.3, 0xda291c, jx + f * 0.22, 2.23, wz); // cap and peak
+  box(0.5, 0.12, 0.12, 0x3b4250, jx + f * 0.3, 1.5, wz + 0.3); box(0.12, 0.12, 0.12, 0xe0b592, jx + f * 0.58, 1.5, wz + 0.3); // an arm out of the window
+  box(0.2, 0.3, 0.16, 0xb98a55, jx + f * 0.62, 1.32, wz + 0.3);                // and the bag
+  // the pole for the arches, at the end of the plot the cars reach first
+  const px = f * (m.d / 2 - 1.3), pz = -m.w / 2 + 1.5;
+  box(0.36, 9.2, 0.36, 0x5a606b, px, 4.6, pz); box(3.4, 3.4, 0.4, 0xda291c, px, 10.9, pz);
+  const body = flatMesh(pos, col, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })); body.userData.dyn = true; worldGroup.add(body);
+  // the lettering: a piece of the sheet on an upright rectangle, w wide and h high, centred on (x, y, z) and facing (nx, nz)
+  const tp = [], tuv = [];
+  const letter = ([ax, ay, aw, ah], x, y, z, nx, nz, w, h) => {
+    const u0 = ax / 512, u1 = (ax + aw) / 512, v1 = 1 - ay / 512, v0 = 1 - (ay + ah) / 512, rx = nz * w / 2, rz = -nx * w / 2; // (rx, rz): half the width, to the right as you look at it
+    const q = [[W(x - rx, y - h / 2, z - rz), u0, v0], [W(x + rx, y - h / 2, z + rz), u1, v0], [W(x + rx, y + h / 2, z + rz), u1, v1], [W(x - rx, y + h / 2, z - rz), u0, v1]];
+    for (const k of [0, 1, 2, 0, 2, 3]) { tp.push(q[k][0].x, q[k][0].y, q[k][0].z); tuv.push(q[k][1], q[k][2]); }
+  };
+  letter(MACCAS_ART.tag, jx + f * 0.156, 1.7, wz - 0.08, f, 0, 0.3, 0.15);
+  letter(MACCAS_ART.arch, front + f * 0.362, H + 0.45, -1.9, f, 0, 0.84, 0.84);
+  letter(MACCAS_ART.word, front + f * 0.362, H + 0.45, 0.4, f, 0, 3.2, 0.62);
+  for (const sd of [1, -1]) letter(MACCAS_ART.arch, px, 10.9, pz + sd * 0.212, 0, sd, 3.3, 3.3);
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(tp, 3)); tg.setAttribute('uv', new THREE.Float32BufferAttribute(tuv, 2));
+  const text = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ map: maccasTexture(), side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 })); // (drawn a touch nearer than what it sits on, so it never flickers)
+  text.userData.dyn = true; worldGroup.add(text);
+  // what's solid: the restaurant and the pole
+  const cnr = [[mid - BD / 2, -BL / 2], [mid - BD / 2, BL / 2], [mid + BD / 2, BL / 2], [mid + BD / 2, -BL / 2]].map(([x, z]) => W(x, 0, z));
+  for (let k = 0; k < 4; k++) track.walls.push({ ax: cnr[k].x, az: cnr[k].z, bx: cnr[(k + 1) % 4].x, bz: cnr[(k + 1) % 4].z, y: m.y });
+  { const p = W(px, 0, pz); track.solids.push({ x: p.x, z: p.z, r: 0.5, y: m.y }); }
+}
+
 function buildCity(track, rnd) {
   const { samples, N, hw } = track, lim = track.limit, walls = track.walls;
   const BAY = 3.6, FLOOR = 3.3, CELLS = 8; // a window every 3.6 m along, a floor every 3.3 m up; the texture is 8 x 8 windows
@@ -4985,6 +5061,7 @@ function buildCity(track, rnd) {
   const floors = (lo, hi) => FLOOR * (lo + Math.floor(rnd() * (hi - lo + 1))) + 0.8; // whole floors and a parapet
 
   // ---- a row of buildings along each side of the circuit, fronts to the road ----
+  let maccas = null; // (the plot kept for it: see below)
   const turn = samples.map((a, i) => { const b = samples[(i + 6) % N]; return Math.abs(a.th.x * b.th.z - a.th.z * b.th.x); });
   const gaps = track.gaps || [];
   const inGap = (side, i0, i1) => gaps.some(g => g.side === side && i1 >= g.a - 3 && i0 <= g.b + 3);
@@ -4995,6 +5072,9 @@ function buildCity(track, rnd) {
       if (turn[i] > 0.04 || turn[(i + span) % N] > 0.04 || inGap(side, i, i + span)) { i += 2; continue; }
       const lat = hw + 9.6 + d / 2, cx = s.p.x + s.left.x * side * lat, cz = s.p.z + s.left.z * side * lat;
       const pts = footprint(cx, cz, d / 2, w / 2, Math.atan2(s.th.x, s.th.z));
+      // The first plot past the start line is the Maccas'. A building goes up on it like any other, so the same
+      // random numbers get used and the rest of the city comes out as it always has, and is then taken away again.
+      const mark = !maccas && c >= 12 && c <= 150 ? [P.length, NR.length, UV.length, C.length, walls.length, blink.length, signs.length, boards.length] : null;
       const r = place(pts, floors(3, 16), 'front');
       if (!r) { i += 2; continue; }
       // neon over the shop on the ground floor, facing the road
@@ -5008,6 +5088,10 @@ function buildCity(track, rnd) {
         const bw = Math.min(w - 2, 12 + rnd() * 3), bh = bw * 0.3, y = r.gtop + 10.5 + bh / 2 + rnd() * Math.max(0, r.top - r.gtop - 13.5 - bh); // (a poster's shape)
         const f = lat - d / 2 - 0.45;
         boards.push({ c: V(s.p.x + s.left.x * side * f, y, s.p.z + s.left.z * side * f), n: V(-s.left.x * side, 0, -s.left.z * side), w: bw, h: bh });
+      }
+      if (mark) {
+        P.length = mark[0]; NR.length = mark[1]; UV.length = mark[2]; C.length = mark[3]; walls.length = mark[4]; blink.length = mark[5]; signs.length = mark[6]; boards.length = mark[7];
+        maccas = { cx, cz, ry: Math.atan2(s.th.x, s.th.z), side, d, w, y: r.gtop };
       }
       i += span + 2;
     }
@@ -5023,6 +5107,9 @@ function buildCity(track, rnd) {
       if (!place(footprint(x, z, hx, hz, 0), h, 'grid')) place(footprint(x, z, hx * 0.6, hz * 0.6, 0), h * 0.7, 'grid'); // a smaller one if it doesn't fit
     }
   }
+  // ---- the Maccas, just past the start: the owner asked for one here, golden arches and all (drawn below, in
+  // code, like the sponsors' boards: no picture file), with Jago serving at the drive-through window ----
+  if (maccas) buildMaccas(track, maccas);
   // ---- and a skyline far off ----
   for (let k = 0; k < 70; k++) {
     const a = (k / 70) * 6.2832 + rnd() * 0.06, d = lim.r + 330 + rnd() * 600, hx = 14 + rnd() * 26, hz = 14 + rnd() * 26, bx = lim.x + Math.cos(a) * d, bz = lim.z + Math.sin(a) * d;
