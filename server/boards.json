@@ -13,18 +13,18 @@
   "boards": {
     "0": [
       {
+        "n": "JacksonP",
+        "ms": 30931,
+        "c": "open",
+        "num": 69,
+        "s": "NMFETJQwSRhZ"
+      },
+      {
         "n": "speewandker",
         "ms": 31016,
         "c": "open",
         "num": 8,
         "s": "hputBenJ9d3i"
-      },
-      {
-        "n": "JacksonP",
-        "ms": 31384,
-        "c": "open",
-        "num": 69,
-        "s": "UDqWTCyhHKNw"
       },
       {
         "n": "Luca",
@@ -511,6 +511,13 @@
         "s": "GCe_P5sU7_Dh"
       },
       {
+        "n": "JacksonP",
+        "ms": 46077,
+        "c": "open",
+        "num": 69,
+        "s": "GfxPG5UinSdB"
+      },
+      {
         "n": "Luca",
         "ms": 46284,
         "c": "open",
@@ -539,6 +546,13 @@
         "s": "VIo462EJvsK1"
       },
       {
+        "n": "zac",
+        "ms": 49670,
+        "c": "open",
+        "num": 15,
+        "s": "yADKzh7cj8sa"
+      },
+      {
         "n": "BigLouis",
         "ms": 50017,
         "c": "open",
@@ -546,34 +560,20 @@
         "s": "QLRDC5wP9W6Y"
       },
       {
-        "n": "zac",
-        "ms": 56538,
-        "c": "open",
-        "num": 12,
-        "s": "6gcvEOhCQCez"
-      },
-      {
         "n": "Daddy Sholl",
         "ms": 56797,
         "c": "open",
         "num": 69,
         "s": "OeVy1J1LNeNL"
-      },
-      {
-        "n": "eddie",
-        "ms": 57993,
-        "c": "open",
-        "num": 32,
-        "s": "1hZuiJQU0T3s"
       }
     ]
   },
   "sec": {
     "0": [
       {
-        "n": "BigLouis",
-        "ms": 10267,
-        "s": "54elBCagdGcR"
+        "n": "JacksonP",
+        "ms": 10250,
+        "s": "xTSBjzwvI53B"
       },
       {
         "n": "speewandker",

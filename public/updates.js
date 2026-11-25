@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.60', date: '26 Nov 2026', title: 'A wider home screen',
+    items: [
+      'The panel on the home screen is wider, and the game\'s version now sits beside its name instead of on the What\'s new button.',
+    ],
+  },
+  {
     v: '3.59', date: '26 Nov 2026', title: 'The 9LAT2 signs stop glowing',
     items: [
       'The signs on the 9LAT2 building aren\'t lit up any more. They catch the daylight like the walls around them, and go dark at night.',
