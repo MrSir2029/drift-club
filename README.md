@@ -399,11 +399,13 @@ every billboard (each turned to face the cars coming) and on Sydney CBD's lit
 boards. Banners go on solid walls only, one every 20 m or so: six along the
 pit wall, Sydney CBD's walls (about 95 round the lap), Rose Bay's harbour
 wall, the stone wall behind its shops and the blocks of its race barriers
-(one every 40 m there), and at Westfield the sides of
+(one every 80 m there), and at Westfield the sides of
 Oxford Street's median, every other length of race barrier, and the wall
 round the roof where the cars drive straight at it (the end of the start
 straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
-are left bare. Nothing is a picture: the boards are drawn in the browser, in
+are left bare. By day the signs are lit and shadowed by the scene like the
+walls they hang on (3.50; lit from inside they looked stuck on), and at night
+they glow. Nothing is a picture: the boards are drawn in the browser, in
 open-licence typefaces from `public/vendor/fonts`, onto two sheets that every
 poster and banner in the world shares (each sponsor's artwork kept apart on
 its sheet, and drawn a touch nearer than it is, so nothing flickers from far

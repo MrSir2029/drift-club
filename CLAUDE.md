@@ -37,6 +37,9 @@
     posts (the owner calls those fences), a fence, or the railings of a
     bridge or ramp, and only where a driver can see the whole banner (not
     behind parked cars or another wall).
+  - By day the signs take the scene's light and shadow (they were lit from
+    inside, and the owner found them "way too intrusive and out of place");
+    at night they still glow. Rose Bay's race barriers have one every 80 m.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
     welcome there where a barrier is needed, in place of a rail on posts.
     Its straights have Westfield's race barrier in that sandstone, with the
