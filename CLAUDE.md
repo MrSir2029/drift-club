@@ -27,8 +27,8 @@
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update
   before pressing Deploy. `npm run build-preview` writes `preview-build/` (not
-  committed): the game with its server inside the page, one player, nothing
-  touching the live leaderboard. Publish `preview-build/index.html` with the
+  committed): the game with its server inside the page, one player, starting
+  from the saved leaderboard and never touching the live one. Publish `preview-build/index.html` with the
   files beside it (all but `local.html`) as a private artifact. There is one
   already, called Drift Club Preview: find it in the artifact list and update
   it by its URL instead of making another.

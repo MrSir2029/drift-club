@@ -6,7 +6,7 @@
 // where things ended up that day, not every step on the way.
 export const UPDATES = [
   {
-    v: '3.23', date: '25 Nov 2026', title: 'Rose Bay and Westfield',
+    v: '3.24', date: '25 Nov 2026', title: 'Rose Bay, Westfield and the Drift King',
     items: [
       'A new track, Rose Bay Harbour Circuit: Sydney\'s own Monaco. Along the quay past the superyachts, up Heartbreak Hill, round two hairpins, down past the shops and through the tunnel under the hotel.',
       'On the way down the hill, look left: the city, the Opera House and the Harbour Bridge across the water. There\'s also a ferry calling at the wharf, seaplanes landing in the bay, Catalina on its stilts, Shark Island, and a few shops you might know.',
@@ -14,6 +14,7 @@ export const UPDATES = [
       'Neither has walls all the way round: like the older tracks, there are rails on the outside of corners and open ground everywhere else. Rose Bay keeps a guard rail along the harbour, and at Westfield you can drive all over the car park roof.',
       'New trackside sponsors, on every billboard and along the barriers: Nine Mile, pwd, Glory Dates, Tenth Floor Chambers and Frangos. The billboards are turned to face you as you drive up to them, too.',
       'You can\'t crash into a checkpoint any more: clip a gate post, or a post of the start arch, and you go straight through it.',
+      'The Drift King championship: every track\'s top ten scores like F1 (25 for the record, 18 for second, down to 1 for tenth), and the points add up over all eight tracks. Whoever leads is the Drift King and wears the crown on the leaderboard, where the new Championship tab shows everyone\'s points.',
       'The leaderboard has a tab for each of the eight tracks, in two rows.',
       'The chairlift at Thredbo crosses over the track now: you drive under the chairs just after the start.',
     ],
