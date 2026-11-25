@@ -3886,15 +3886,18 @@ function buildMall(track, rnd) {
       parkCar(x, DECK + 0.02, z, rndP() < 0.5 ? 0 : Math.PI, CARS[Math.floor(rndP() * CARS.length)], rndP() < 0.22 ? 1.22 : 1);
       onRoof(x, z - 1, 1.25); onRoof(x, z + 1, 1.25); // (solid)
     }
-    // The start straight, dressed as one: lengths of race barrier down both sides with the crowd behind them
-    // (gaps between, so the roof is still open to drive on), and a grandstand each side just past the line.
+    // The start straight, dressed as one: race barrier down both sides with the crowd behind it, unbroken from
+    // where the cars come onto the roof, through the grid and the line, to the corner at the far end (it used to
+    // come in lengths with gaps between, and the owner found it "just cut off"); a grandstand each side just past
+    // the line. The far side runs a little further each way: the near side has the insides of the two corners to
+    // keep clear of. The rest of the roof is reached round the ends.
     {
-      const zr = samples[0].p.z, FENCE = hw + 3.9, xl = samples[0].p.x;
-      for (let k = 0, x = xl - 93; x + 24 < rampE - 30; x += 36, k++) for (const out of [-1, 1]) {
-        const z = zr + out * FENCE, stand = Math.abs(x + 12 - (xl + 27)) < 6; // (the length with the grandstand behind it)
-        raceFence(x, x + 24, z, DECK, out, (k + (out > 0 ? 1 : 0)) % 2 ? -1 : k + (out > 0 ? 2 : 0));
-        if (stand) grandstand(x, x + 24, z + out * 1.3, DECK, out);
-        else crowd(x + 0.6, x + 23.4, z + out * 0.9, z + out * 5.6, DECK + 0.02, 15, out);
+      const zr = samples[0].p.z, FENCE = hw + 3.9, xl = samples[0].p.x, sx0 = xl + 15, sx1 = xl + 39; // (sx0 to sx1: the grandstands)
+      for (const out of [-1, 1]) {
+        const z = zr + out * FENCE, x0 = out > 0 ? rampW + 14 : xl - 93, x1 = out > 0 ? rampE - 10 : rampE - 25, n = Math.round((x1 - x0) / 36), step = (x1 - x0) / n;
+        for (let k = 0; k < n; k++) raceFence(x0 + k * step, x0 + (k + 1) * step, z, DECK, out, (k + (out > 0 ? 1 : 0)) % 2 ? -1 : k + (out > 0 ? 2 : 0)); // (a banner on every other length, the two sides out of step)
+        grandstand(sx0, sx1, z + out * 1.3, DECK, out);
+        for (const [c0, c1] of [[x0 + 0.6, sx0 - 0.6], [sx1 + 0.6, x1 - 0.6]]) crowd(c0, c1, z + out * 0.9, z + out * 5.6, DECK + 0.02, Math.round((c1 - c0) * 0.5), out);
       }
     }
     const sail = new THREE.MeshLambertMaterial({ color: 0xf1e9d6, side: THREE.DoubleSide, flatShading: true });

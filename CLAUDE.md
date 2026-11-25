@@ -54,7 +54,9 @@
   Oxford Street, the glazed bridge over it, the bus stop outside. But it is
   a race track first ("remember this is a racing track, add more fences and
   barrier and add way more spectator spots"): race barriers with catch
-  fences, grandstands and crowds, not a car park. Parked cars stay back from
+  fences, grandstands and crowds, not a car park. The barrier down the start
+  straight is unbroken ("it just cut off between grandstands" was a
+  complaint about gaps in it). Parked cars stay back from
   the road and must look like cars (the owner called the boxy ones "buns").
 - The owner likes a built-up background: the detailed city and Opera House
   across the water, and at Rose Bay "some buildings in it like what we did

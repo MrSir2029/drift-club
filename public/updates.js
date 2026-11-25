@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.38', date: '25 Nov 2026', title: 'Westfield\'s start straight, walled in',
+    items: [
+      'At Westfield the race barrier runs unbroken down both sides of the start straight now, through the grid and the line to the corner at the far end, with the crowd behind it all the way.',
+    ],
+  },
+  {
     v: '3.37', date: '25 Nov 2026', title: 'A tidier leaderboard',
     items: [
       'The leaderboard opens on the Championship, and has lost its small print: the tabs, the table and your own place, and that\'s it.',
