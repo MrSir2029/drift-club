@@ -1351,9 +1351,12 @@ function mulberry32(a) {
 // own look, as the owner asked. No picture file is used: everything is drawn
 // here, in open-licence typefaces served from /vendor/fonts (see the README
 // there), except 9 Meter, whose letters are drawn one by one, below.
-// Posters go on the billboards. Banners go on solid walls only (Sydney CBD's,
-// and the stone wall at Rose Bay), a few of them: never on rails, fences or
-// bridge railings. Cars are another matter: they only ever carry made-up names.
+// Posters go on the billboards. Banners go on solid walls only, one every
+// 20 m or so (the pit wall, Sydney CBD's walls, Rose Bay's two sandstone
+// walls, the wall along Westfield's roof): never on rails, fences or bridge
+// railings. The owner found one every 9 m far too many, one every 60 m too
+// few, and one every 30 m nearly right ("you can have a bit more"). Cars
+// are another matter: they only ever carry made-up names.
 // ---------------------------------------------------------------------------
 const SPONSOR_FONTS = { charis: ['DC Charis', 'charis-sil-700.woff2', '700'], overpass: ['DC Overpass', 'overpass-800.woff2', '800'], caprasimo: ['DC Caprasimo', 'caprasimo-400.woff2', '400'], cormorant: ['DC Cormorant', 'cormorant-garamond-600.woff2', '600'], anton: ['DC Anton', 'anton-400.woff2', '400'] };
 const sponsorFace = (k, size) => `${SPONSOR_FONTS[k][2]} ${Math.round(size)}px "${SPONSOR_FONTS[k][0]}", ${k === 'charis' || k === 'cormorant' || k === 'caprasimo' ? 'Georgia, "Times New Roman", serif' : '"Arial Narrow", Arial, sans-serif'}`;
@@ -1740,6 +1743,9 @@ function buildProps(track) {
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(52.1, 0.32, 0.44), lam(0xe6453a)); stripe.position.set(0, 0.86, 2); pit.add(stripe); // top 2 cm above the wall's
       put(pit, spot, hw + 8);
       wallRect(pit, -26.5, 26.5, -10.6, 2.3);
+      // sponsors' banners along the pit wall, under its red stripe: a proper barrier, and the place for them on a circuit
+      // (not where street walls stand in front of it, as at Sydney CBD: those carry their own)
+      if (!track.def.walls) for (let k = 0; k < 6; k++) { const x = -20 + k * 8, a = toWorld(pit, x - 1.6, 0, 2.3), b = toWorld(pit, x + 1.6, 0, 2.3), t = toWorld(pit, x, 0, 30); addBanner(k, a, b, 0.07, 0.67, 0, 1, t.x, t.z); }
       for (let k = 0; k < 8; k++) for (let j = 0; j < 2; j++) {
         if (rnd() < 0.3) continue;
         const p = toWorld(pit, -22.4 + k * 6.4 + (rnd() - 0.5) * 3, 0, 0.2 + rnd() * 1.1);
@@ -2021,10 +2027,10 @@ function buildStreetWalls(track) {
       // faces: road side, top, back (each facing out, whichever side of the road)
       const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
       const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
-      const blk = Math.floor(a.i / 10), k = a.i % 10, face = concrete;
-      if (blk % 4 === 1 && k >= 3 && k < 6 && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 60 m
+      const blk = Math.floor(a.i / 15), k = a.i % 15, face = concrete;
+      if (k >= 6 && k < 9 && blk * 15 + 9 <= N && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 22.5 m (and never one cut short where the lap's samples run out)
         const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.08, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.08 }), c = samples[a.i].p;
-        addBanner((blk >> 2) + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
+        addBanner(blk + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
       }
       if (side > 0) { pushQuad(pos, col, A0, A1, B1, B0, face); pushQuad(pos, col, A1, C1, D1, B1, topC); pushQuad(pos, col, C0, D0, D1, C1, backC); }
       else { pushQuad(pos, col, A0, B0, B1, A1, face); pushQuad(pos, col, A1, B1, D1, C1, topC); pushQuad(pos, col, C0, C1, D1, D0, backC); }
@@ -3595,6 +3601,14 @@ function buildMall(track, rnd) {
       box(world, Math.abs(x1 - x0) + 0.5, 1.1, Math.abs(z1 - z0) + 0.5, 0xe9e4d8, (x0 + x1) / 2, DECK + 0.55, (z0 + z1) / 2);
       walls.push({ ax: x0, az: z0, bx: x1, bz: z1, y: DECK });
     }
+    // sponsors' banners on that wall (a proper barrier), where a driver looks straight at it with no parked car in
+    // the way: dead ahead at the end of the start straight, and ahead and alongside at the top of the ramp up
+    {
+      const zs = samples[0].p.z, xe = strip[2] - 0.36, xw = strip[0] + 0.36, zn = strip[3] - 0.36;
+      for (let k = 0; k < 3; k++) { const z = zs + (k - 1) * 6; addBanner(k, { x: xe, y: DECK, z: z - 2.25 }, { x: xe, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xe - 20, z); }
+      for (let k = 0; k < 3; k++) { const x = rampW + (k - 1) * 6; addBanner(k + 3, { x: x - 2.25, y: DECK, z: zn }, { x: x + 2.25, y: DECK, z: zn }, 0.14, 0.98, 0, 1, x, zn - 20); }
+      for (let k = 0; k < 2; k++) { const z = strip[1] + 9 + k * 9; addBanner(k + 1, { x: xw, y: DECK, z: z - 2.25 }, { x: xw, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xw + 20, z); }
+    }
     // parked cars in marked bays, some under shade sails
     const body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.75, 4.2), new THREE.MeshLambertMaterial({ flatShading: true }), 420), cab = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.6, 2.1), lam(0x26303f), 420);
     const M = new THREE.Matrix4(), col = new THREE.Color(), CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a, 0xf6f2e8, 0xb9c0cc];
@@ -3604,6 +3618,7 @@ function buildMall(track, rnd) {
       if (z > 162 && z < 200 && (x > samples[i0].p.x - 34 || x < samples[i1].p.x + 34)) continue; // (the ramps come up through here)
       flatQ(lit, x - 1.55, z - 2.6, x - 1.45, z + 2.6, DECK + 0.03, white);
       if (rnd() < 0.42 || n >= 420 || (z < 162 && Math.abs(x + 15) < 9)) continue;
+      if (z > 200 && Math.abs(x - rampW) < 11) { rnd(); rnd(); rnd(); continue; } // (nothing parked in front of the banners at the top of the ramp; the three draws leave every other car as it was)
       M.makeRotationY(rnd() < 0.5 ? 0 : Math.PI); M.setPosition(x, DECK + 0.6, z); body.setMatrixAt(n, M); M.setPosition(x, DECK + 1.25, z + (rnd() < 0.5 ? 0.3 : -0.3)); cab.setMatrixAt(n, M);
       body.setColorAt(n++, col.set(CARS[Math.floor(rnd() * CARS.length)]));
       onRoof(x, z - 1, 1.25); onRoof(x, z + 1, 1.25); // (solid)
@@ -3948,7 +3963,7 @@ function buildRoseBay(track, rnd, randIn) {
     // over ground that slopes into the sea, so a car on it would sink through. Sandstone with a coping and a
     // pier every 6 m, like the wall behind the shops (the owner likes that one, and wanted walls here in place
     // of a rail on posts); at each end it turns back to the sea wall, or runs into the tunnel's wall, so
-    // there's no way round it. Being a proper barrier, it carries a sponsor's banner every 60 m or so.
+    // there's no way round it. Being a proper barrier, it carries a sponsor's banner every 18 m or so.
     {
       const stone = lam(0xcdb88a), coping = lam(0xb9a878), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
       const span = (a, b) => {
@@ -3969,7 +3984,7 @@ function buildRoseBay(track, rnd, randIn) {
         if (prev) {
           span(prev, q);
           const dx = q[0] - prev[0], dz = q[2] - prev[2], len = Math.hypot(dx, dz);
-          if (len > 5.4 && lengths++ % 10 === 4) { // a sponsor's banner on one length in ten, on the road side
+          if (len > 5.4 && lengths++ % 3 === 1) { // a sponsor's banner on one length in three, on the road side
             const ins = (len - 4.4) / 2 / len, nx = s.p.x - x, nz = s.p.z - z, nl = Math.hypot(nx, nz) || 1;
             const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.33, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.33 });
             addBanner(lengths, on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
@@ -4201,9 +4216,9 @@ function buildRoseBay(track, rnd, randIn) {
     const bayClear = (i) => { const [ax, az] = P(i, LAT + 1.6), [bx, bz] = P(i + 3, LAT + 1.6), mx = (ax + bx) / 2, mz = (az + bz) / 2, y = samples[wrap(i + 1)].p.y + TOP - 1; return !solids.some((c) => c.r >= 1.2 && Math.abs(c.y - y) < 3 && Math.hypot(c.x - mx, c.z - mz) < c.r + 2.6); };
     for (let i = w0; i < w1; i++) {
       ribbon(i, 1, LAT, LAT + 0.02, -1.5, TOP, STONE); ribbon(i, 1, LAT + 0.7, LAT + 0.72, -1.5, TOP, STONE); ribbon(i, 1, LAT, LAT + 0.7, TOP, TOP, COPING);
-      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 4 === 1 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 18
+      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 3 === 1 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 13.5
         const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, LAT + 0.82), [bx, bz] = P(i + 1, LAT + 0.82), [tx, tz] = P(i, LAT + 12), f = ((i - w0) % 3) / 3;
-        addBanner(Math.floor((i - w0) / 12), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
+        addBanner(Math.floor((i - w0) / 9), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
       }
       if ((i - w0) % 3 === 0) { // solid from either level
         const y = samples[wrap(i)].p.y, [ax, az] = P(i, LAT + 0.35), [bx, bz] = P(Math.min(i + 3, w1), LAT + 0.35);
@@ -7006,7 +7021,8 @@ function wireUI() {
   // Someone here for the first time starts up to date.
   const latest = UPDATES[0].v, store = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const seen = store('dc-seen'), back = VISITED_BEFORE;
-  const since = UPDATES.findIndex(u => u.v === seen); // entries newer than the one they saw (never looked: just the latest)
+  const vnum = (v) => { const [a, b = 0] = String(v).split('.').map(Number); return a * 1000 + b; }; // (3.9 comes before 3.16)
+  const since = seen == null ? -1 : UPDATES.findIndex(u => vnum(u.v) <= vnum(seen)); // entries newer than the version they saw (never looked: just the latest)
   const fresh = (k) => seen !== latest && k < (since < 0 ? 1 : since);
   $('#ver').textContent = 'v' + latest;
   $('#updates-dot').classList.toggle('hidden', seen === latest);
