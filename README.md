@@ -184,8 +184,11 @@ that name in every list, and their car wears the Drift King's livery (colour
 13, `KING` in `game.js`: gold over black with a crimson line, a crown behind
 the driver and DRIFT KING on the rear wing). Nobody picks it: `makeCarMesh`
 puts it on any car whose driver's name is the leader's, whatever colour they
-chose, and it passes on when someone else takes the lead. The Championship tab (or a click on the king's
-banner) shows the whole table, with your own place under it. Racer, the name
+chose, and it passes on when someone else takes the lead. The leaderboard
+opens on the Championship tab: the whole table, with your own place under it
+(the owner wanted it there, and the panel kept plain: no small print, and no
+king's banner on that tab, where the king is the top row anyway; on a track's
+tab the banner is a way back to it). Racer, the name
 you get without picking one, isn't in it. It's all worked out in the browser
 from the boards everyone already has (`overallStandings` in `game.js`), so the
 server doesn't know about it.

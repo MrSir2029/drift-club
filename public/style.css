@@ -412,7 +412,6 @@ input:focus { border-color: var(--blue); }
 .king-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .king-title { font-size: 11px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #ffd23f; }
 .king-who b { font-size: 22px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.king-next { font-size: 12px; font-weight: 700; color: #b9c0d0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .king-pts { display: flex; flex-direction: column; align-items: flex-end; flex: none; font-size: 12px; font-weight: 700; color: #b9c0d0; white-space: nowrap; }
 .king-pts b { font-size: 24px; line-height: 1; font-weight: 900; color: #ffd23f; font-variant-numeric: tabular-nums; }
 .king-mark { flex: none; margin-right: -3px; } /* before the name, so a long name cut short doesn't take the crown with it */
