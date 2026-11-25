@@ -12,8 +12,8 @@
 - The secret livery (colour 12) and its code stay out of What's new and the
   README. Cars only carry made-up sponsor names, never real brands. Two
   exceptions, both at the owner's request:
-  - Shop signs at Rose Bay and Westfield: real local names in plain lettering,
-    never logos.
+  - Shop signs at Rose Bay and Westfield, and the hotel over Rose Bay's tunnel
+    (The InterContinental): real local names in plain lettering, never logos.
   - The trackside sponsors on posters and barrier banners (`SPONSOR_ART` in
     `game.js`): Nine Mile, Tenth Floor Chambers and Frangos as themselves, and
     PWD and Glory Dates (puns on PwC and Glory Days), each drawn in its
