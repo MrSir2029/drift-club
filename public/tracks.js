@@ -111,6 +111,7 @@ export const TRACKS = [
     blurb: 'Monaco on Sydney Harbour: along the quay, up Heartbreak Hill, two hairpins, down past the shops and through the tunnel.',
     theme: 'beach',
     urban: true,   // only the landmarks that fit in a town, and none inside the walled-in middle
+    suburbs: true, // its own hills all round, with houses and towers on them, in place of the usual bare ones
     width: 13,
     scale: 1,
     // the harbour: water right up to the sea wall along the quay (z < 0), none inland. `quay`: the track's own

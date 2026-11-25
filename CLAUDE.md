@@ -56,6 +56,10 @@
   barrier and add way more spectator spots"): race barriers with catch
   fences, grandstands and crowds, not a car park. Parked cars stay back from
   the road and must look like cars (the owner called the boxy ones "buns").
+- The owner likes a built-up background: the detailed city and Opera House
+  across the water, and at Rose Bay "some buildings in it like what we did
+  with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare
+  hills read as unfinished.
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update

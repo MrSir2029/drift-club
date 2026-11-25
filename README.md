@@ -307,7 +307,14 @@ a car on it would sink through), the tunnel's own walls, and a stone wall along 
 top of the bank behind the shops (without it you could leave the first
 hairpin, drop down the bank and miss out the second). `quay` in its `sea`
 keeps the usual trackside furniture away from the water, and `blocks` keeps it
-off the tunnel and the lookout.
+off the tunnel and the lookout. Its background is a town (`suburbs: true` in
+`tracks.js` leaves out the usual bare hills): four streets of houses and
+blocks of flats just beyond the circuit, six hills further off with houses up
+them and apartment towers along the top (the tallest cluster stands in for
+Bondi Junction), a lighthouse on the far head, a row of houses along the north
+shore and extra towers in the city. The houses and flats are two shapes drawn
+as instances (`suburbGeometry`), the towers the same `cityTower` as the city's;
+none of it can be reached, so none of it is solid.
 Westfield (the eighth) is a shopping centre you race through (`buildMall` in
 `game.js`, theme `mall`), laid out after the real one at Bondi Junction: the
 two buildings either side of Oxford Street, the glazed bridge between them

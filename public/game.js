@@ -3389,6 +3389,7 @@ function buildScenery(track) {
     hill.position.set(center.x + Math.cos(ang) * r, h / 2 - 2, center.z + Math.sin(ang) * r);
     hill.rotation.y = rnd() * Math.PI;
     if (track.sea?.clear && terrainHeight(hill.position.x, hill.position.z) < track.sea.level) continue; // (this track's own scenery puts what's wanted out in the water)
+    if (track.def.suburbs) continue; // (and this one has hills of its own all round, with a town on them)
     worldGroup.add(hill);
   }
   // and bigger ones far off on the horizon: hazy on high, clear on max
@@ -3510,24 +3511,47 @@ function buildScenery(track) {
 // out to the low wall round its edge (the parked cars are solid), the ramps
 // have railings because they're bridges, in the mall the shopfronts are the
 // walls, and the food court has a glass screen round it.
-// A parked car, as one shape: a low body, a glasshouse that narrows to the roof, four wheels. Its paint is white
-// here and takes each car's own colour; glass and tyres are dark whatever the colour. It stands on y = 0, nose to +z.
-function parkedCarGeometry() {
-  const pos = [], col = [], PAINT = new THREE.Color(1, 1, 1), GLASS = new THREE.Color(0.13, 0.16, 0.2), TYRE = new THREE.Color(0.07, 0.07, 0.08), TRIM = new THREE.Color(0.2, 0.2, 0.22);
-  // a block between two rectangles: (x half-width, z0, z1) at y0, and another at y1, centred on x = cx. `side`
-  // colours its sides, `top` its top (null: no top, it's hidden); `mask` picks the sides: 1 back, 2 right, 4 front, 8 left
-  const block = (w0, a0, b0, y0, w1, a1, b1, y1, side, top, cx = 0, mask = 15) => {
+// A shape made of blocks, to be drawn many times as instances. `build` is handed block(): a block between two
+// rectangles (x half-width, z from a to b) at two heights, centred on x = cx. `side` colours its sides, `top` its
+// top (null: no top, it's hidden); `mask` picks the sides: 1 back, 2 right, 4 front, 8 left. Colours are what each
+// instance's own colour gets multiplied by: white takes it as it is, dark stays dark.
+function blockShape(build) {
+  const pos = [], col = [];
+  build((w0, a0, b0, y0, w1, a1, b1, y1, side, top, cx = 0, mask = 15) => {
     const B = [V(cx - w0, y0, a0), V(cx + w0, y0, a0), V(cx + w0, y0, b0), V(cx - w0, y0, b0)], T = [V(cx - w1, y1, a1), V(cx + w1, y1, a1), V(cx + w1, y1, b1), V(cx - w1, y1, b1)];
     for (let k = 0; k < 4; k++) if (mask & (1 << k)) pushQuad(pos, col, B[(k + 1) % 4], B[k], T[k], T[(k + 1) % 4], side); // (wound to face outwards)
     if (top) pushQuad(pos, col, T[3], T[2], T[1], T[0], top);
-  };
-  block(0.9, -2.1, 2.1, 0.22, 0.9, -2.1, 2.1, 0.5, TRIM, null);           // sills and bumpers
-  block(0.9, -2.08, 2.08, 0.5, 0.88, -2.02, 1.98, 0.78, PAINT, PAINT);    // the body, to the waistline
-  block(0.84, -1.5, 0.95, 0.78, 0.7, -1.08, 0.42, 1.28, GLASS, PAINT);    // the glasshouse, and the roof
-  for (const sx of [-1, 1]) for (const z of [-1.3, 1.32]) block(0.14, z - 0.36, z + 0.36, 0, 0.14, z - 0.36, z + 0.36, 0.66, TYRE, null, sx * 0.8, 5 | (sx > 0 ? 2 : 8)); // (a touch proud of the body: the outside, front and back of each tyre)
+  });
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
   return g;
+}
+// A parked car, as one shape: a low body, a glasshouse that narrows to the roof, four wheels. Its paint is white
+// here and takes each car's own colour; glass and tyres are dark whatever the colour. It stands on y = 0, nose to +z.
+function parkedCarGeometry() {
+  const PAINT = new THREE.Color(1, 1, 1), GLASS = new THREE.Color(0.13, 0.16, 0.2), TYRE = new THREE.Color(0.07, 0.07, 0.08), TRIM = new THREE.Color(0.2, 0.2, 0.22);
+  return blockShape((block) => {
+    block(0.9, -2.1, 2.1, 0.22, 0.9, -2.1, 2.1, 0.5, TRIM, null);           // sills and bumpers
+    block(0.9, -2.08, 2.08, 0.5, 0.88, -2.02, 1.98, 0.78, PAINT, PAINT);    // the body, to the waistline
+    block(0.84, -1.5, 0.95, 0.78, 0.7, -1.08, 0.42, 1.28, GLASS, PAINT);    // the glasshouse, and the roof
+    for (const sx of [-1, 1]) for (const z of [-1.3, 1.32]) block(0.14, z - 0.36, z + 0.36, 0, 0.14, z - 0.36, z + 0.36, 0.66, TYRE, null, sx * 0.8, 5 | (sx > 0 ? 2 : 8)); // (a touch proud of the body: the outside, front and back of each tyre)
+  });
+}
+// A house (walls and a hipped roof) and a block of flats (four floors of windows under a flat roof), for a suburb
+// seen from a way off. Each stands on y = 0 with four metres of wall below that, to sit on sloping ground.
+function suburbGeometry() {
+  const WALL = new THREE.Color(1, 1, 1), ROOF = new THREE.Color(0.74, 0.36, 0.27), GLASS = new THREE.Color(0.3, 0.38, 0.47), TRIM = new THREE.Color(0.8, 0.8, 0.8);
+  const house = blockShape((block) => {
+    block(5, -4, 4, -4, 5, -4, 4, 3.4, WALL, null);
+    block(5.5, -4.5, 4.5, 3.4, 1.2, -0.3, 0.3, 6.2, ROOF, ROOF);
+    block(1.1, 4, 4.12, 0.9, 1.1, 4, 4.12, 2.3, GLASS, null, -2.2, 4); block(1.1, 4, 4.12, 0.9, 1.1, 4, 4.12, 2.3, GLASS, null, 2.2, 4); // two windows on the front
+  });
+  const flats = blockShape((block) => {
+    block(8, -6, 6, -4, 8, -6, 6, 13, WALL, null);
+    for (const y of [1.3, 4.5, 7.7, 10.9]) block(8.14, -6.14, 6.14, y, 8.14, -6.14, 6.14, y + 1.3, GLASS, null);
+    block(8.3, -6.3, 6.3, 13, 8.3, -6.3, 6.3, 13.6, TRIM, TRIM);
+  });
+  return { house, flats };
 }
 
 function buildMall(track, rnd) {
@@ -4638,6 +4662,7 @@ function buildRoseBay(track, rnd, randIn) {
   }
   pines.count = np; figs.count = nf; worldGroup.add(pines, figs);
 
+  const northShore = []; // the heads along the north shore: [x, z, height]
   // ---- across the water, to the north-west: the Harbour Bridge, the Opera House in front of its city end and the
   // city behind; the north shore runs on to the right. All of it is placed as seen from the hill down to the tunnel. ----
   {
@@ -4652,7 +4677,7 @@ function buildRoseBay(track, rnd, randIn) {
     { const [x, z] = pol(38, 640); add(far, new THREE.CylinderGeometry(86, 94, 5, 12), 0xc9b48c, x, 0.5, z).castShadow = false; hill(...pol(39.5, 800), 70, 14, 60); } // Bennelong Point, under the Opera House
     // the north shore: green heads, a few towers by the bridge
     for (const deg of [13, 6, -2]) hill(...pol(deg, 900 + rnd() * 40), 120, 22 + rnd() * 10, 90);
-    for (let k = 0; k < 11; k++) hill(-190 + k * 125, -830 - rnd() * 40, 120, 20 + rnd() * 16, 80);
+    for (let k = 0; k < 11; k++) { const z = -830 - rnd() * 40, ry = 20 + rnd() * 16; hill(-190 + k * 125, z, 120, ry, 80); northShore.push([-190 + k * 125, z, ry]); } // (kept, for the houses that go on them further down)
     for (let k = 0; k < 9; k++) { const w = 18 + rnd() * 14, [x, z] = pol(4 + rnd() * 9, 880 + rnd() * 60); cityTower(far, x, z, w, 30 + rnd() * 70, TOWERS[k % TOWERS.length], 8); }
     // the head at the far end of the bay, with houses up it, and a hill behind the town
     { const hx = lim.x + lim.r + 150, hz = -150, rx = 120, rz = 150;
@@ -4661,6 +4686,78 @@ function buildRoseBay(track, rnd, randIn) {
     hill(-590, 110, 120, 22, 120);
     const [bx, bz] = pol(25, 780), [ox, oz] = pol(38, 640);
     buildSydneyIcons(bx, bz, Math.cos(25 * RAD), -Math.sin(25 * RAD), L, ox, oz, 38 * RAD, 1.5);
+  }
+
+  // ---- the suburbs round the bay. The owner asked for buildings in the background, "like what we did with the
+  // opera house but more": streets of houses and flats just beyond the circuit, hills further off with houses up
+  // them and apartment towers along their tops (the eastern suburbs' skyline, Bondi Junction's the tallest), a
+  // lighthouse on the far head, more of the city and a row of houses along the north shore. None of it can be
+  // reached, so none of it is solid. It has its own run of random numbers, so nothing else on the map moved. ----
+  {
+    const rndB = mulberry32(2026), land = at(0, 0, 0, 0), RAD = Math.PI / 180, GREEN = [0x5f9c58, 0x6aa85e, 0x548f50, 0x62a05a];
+    const WALLC = [0xf6f2e8, 0xe8d9b5, 0xf1e9d6, 0xd9c6a5, 0xf6f2e8, 0xe2cc95, 0xd9dde3, 0xc98a72], TOWERC = [0xe8dcc0, 0xd9dde3, 0xc9b99a, 0xb7c3cf, 0xf1e9d6, 0xa9b7c9, 0xc2b49a];
+    const shape = suburbGeometry(), paint = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const houses = new THREE.InstancedMesh(shape.house, paint, 520), flats = new THREE.InstancedMesh(shape.flats, paint, 200), HM = new THREE.Matrix4(), HC = new THREE.Color();
+    let nh = 0, nfl = 0;
+    const dry = (x, z) => terrainHeight(x, z) > L + 1.3 && !nearWater(x, z);
+    // one house, or one block of flats: at (x, y, z), turned to ry, a little bigger or smaller, in one of the wall colours
+    const home = (big, x, y, z, ry) => {
+      const mesh = big ? flats : houses, n = big ? nfl : nh;
+      if (n >= (big ? 200 : 520)) return;
+      const wide = 0.8 + rndB() * 0.5, tall = big ? 0.8 + rndB() * 0.8 : rndB() < 0.3 ? 1.75 : 1;
+      HM.makeRotationY(ry); HM.scale(V(wide, tall, 0.8 + rndB() * 0.45)); HM.setPosition(x, y, z);
+      mesh.setMatrixAt(n, HM); mesh.setColorAt(n, HC.set(WALLC[Math.floor(rndB() * WALLC.length)]));
+      if (big) nfl++; else nh++;
+    };
+    // the streets just beyond the circuit: four of them round the land side, a house or a block of flats every 19 m or so
+    for (let k = 0; k < 4; k++) {
+      const d = lim.r + 38 + k * 42;
+      for (let a = 0; a < 6.2832; a += 19 / d) {
+        const x = lim.x + Math.cos(a) * d + (rndB() - 0.5) * 6, z = lim.z + Math.sin(a) * d + (rndB() - 0.5) * 6, big = rndB() < 0.16 + k * 0.06;
+        if (rndB() < 0.2 || !dry(x, z) || inView(x, z) || !free(x, z, 8)) continue;
+        home(big, x, terrainHeight(x, z) - 0.3, z, Math.atan2(lim.x - x, lim.z - z) + (rndB() < 0.25 ? Math.PI / 2 : 0));
+      }
+    }
+    // the hills: each a green rise with houses and flats up it and towers along the top
+    const rise = (x, z, rx, ry, rz, g = 0) => { const m = add(land, new THREE.IcosahedronGeometry(1, 1), GREEN[Math.floor(rndB() * GREEN.length)], x, g - ry * 0.3, z); m.scale.set(rx, ry, rz); m.castShadow = false; };
+    const HILLS = [ // [degrees round from east (south is 90), metres out, rx, ry, rz, houses, flats, towers, tallest tower]
+      [8, 610, 170, 34, 130, 26, 6, 2, 46], [43, 650, 190, 40, 150, 30, 8, 4, 62], [76, 610, 205, 44, 150, 30, 10, 5, 72],
+      [107, 690, 215, 38, 165, 16, 10, 9, 128], [136, 630, 180, 36, 140, 22, 8, 6, 88], [160, 610, 170, 30, 125, 24, 8, 5, 92],
+    ];
+    for (const [deg, d, rx, ry, rz, nHouses, nFlats, nTowers, tallest] of HILLS) {
+      const hx = lim.x + Math.cos(deg * RAD) * d, hz = lim.z + Math.sin(deg * RAD) * d;
+      if (!dry(hx, hz)) continue;
+      const g0 = terrainHeight(hx, hz), top = (u, v) => g0 - ry * 0.3 + ry * Math.sqrt(Math.max(0, 1 - u * u - v * v)) * 0.94; // the rise's height over a spot (a little under: its faces are flat)
+      rise(hx, hz, rx, ry, rz, g0);
+      for (let k = 0; k < nHouses + nFlats; k++) {
+        const a = rndB() * 6.2832, r = 0.25 + Math.sqrt(rndB()) * 0.6, u = Math.cos(a) * r, v = Math.sin(a) * r, x = hx + u * rx, z = hz + v * rz;
+        home(k >= nHouses, x, top(u, v) - 1.2, z, Math.atan2(lim.x - x, lim.z - z));
+      }
+      for (let k = 0; k < nTowers; k++) {
+        const u = (k / Math.max(1, nTowers - 1) - 0.5) * 0.62 + (rndB() - 0.5) * 0.08, v = (rndB() - 0.5) * 0.3, h = tallest * (0.5 + 0.5 * rndB() ** 0.6), w = 16 + rndB() * 10;
+        cityTower(land, hx + u * rx, hz + v * rz, w, k === Math.floor(nTowers / 2) ? tallest : h, TOWERC[Math.floor(rndB() * TOWERC.length)], top(u, v) - 4);
+      }
+    }
+    // lower, hazier ridges behind them, so the skyline has depth
+    for (let k = 0; k < 9; k++) { const a = (-8 + k * 24 + rndB() * 8) * RAD, d = 900 + rndB() * 160, x = lim.x + Math.cos(a) * d, z = lim.z + Math.sin(a) * d; if (dry(x, z) || terrainHeight(x, z) > L) rise(x, z, 230 + rndB() * 90, 50 + rndB() * 26, 170); }
+    // the head at the far end of the bay: the lighthouse on top of it, white with a red cap, and more houses up it
+    {
+      const hx = lim.x + lim.r + 150, hz = -150, y = L + 20;
+      add(land, new THREE.CylinderGeometry(1.7, 2.4, 22, 8), 0xf6f2e8, hx, y + 11, hz).castShadow = false; add(land, new THREE.CylinderGeometry(2.6, 2.6, 0.5, 8), 0xd9dde3, hx, y + 22.2, hz).castShadow = false;
+      add(land, new THREE.CylinderGeometry(1.5, 1.5, 2.6, 8), 0x9ad0ff, hx, y + 23.8, hz, 0x4a6a80).castShadow = false; add(land, new THREE.ConeGeometry(2, 1.8, 8), 0xd62f2f, hx, y + 26, hz).castShadow = false;
+      for (let k = 0; k < 18; k++) { const a = rndB() * 6.2832, r = 0.3 + Math.sqrt(rndB()) * 0.5, x = hx + Math.cos(a) * r * 120, z = hz + Math.sin(a) * r * 150; home(k % 6 === 5, x, L + 30 * 0.7 * Math.sqrt(1 - r * r) - 3.5, z, Math.atan2(lim.x - x, lim.z - z)); }
+    }
+    // across the water: more towers in the city and by the far end of the bridge, and a row of houses along the north shore
+    {
+      const pol = (deg, d) => [-215 - d * Math.sin(deg * RAD), 120 - d * Math.cos(deg * RAD)], CITY = [0x8fa3b8, 0x7a8ea3, 0xa9b7c9, 0x9aa7b5, 0x6f8196, 0xc2b49a, 0x5f7790, 0xb7c3cf];
+      for (let k = 0; k < 18; k++) { const [x, z] = pol(30 + rndB() * 27, 835 + rndB() * 160); cityTower(land, x, z, 20 + rndB() * 22, 70 + rndB() * 170, CITY[k % CITY.length], L + 6); }
+      for (let k = 0; k < 8; k++) { const [x, z] = pol(1 + rndB() * 13, 890 + rndB() * 70); cityTower(land, x, z, 18 + rndB() * 12, 40 + rndB() * 80, CITY[(k + 3) % CITY.length], L + 8); }
+      for (const [nx, nz, ry] of northShore) for (let k = 0; k < 6; k++) { // houses down the side of each head that faces the bay
+        const u = (rndB() - 0.5) * 1.5, v = 0.25 + rndB() * 0.6;
+        if (u * u + v * v < 0.92) home(rndB() < 0.2, nx + u * 120, L - ry * 0.3 + ry * Math.sqrt(1 - u * u - v * v) * 0.94 - 1.2, nz + v * 80, (rndB() - 0.5) * 0.5);
+      }
+    }
+    houses.count = nh; flats.count = nfl; houses.castShadow = flats.castShadow = false; worldGroup.add(houses, flats);
   }
 
   // everything flat-coloured, in one mesh
