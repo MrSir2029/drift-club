@@ -317,8 +317,10 @@ from the second hairpin to the tunnel: "there should be a fence on the inside
 here", 3.46). The crowd stands behind them on two stone steps wherever
 nothing else is in the way, or on the footpath in front of the shops; it is a
 set of people of its own with its own random numbers, so the rest of the bay
-stays put. The outside of the top straight has two 12 m ways through: Race to
-9LAT2 leaves the road there. Then there are the barriers a car needs so as
+stays put. Where a barrier comes to a corner's rail it is run in to meet the
+rail's end (`railAt` finds it), so there is no way between the two (3.48).
+The outside of the top straight has two 12 m ways through: Race to 9LAT2
+leaves the road there. Then there are the barriers a car needs so as
 not to end up somewhere it can't be: a low sandstone wall along the harbour side
 of the quay (the promenade is paving over ground that slopes into the sea, so
 a car on it would sink through), the tunnel's own walls, and a stone wall along the

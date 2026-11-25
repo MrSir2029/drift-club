@@ -4714,8 +4714,8 @@ function buildRoseBay(track, rnd, randIn) {
   // more of them at Rose Bay, so they line the straights that had nothing beside them: the land side of the
   // start straight (run in to the pit wall at each end, which carries the fence past the garages), the outside
   // of Heartbreak Hill, both sides of the straight along the top and of the shops' street, and the shops' side
-  // of the hill down, run in to the tunnel's wall. Corners keep their rails: a barrier overlaps the rail it
-  // meets by a few metres, so neither looks cut off. The water and the lookout keep their view. Behind the
+  // of the hill down, run in to the tunnel's wall. Corners keep their rails, and a barrier that comes to one is
+  // run in to meet its end. The water and the lookout keep their view. Behind the
   // barriers on the grass the crowd stands on two stone steps, to see over the block (and be seen over it). ----
   {
     const STONE = C(0xcdb88a), COPE = C(0xb9a878), STEEL = C(0x8d93a0), TREAD = C(0xd9d2c0), RISER = C(0xbfb394);
@@ -4739,6 +4739,19 @@ function buildRoseBay(track, rnd, randIn) {
     };
     for (const c of solids) { mark(taken, c.x, c.z, c.r, c.y ?? 0, 7.4); mark(stood, c.x, c.z, c.r, c.y ?? 0, 7.4); }
     for (const w of walls) { const n = Math.max(1, Math.ceil(Math.hypot(w.bx - w.ax, w.bz - w.az) / 1.5)); for (let k = 0; k <= n; k++) mark(taken, w.ax + ((w.bx - w.ax) * k) / n, w.az + ((w.bz - w.az) * k) / n, 0.3, w.y ?? 0, 9.2); }
+    // Where the corners' rails begin and end (the rails are the trackside builder's, 5.2 m out on the outside of
+    // each corner): a barrier that comes to one is run in to meet its end, so there's no way between the two.
+    // (They used to pass side by side for a few metres, 2 m apart: "gap between fence and barrier here", and the
+    // owner's car was through it.)
+    const RAIL = hw + 5.2, railEnds = [];
+    for (const w of walls) for (const [x, z] of [[w.ax, w.az], [w.bx, w.bz]]) {
+      const i = nearestI(x, z), a = samples[i], lat = (x - a.p.x) * a.left.x + (z - a.p.z) * a.left.z;
+      if (Math.abs(Math.abs(lat) - RAIL) < 0.3 && Math.abs((w.y ?? 0) - a.p.y) < 2) railEnds.push([i, lat > 0 ? 1 : -1]);
+    }
+    const railAt = (i, sd, first) => { // the sample where a rail on side sd begins (first) or ends, within 15 m of sample i: or null
+      const near = railEnds.filter(([k, d]) => d === sd && Math.abs(k - wrap(i)) <= 10).map(([k]) => k);
+      return near.length ? (first ? Math.min(...near) : Math.max(...near)) : null;
+    };
     let nb = 0;
     // A barrier from sample i0 to i1 on side sd, in bays of three samples (4.5 m): a post at each end of a bay.
     // from/to: how far out its face is at each end, where it runs in to meet something (the pit wall, the tunnel)
@@ -4796,6 +4809,11 @@ function buildRoseBay(track, rnd, randIn) {
         j = e + 5; // (a gap before the next length)
       }
     };
+    // a barrier from about a to about b that meets a rail at either end, if there's one there
+    const run = (a, b, sd, o = {}) => {
+      const ra = railAt(a, sd, false), rb = railAt(b, sd, true);
+      barrier(ra ?? a, rb ?? b, sd, { ...o, ...(ra != null ? { from: RAIL - TH / 2 } : {}), ...(rb != null ? { to: RAIL - TH / 2 } : {}) });
+    };
     // the start straight's land side: out of the chicane, in to the pit wall, the fence along the top of that, and on to the first corner
     const pit = track.pitWall && track.pitWall.side === -1 ? track.pitWall : null, T1 = N + 113, CH = 992;
     if (pit) {
@@ -4804,12 +4822,12 @@ function buildRoseBay(track, rnd, randIn) {
       barrier(pi - half, pi + half, -1, { lat: PL, block: false, foot: pit.top - samples[wrap(pi)].p.y });
       barrier(pi + half, T1, -1, { from: PL });
     } else barrier(CH, T1, -1);
-    barrier(153, 288, 1);                                   // up Heartbreak Hill, on from the end of the harbour wall
+    run(153, 288, 1);                                       // up Heartbreak Hill, from the end of the harbour wall to the rail round the corner at the top
     // along the top: the inside whole, the outside in three lengths with two ways through (Race to 9LAT2 leaves the road here, and there's the fairground beyond)
     barrier(322, 476, -1);
-    barrier(309, 388, 1); barrier(396, 446, 1); barrier(454, 487, 1);
+    run(309, 388, 1); barrier(396, 446, 1); run(454, 487, 1); // (from that corner's rail, and on to the first hairpin's)
     // the shops' street, both footpaths, and the shops' side of the hill down, in to the tunnel's wall
-    barrier(609, 768, -1, { crowd: 'path', deep: FRONT - 2.6 }); barrier(622, 771, 1, { crowd: 'path', deep: FRONT - 2.6 });
+    run(609, 768, -1, { crowd: 'path', deep: FRONT - 2.6 }); run(622, 771, 1, { crowd: 'path', deep: FRONT - 2.6 }); // (from the second hairpin's rail; to the rail round the corner at the far end)
     barrier(806, t0, -1, { to: TUN - TH / 2 - 0.15, crowd: 'path', deep: hw + 6.4 }); // (15 cm in from the wall's own line, so its wires don't lie in the face of the portal's post)
     // and round the inside of the corner between those two, so the barrier is unbroken from the second hairpin to the
     // tunnel (the owner: "there should be a fence on the inside here"). No banner on it: round the inside of a bend
