@@ -42,8 +42,9 @@
     Its straights have Westfield's race barrier in that sandstone, with the
     crowd on steps behind (the owner: "need more of the new barriers at rose
     bay"). Not all the way round: walls on both sides of the whole lap were
-    "way too many barriers". Corners keep their rails, the harbour and the
-    lookout keep their view, and the two ways through on the outside of the
+    "way too many barriers". Corners keep their rails (but the inside of the
+    corner after the shops' street has the barrier: "there should be a fence
+    on the inside here"), the harbour and the lookout keep their view, and the two ways through on the outside of the
     top straight stay open (Race to 9LAT2 leaves the road there).
 - **What's new** (`public/updates.js`): one entry per version, newest first.
   Every change gets its own version and its own entry (the owner asked for

@@ -4762,7 +4762,7 @@ function buildRoseBay(track, rnd, randIn) {
     // over its first or last RUN samples. block: false is the fence alone, standing on a wall that's already
     // there (its top `foot` above the road). crowd: 'steps' on grass, 'path' where there's a footpath behind
     // (out to `deep`), or none.
-    const barrier = (i0, i1, sd, { from, to, lat = FACE, block = true, foot = TOP, crowd = 'steps', deep = 0 } = {}) => {
+    const barrier = (i0, i1, sd, { from, to, lat = FACE, block = true, foot = TOP, crowd = 'steps', deep = 0, ads = true } = {}) => {
       const n = i1 - i0, o = (j) => (from != null && j < RUN ? from + ((lat - from) * j) / RUN : to != null && j > n - RUN ? to + ((lat - to) * (n - j)) / RUN : lat), mid = TH / 2;
       for (let j = 0; j < n; j += 3) {
         const i = i0 + j, m = Math.min(3, n - j), a = o(j), b = o(j + m);
@@ -4780,7 +4780,7 @@ function buildRoseBay(track, rnd, randIn) {
       if (!block) return;
       for (const j of [0, n]) { const q = pt(i0 + j, sd, o(j) + mid, 0); box(worldGroup, 0.66, 1.9, 0.66, 0xcdb88a, q.x, q.y + 0.35, q.z); } // a pier at each end, like the harbour wall's
       // a sponsor's banner every 40 m or so, on the road side (not where it runs in at an end, nor behind a gate's post)
-      for (let j = 12; j + 3 <= n - 8; j += 27) {
+      for (let j = 12; ads && j + 3 <= n - 8; j += 27) {
         if (track.cps.some((c) => Math.abs(((i0 + j + 1 - c) % N + N + N / 2) % N - N / 2) < 5)) continue;
         for (let k = 0; k < 3; k++) { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, k / 3, (k + 1) / 3, a.p.x, a.p.z); }
         nb++;
@@ -4828,6 +4828,10 @@ function buildRoseBay(track, rnd, randIn) {
     // the shops' street, both footpaths, and the shops' side of the hill down, in to the tunnel's wall
     barrier(609, 768, -1, { crowd: 'path', deep: FRONT - 2.6 }); barrier(622, 771, 1, { crowd: 'path', deep: FRONT - 2.6 });
     barrier(806, t0, -1, { to: TUN - TH / 2 - 0.15, crowd: 'path', deep: hw + 6.4 }); // (15 cm in from the wall's own line, so its wires don't lie in the face of the portal's post)
+    // and round the inside of the corner between those two, so the barrier is unbroken from the second hairpin to the
+    // tunnel (the owner: "there should be a fence on the inside here"). No banner on it: round the inside of a bend
+    // this tight one would come out squashed. No crowd: there's no footpath there.
+    barrier(768, 806, -1, { crowd: null, ads: false });
     fans.finish();
   }
 
