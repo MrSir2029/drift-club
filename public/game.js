@@ -876,6 +876,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   // clear old
   while (worldGroup.children.length) disposeTree(worldGroup.children.pop());
   occupied.length = 0; anim.length = 0;
+  for (const Q of Object.values(sponsorQuads)) { Q.pos.length = 0; Q.uv.length = 0; }
   gfx.hold = performance.now() + 3000;
   app.worldCar = car;
   const track = buildTrack(trackDef(trackId, car));
@@ -947,8 +948,13 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   const railMat = new THREE.MeshLambertMaterial({ color: 0xc9ced6, flatShading: true }), railPost = new THREE.BoxGeometry(0.16, 1.1, 0.16);
   const railing = (p, q, i) => {
     track.walls.push({ ax: p.x, az: p.z, bx: q.x, bz: q.z, y: (p.y + q.y) / 2 });
-    for (const h of [0.55, 1.0]) worldGroup.add(strut(V(p.x, p.y + h, p.z), V(q.x, q.y + h, q.z), 0.12, 0.12, railMat));
+    for (const h of [0.55, 1.0]) worldGroup.add(strut(V(p.x, p.y + h, p.z), V(q.x, q.y + h, q.z), 0.12, 0.12, railMat, true));
     if (i % 3 === 0) { const post = new THREE.Mesh(railPost, railMat); post.position.set(p.x, p.y + 0.55, p.z); worldGroup.add(post); }
+    // a sponsor's banner on every other bay (a bay is three samples, post to post), hung on the road side of the rails
+    if (Math.floor(i / 3) % 2 === 0) {
+      const s = samples[i], f = (i % 3) / 3, nx = s.p.x - p.x, nz = s.p.z - p.z, nl = Math.hypot(nx, nz) || 1, in8 = (v) => ({ x: v.x + (nx / nl) * 0.09, y: v.y, z: v.z + (nz / nl) * 0.09 });
+      addBanner(Math.floor(i / 6), in8(p), in8(q), 0.12, 0.96, f, f + 1 / 3, s.p.x, s.p.z);
+    }
   };
   for (let i = 0; i < N; i++) {
     const s = samples[i], a = edges[i], b = edges[(i + 1) % N];
@@ -1001,8 +1007,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
     post.position.copy(s0.p).addScaledVector(s0.left, side * (hw + 2.2));
     post.position.y += 2.5;
     post.castShadow = true;
-    arch.add(post);
-    track.solids.push({ x: post.position.x, z: post.position.z, r: 0.8, y: s0.p.y });
+    arch.add(post); // (not solid, like the gates below: a car that runs wide at the line goes through it)
   }
   const bannerTex = makeCheckerTexture();
   // a little longer and deeper than the posts it sits on: with faces level with
@@ -1029,8 +1034,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
       post.position.copy(s.p).addScaledVector(s.left, side * (hw + 2.2));
       post.position.y += 0.5;
       post.castShadow = true;
-      worldGroup.add(post);
-      track.solids.push({ x: post.position.x, z: post.position.z, r: 0.65, y: s.p.y });
+      worldGroup.add(post); // (a gate's posts aren't solid: a checkpoint is there to be driven through, not crashed into)
     }
     const bar = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 5.2, 0.5, 0.5), mat);
     bar.position.copy(s.p); bar.position.y += 5.2;
@@ -1047,6 +1051,13 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   if (track.sea) buildSea(track);
   if (look.night) buildNight(track);
   buildHelicopter(track);
+  // the sponsors' posters and banners, every one in the world: a mesh for each kind
+  for (const [kind, Q] of Object.entries(sponsorQuads)) {
+    if (!Q.pos.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(Q.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(Q.uv, 2));
+    worldGroup.add(new THREE.Mesh(g, sponsorMat(kind, !!look.night)));
+  }
   mergeStatic(worldGroup, new Set(track.gateMats)); // gates stay apart: the next one glows
   // each wall's box, so a car only tests the few walls near it (the city has thousands)
   for (const w of track.walls) { w.x0 = Math.min(w.ax, w.bx) - 3.3; w.x1 = Math.max(w.ax, w.bx) + 3.3; w.z0 = Math.min(w.az, w.bz) - 3.3; w.z1 = Math.max(w.az, w.bz) + 3.3; }
@@ -1115,11 +1126,18 @@ function isFree(track, x, z, r, roadMargin) {
 
 // a box stretched between two points
 const _z = new THREE.Vector3(0, 0, 1);
-function strut(a, b, w, h, mat) {
+// A box from a to b, w wide and h tall. `upright` keeps its sides vertical, for a rail: without it the box takes
+// the shortest turn from pointing along z, which twists one that slopes while heading the other way (enough to
+// lean a rail over the banner hung on it).
+function strut(a, b, w, h, mat, upright) {
   const d = new THREE.Vector3().subVectors(b, a), len = d.length();
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, len), mat);
   m.position.copy(a).addScaledVector(d, 0.5);
-  m.quaternion.setFromUnitVectors(_z, d.normalize());
+  d.normalize();
+  if (upright && Math.abs(d.y) < 0.999) {
+    const x = new THREE.Vector3(0, 1, 0).cross(d).normalize(), y = new THREE.Vector3().crossVectors(d, x);
+    m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, d));
+  } else m.quaternion.setFromUnitVectors(_z, d);
   return m;
 }
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -1328,6 +1346,197 @@ function mulberry32(a) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+// ---------------------------------------------------------------------------
+// The trackside sponsors: on every poster, and on banners along the barriers.
+// They're the owner's choice: three puns on real companies (nine kilometre for
+// Nine Mile, PWD for PwC, Glory Dates for Glory Days) and two real ones as
+// themselves (Tenth Floor Chambers and Frangos). Each is lettered in the
+// company's own look, as the owner asked. No picture of a logo is used:
+// everything is drawn here, in open-licence typefaces served from
+// /vendor/fonts (see the README there), except "nine kilometre", whose
+// letters are drawn one by one, below, after Nine Mile's own. Cars are
+// another matter: they only ever carry made-up names.
+// ---------------------------------------------------------------------------
+const SPONSOR_FONTS = { charis: ['DC Charis', 'charis-sil-700.woff2', '700'], overpass: ['DC Overpass', 'overpass-800.woff2', '800'], caprasimo: ['DC Caprasimo', 'caprasimo-400.woff2', '400'], cormorant: ['DC Cormorant', 'cormorant-garamond-600.woff2', '600'], anton: ['DC Anton', 'anton-400.woff2', '400'] };
+const sponsorFace = (k, size) => `${SPONSOR_FONTS[k][2]} ${Math.round(size)}px "${SPONSOR_FONTS[k][0]}", ${k === 'charis' || k === 'cormorant' || k === 'caprasimo' ? 'Georgia, "Times New Roman", serif' : '"Arial Narrow", Arial, sans-serif'}`;
+// the biggest size (up to `max`) at which `text` is no wider than `wide`
+const fitSize = (c, k, text, wide, max, gap = 0) => { let s = max; for (; s > 8; s -= 1) { c.font = sponsorFace(k, s); if (c.measureText(text).width + gap * s * (text.length - 1) <= wide) break; } return s; };
+// text with its letters spread out by `gap` (a share of the size), centred on cx
+const spaced = (c, text, cx, y, size, gap) => { const ws = [...text].map((ch) => c.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + gap * size * (text.length - 1); let x = cx - total / 2; c.textAlign = 'left'; [...text].forEach((ch, i) => { c.fillText(ch, x, y); x += ws[i] + gap * size; }); c.textAlign = 'center'; };
+const roundedPath = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+
+// Nine Mile's lettering, near enough, for "nine kilometre": a round, heavy lower case, measured off the company's
+// logo. Corners are round outside and square inside, the dots on the i's are square, and the stem of an n, m or r
+// stops a step short, touching its shoulder at one corner only. Just the letters those two words need. Sizes are in
+// x-heights, y going up from the baseline; every piece of a letter is wound clockwise, so they fill as one shape.
+const NM_T = 0.216, NM_ASC = 1.365, NM_R = 0.35, NM_O = 0.52, NM_GAP = 0.185, NM_SPACE = 0.44, NM_LAP = 0.012;
+const nmBox = (c, x0, y0, x1, y1) => c.rect(x0, -y1, x1 - x0, y1 - y0); // (the canvas's y goes down)
+const nmPoly = (c, pts) => { pts.forEach(([x, y], i) => (i ? c.lineTo(x, -y) : c.moveTo(x, -y))); c.closePath(); };
+const nmStem = (c) => nmBox(c, 0, 0, NM_T, 1 - NM_T + NM_LAP); // the stem that stops short of its shoulder
+// a shoulder: from x0 along the top, round the corner and down a stem to the baseline at x1
+const nmArch = (c, x0, x1) => {
+  c.moveTo(x0, NM_T - 1); c.lineTo(x0, -1); c.lineTo(x1 - NM_R, -1); c.arc(x1 - NM_R, NM_R - 1, NM_R, -Math.PI / 2, 0);
+  c.lineTo(x1, 0); c.lineTo(x1 - NM_T, 0); c.lineTo(x1 - NM_T, NM_T - 1); c.closePath();
+};
+const NM_N = NM_T * 2 + 0.434, NM_M = NM_T + 0.415; // how wide an n is, and how far apart the stems of an m are
+// each letter: its width, how to draw it, and how much closer its left and right neighbours may sit
+const NM_GLYPHS = {
+  n: [NM_N, (c) => { nmStem(c); nmArch(c, NM_T - NM_LAP, NM_N); }],
+  m: [NM_M * 2 + NM_T, (c) => { nmStem(c); nmArch(c, NM_T - NM_LAP, NM_M + NM_T); nmArch(c, NM_M + NM_T - 0.04, NM_M * 2 + NM_T); }],
+  r: [0.6, (c) => { nmStem(c); nmBox(c, NM_T - NM_LAP, 1 - NM_T, 0.6, 1); }, 0, -0.05],
+  i: [NM_T, (c) => { nmBox(c, 0, 0, NM_T, 1); nmBox(c, 0, NM_ASC - NM_T, NM_T, NM_ASC); }],
+  l: [NM_T, (c) => nmBox(c, 0, 0, NM_T, NM_ASC)],
+  t: [0.6, (c) => { nmBox(c, 0.13, 0, 0.13 + NM_T, 1.27); nmBox(c, 0, 1 - NM_T, 0.6, 1); }, -0.03, -0.055],
+  k: [0.92, (c) => { nmBox(c, 0, 0, NM_T, NM_ASC); nmPoly(c, [[0.196, 0.3], [0.196, 0.614], [0.562, 1], [0.86, 1]]); nmPoly(c, [[0.247, 0.511], [0.397, 0.669], [0.92, 0], [0.646, 0]]); }, 0, -0.06],
+  o: [NM_O * 2, (c) => { c.moveTo(NM_O * 2, -0.5); c.arc(NM_O, -0.5, NM_O, 0, Math.PI * 2); c.moveTo(NM_O * 2 - NM_T, -0.5); c.arc(NM_O, -0.5, NM_O - NM_T, Math.PI * 2, 0, true); }, -0.035, -0.035],
+  e: [NM_O * 2, (c) => { // a ring with a bar across it, open through a slit under the bar on the right
+    const ri = NM_O - NM_T, bar0 = 0.14, bar1 = -0.05, cut = 0.26; // the bar's underside and top, and the end of the tail, below the middle
+    c.moveTo(NM_O + Math.sqrt(NM_O * NM_O - cut * cut), cut - 0.5); c.arc(NM_O, -0.5, NM_O, Math.asin(cut / NM_O), Math.PI * 2 + Math.asin(bar0 / NM_O)); // round the outside, from the tail to the bar's end
+    c.arc(NM_O, -0.5, ri, Math.PI - Math.asin(bar0 / ri), Math.asin(cut / ri), true); c.closePath(); // back under the bar and round the inside
+    c.moveTo(NM_O + Math.sqrt(ri * ri - bar1 * bar1), bar1 - 0.5); c.arc(NM_O, -0.5, ri, Math.asin(bar1 / ri), -Math.PI - Math.asin(bar1 / ri), true); c.closePath(); // the eye, the other way round: a hole
+  }, -0.035, -0.035],
+};
+// lays the letters out along x, calling each(letter, x); returns the width of the lot
+function nineMileLay(text, each) {
+  let x = 0, prev = null;
+  for (const ch of text) {
+    if (ch === ' ') { x += NM_SPACE; prev = null; continue; }
+    const g = NM_GLYPHS[ch];
+    if (prev) x += NM_GAP + (prev[3] || 0) + (g[2] || 0);
+    each?.(g, x); x += g[0]; prev = g;
+  }
+  return x;
+}
+// the words centred on (cx, cy), with an x-height of `xh` pixels, in the current fill colour
+function nineMileWords(c, text, cx, cy, xh) {
+  c.save(); c.translate(cx - (nineMileLay(text) * xh) / 2, cy + xh / 2); c.scale(xh, xh); c.beginPath();
+  nineMileLay(text, (g, x) => { c.save(); c.translate(x, 0); g[1](c); c.restore(); });
+  c.fill(); c.restore();
+}
+
+// each draws itself into a rectangle of a canvas, as a poster (about 10 : 3) or a banner (about 10.7 : 1, the name twice)
+const SPONSOR_ART = [
+  { name: 'nine kilometre', // a pun on Nine Mile: its lower-case lettering, aqua on deep blue, and nothing else
+    draw(c, x, y, w, h, banner) {
+      c.fillStyle = '#272d9f'; c.fillRect(x, y, w, h);
+      c.fillStyle = '#54edd9';
+      const wide = nineMileLay('nine kilometre');
+      if (banner) { for (const f of [0.25, 0.75]) nineMileWords(c, 'nine kilometre', x + w * f, y + h * 0.55, Math.min(h * 0.4, (w * 0.42) / wide)); }
+      else nineMileWords(c, 'nine kilometre', x + w / 2, y + h * 0.54, Math.min(h * 0.3, (w * 0.86) / wide));
+    } },
+  { name: 'PWD', // a pun on PwC: lower-case serif letters and a stack of warm blocks
+    draw(c, x, y, w, h, banner) {
+      c.fillStyle = '#ffffff'; c.fillRect(x, y, w, h);
+      const mark = (cx, cy, s) => { // the letters, baseline at cy, with the blocks up and to the right of them
+        c.font = sponsorFace('charis', s); const tw = c.measureText('pwd').width, u = s * 0.115, left = cx - (tw + u * 3.2) / 2;
+        c.fillStyle = '#2d2d2d'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText('pwd', left, cy); c.textAlign = 'center'; c.textBaseline = 'middle';
+        const bx = left + tw - u * 1.2, by = cy - s * 0.74 - u * 2.1;
+        for (const [col, x0, y0, x1, y1] of [['#eb8c00', 0, 1.7, 3.3, 2.7], ['#ffb600', 1.1, 0.3, 3.5, 2.0], ['#e0301e', 2.3, 1.0, 4.5, 3.0], ['#db536a', 3.2, 0, 5.3, 1.5], ['#a32020', 3.8, 1.9, 5.0, 3.5]]) { c.globalAlpha = 0.88; c.fillStyle = col; c.fillRect(bx + x0 * u, by + y0 * u, (x1 - x0) * u, (y1 - y0) * u); }
+        c.globalAlpha = 1;
+      };
+      if (banner) { mark(x + w * 0.25, y + h * 0.7, h * 0.74); mark(x + w * 0.75, y + h * 0.7, h * 0.74); } else mark(x + w / 2, y + h * 0.71, h * 0.7);
+    } },
+  { name: 'Glory Dates', // a pun on Glory Days: a soft old-fashioned serif, a rising sun
+    draw(c, x, y, w, h, banner) {
+      c.fillStyle = '#f7ead3'; c.fillRect(x, y, w, h);
+      const sun = (cx, cy, r) => {
+        c.save(); c.beginPath(); c.rect(x, y, w, cy - y); c.clip();
+        c.fillStyle = '#f4b23c'; for (let k = 0; k < 9; k++) { const a = Math.PI + (k + 0.5) * Math.PI / 9; c.beginPath(); c.moveTo(cx + Math.cos(a - 0.07) * r * 1.2, cy + Math.sin(a - 0.07) * r * 1.2); c.lineTo(cx + Math.cos(a) * r * 1.75, cy + Math.sin(a) * r * 1.75); c.lineTo(cx + Math.cos(a + 0.07) * r * 1.2, cy + Math.sin(a + 0.07) * r * 1.2); c.fill(); }
+        c.fillStyle = '#ef8a2b'; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); c.restore();
+      };
+      const word = (cx, cw, size) => { const s = fitSize(c, 'caprasimo', 'Glory Dates', cw, size); c.font = sponsorFace('caprasimo', s); c.fillStyle = '#8f3519'; c.fillText('Glory Dates', cx + s * 0.035, y + h * 0.5 + s * 0.045); c.fillStyle = '#c4502b'; c.fillText('Glory Dates', cx, y + h * 0.5); };
+      if (banner) { for (const f of [0, 0.5]) { sun(x + w * (f + 0.065), y + h * 0.86, h * 0.34); word(x + w * (f + 0.3), w * 0.36, h * 0.74); } }
+      else { sun(x + w * 0.165, y + h * 0.8, h * 0.3); c.fillStyle = '#c4502b'; c.fillRect(x + w * 0.065, y + h * 0.8, w * 0.2, h * 0.02); word(x + w * 0.64, w * 0.66, h * 0.56); }
+    } },
+  { name: 'Tenth Floor Chambers', // themselves: a barristers' chambers, so a quiet serif in gold on navy
+    draw(c, x, y, w, h, banner) {
+      c.fillStyle = '#101d3a'; c.fillRect(x, y, w, h);
+      const GOLD = '#d9b86c', IVORY = '#f4efe2';
+      c.strokeStyle = GOLD; c.lineWidth = Math.max(1, h * 0.014); c.strokeRect(x + h * 0.07, y + h * 0.07, w - h * 0.14, h - h * 0.14);
+      if (banner) {
+        for (const f of [0, 0.5]) {
+          const cx = x + w * (f + 0.25);
+          c.font = sponsorFace('charis', h * 0.6); c.fillStyle = GOLD; const tw = c.measureText('10').width; c.fillText('10', x + w * (f + 0.05) + tw / 2, y + h * 0.53);
+          const s = fitSize(c, 'cormorant', 'TENTH FLOOR CHAMBERS', w * 0.315, h * 0.42, 0.1); c.font = sponsorFace('cormorant', s); c.fillStyle = IVORY; spaced(c, 'TENTH FLOOR CHAMBERS', cx + w * 0.045, y + h * 0.52, s, 0.1);
+        }
+        c.fillStyle = GOLD; c.fillRect(x + w / 2 - 1, y + h * 0.2, 2, h * 0.6);
+      } else {
+        c.font = sponsorFace('charis', h * 0.62); c.fillStyle = GOLD; c.fillText('10', x + w * 0.16, y + h * 0.52);
+        c.fillRect(x + w * 0.285, y + h * 0.24, Math.max(2, h * 0.012), h * 0.52);
+        let s = fitSize(c, 'cormorant', 'TENTH FLOOR', w * 0.6, h * 0.34, 0.12); c.font = sponsorFace('cormorant', s); c.fillStyle = IVORY; spaced(c, 'TENTH FLOOR', x + w * 0.63, y + h * 0.38, s, 0.12);
+        s = fitSize(c, 'cormorant', 'CHAMBERS', w * 0.5, h * 0.2, 0.42); c.font = sponsorFace('cormorant', s); c.fillStyle = GOLD; spaced(c, 'CHAMBERS', x + w * 0.63, y + h * 0.69, s, 0.42);
+      }
+    } },
+  { name: 'Frangos', // themselves: Portuguese charcoal chicken, so red, with the flag's green and gold
+    draw(c, x, y, w, h, banner) {
+      c.fillStyle = '#d42a1e'; c.fillRect(x, y, w, h);
+      c.fillStyle = '#0a7a3c'; c.fillRect(x, y + h * 0.9, w, h * 0.1); c.fillStyle = '#ffd200'; c.fillRect(x, y + h * 0.865, w, h * 0.035);
+      const flame = (cx, cy, s) => { for (const [col, k] of [['#ffd200', 1], ['#ff8a1e', 0.62]]) { c.fillStyle = col; c.beginPath(); c.moveTo(cx, cy - s * k); c.bezierCurveTo(cx + s * 0.75 * k, cy - s * 0.25 * k, cx + s * 0.6 * k, cy + s * 0.55 * k, cx, cy + s * 0.55 * k); c.bezierCurveTo(cx - s * 0.6 * k, cy + s * 0.55 * k, cx - s * 0.55 * k, cy - s * 0.05 * k, cx - s * 0.18 * k, cy - s * 0.3 * k); c.bezierCurveTo(cx - s * 0.1 * k, cy - s * 0.05 * k, cx + s * 0.12 * k, cy - s * 0.35 * k, cx, cy - s * k); c.fill(); } };
+      const name = (cx, cy, s) => { c.font = sponsorFace('anton', s); c.fillStyle = '#8f140c'; c.fillText('FRANGOS', cx + s * 0.045, cy + s * 0.05); c.fillStyle = '#fff6e0'; c.fillText('FRANGOS', cx, cy); return c.measureText('FRANGOS').width; };
+      if (banner) {
+        for (const f of [0, 0.5]) { const tw = name(x + w * (f + 0.17), y + h * 0.47, h * 0.72); flame(x + w * (f + 0.17) - tw / 2 - h * 0.34, y + h * 0.46, h * 0.36); c.font = sponsorFace('overpass', h * 0.2); c.fillStyle = '#ffd200'; c.textAlign = 'left'; c.fillText('PORTUGUESE', x + w * (f + 0.17) + tw / 2 + h * 0.2, y + h * 0.3); c.fillText('CHARCOAL CHICKEN', x + w * (f + 0.17) + tw / 2 + h * 0.2, y + h * 0.58); c.textAlign = 'center'; }
+      } else {
+        const tw = name(x + w * 0.53, y + h * 0.37, h * 0.55); flame(x + w * 0.53 - tw / 2 - h * 0.3, y + h * 0.36, h * 0.3);
+        const s = fitSize(c, 'overpass', 'PORTUGUESE CHARCOAL CHICKEN', w * 0.8, h * 0.14, 0.08); c.font = sponsorFace('overpass', s); c.fillStyle = '#ffd200'; spaced(c, 'PORTUGUESE CHARCOAL CHICKEN', x + w / 2, y + h * 0.735, s, 0.08);
+      }
+    } },
+];
+
+// Every poster and banner in the world is one of two meshes, each with one
+// sheet of artwork: posters two across and three down, banners in rows. The
+// sheets are drawn once the typefaces have arrived (or after five seconds
+// without them, in whatever the browser has), so for a moment after the page
+// opens the boards are blank.
+const sponsorQuads = { poster: { pos: [], uv: [] }, banner: { pos: [], uv: [] } }; // this world's, filled in as it's built
+const sponsorMats = new Map();
+let sponsorSheets = null;
+function sponsorMat(kind, night) {
+  const key = kind + (night ? '|night' : '|day');
+  let m = sponsorMats.get(key);
+  if (!m) {
+    // lit from inside, as far as the game goes: the same by day whichever way they face, and readable at night
+    m = new THREE.MeshBasicMaterial({ color: night ? (kind === 'poster' ? 0xc4c4c4 : 0x9c9c9c) : 0xe8e8e8, map: sponsorSheets?.[kind] ?? null });
+    m.userData.keep = true; m.userData.kind = kind; // shared by every track: never disposed with one
+    sponsorMats.set(key, m);
+  }
+  return m;
+}
+const posterCell = (k) => { const x = (k % 2) * 1024, y = (k >> 1) * 320; return [x, y, 1024, 308]; };
+const bannerCell = (k) => [0, k * 100, 1024, 96];
+function drawSponsorSheets() {
+  const sheet = (w, h, cell, banner) => {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const c = cv.getContext('2d');
+    SPONSOR_ART.forEach((s, k) => { c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 1; s.draw(c, ...cell(k), banner); });
+    const tex = cleanTexture(cv);
+    tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); // they're read from along the road, at a slant
+    return tex;
+  };
+  sponsorSheets = { poster: sheet(2048, 1024, posterCell, false), banner: sheet(1024, 512, bannerCell, true) };
+  for (const m of sponsorMats.values()) { m.map = sponsorSheets[m.userData.kind]; m.needsUpdate = true; }
+}
+Promise.race([
+  Promise.all(Object.values(SPONSOR_FONTS).map(async ([name, file, weight]) => { const f = new FontFace(name, `url(/vendor/fonts/${file})`, { weight }); document.fonts.add(await f.load()); })).catch(() => {}),
+  new Promise((done) => setTimeout(done, 5000)),
+]).then(drawSponsorSheets);
+// A poster: its four corners as someone reading it sees them (bottom-left, bottom-right, top-right, top-left).
+function addPoster(q, k) {
+  const [x, y, w, h] = posterCell(k % SPONSOR_ART.length), u0 = (x + 2) / 2048, u1 = (x + w - 2) / 2048, v1 = 1 - (y + 2) / 1024, v0 = 1 - (y + h - 2) / 1024;
+  const uv = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], Q = sponsorQuads.poster;
+  for (const j of [0, 1, 2, 0, 2, 3]) { Q.pos.push(q[j].x, q[j].y, q[j].z); Q.uv.push(uv[j][0], uv[j][1]); }
+}
+// A piece of a banner hung along a barrier, from p to q ({x, y, z} at its foot), y0 to y1 above them, facing the
+// point (tx, tz) on the road side so it reads the right way round from there. fp and fq say how far along the
+// whole banner p and q are (0 to 1, in the order the pieces come), so a banner can follow a bend in several
+// pieces. One name fills it unless `twice`.
+function addBanner(k, p, q, y0, y1, fp, fq, tx, tz, twice) {
+  const facesP = (tx - p.x) * -(q.z - p.z) + (tz - p.z) * (q.x - p.x) > 0; // is p on the left, seen from the road?
+  const [L, R, fL, fR] = facesP ? [p, q, fp, fq] : [q, p, 1 - fq, 1 - fp], span = twice ? 1 : 0.5;
+  const [, y, , h] = bannerCell(k % SPONSOR_ART.length), u0 = 0.002 + fL * (span - 0.004), u1 = 0.002 + fR * (span - 0.004), v1 = 1 - (y + 1.5) / 512, v0 = 1 - (y + h - 1.5) / 512;
+  const c = [[L.x, L.y + y0, L.z, u0, v0], [R.x, R.y + y0, R.z, u1, v0], [R.x, R.y + y1, R.z, u1, v1], [L.x, L.y + y1, L.z, u0, v1]], Q = sponsorQuads.banner;
+  for (const j of [0, 1, 2, 0, 2, 3]) { Q.pos.push(c[j][0], c[j][1], c[j][2]); Q.uv.push(c[j][3], c[j][4]); }
 }
 
 // Trackside: grid boxes, barriers, braking boards, marshal posts, billboards,
@@ -1573,9 +1782,15 @@ function buildProps(track) {
     // join this barrier post to the last one so the rail has no gaps or overlaps
     if (here && prev && prev.outside === here.outside && here.i - prev.i === 4) {
       const a = prev.p.clone(), b = here.p.clone();
-      const rail = gravel ? strut(V(a.x, a.y + 0.45, a.z), V(b.x, b.y + 0.45, b.z), 1.0, 0.9, baleMat) : strut(V(a.x, a.y + 0.78, a.z), V(b.x, b.y + 0.78, b.z), 0.25, 0.5, railMat);
+      const rail = gravel ? strut(V(a.x, a.y + 0.45, a.z), V(b.x, b.y + 0.45, b.z), 1.0, 0.9, baleMat, true) : strut(V(a.x, a.y + 0.78, a.z), V(b.x, b.y + 0.78, b.z), 0.25, 0.5, railMat, true);
       rail.castShadow = true; worldGroup.add(rail);
       wall(a, b);
+      // a sponsor's banner on every other length of rail, on the road side
+      if (!gravel && (here.i >> 2) % 2 === 0) {
+        const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz), nx = s.p.x - (a.x + b.x) / 2, nz = s.p.z - (a.z + b.z) / 2, nl = Math.hypot(nx, nz) || 1, ins = Math.max(0, (len - 4.4) / 2) / len;
+        const on = (f) => ({ x: a.x + dx * f + (nx / nl) * 0.2, y: a.y + (b.y - a.y) * f, z: a.z + dz * f + (nz / nl) * 0.2 }); // (clear of the rail's face even where the rail slopes: a strut on a slope leans a little)
+        addBanner(here.i >> 3, on(ins), on(1 - ins), 0.14, 0.96, 0, 1, s.p.x, s.p.z);
+      }
     }
     prev = here;
     // three boards counting down to a corner that follows a straight
@@ -1621,23 +1836,23 @@ function buildProps(track) {
   }
 
   // --- billboards and light poles along the straights ---
-  const adColors = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0x8c6bff, 0x2ec4b6];
   let bb = 0;
   for (let i = 60; i < N - 40; i += 46) {
     if (Math.abs(turn[i]) > 0.15 || !flat(i)) continue;
     const s = samples[i], side = bb % 2 ? 1 : -1, p = at(s, side * (hw + 12));
-    const rot = heading(s) + Math.PI / 2 + 0.5 * side; // long side along the road, angled toward oncoming cars
+    const rot = heading(s) + Math.PI / 2 - 0.5 * side; // long side along the road, its road side turned to face the cars coming (it used to be turned the other way, which nobody noticed while the boards were plain colours)
     const ex = Math.cos(rot) * 5, ez = -Math.sin(rot) * 5;
     if (![-1, 0, 1].every(e => isFree(track, p.x + ex * e, p.z + ez * e, 1.5, hw + 5))) continue;
     for (const e of [-1, 0, 1]) claim(p.x + ex * e, p.z + ez * e, 2.6);
     const grp = new THREE.Group();
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(10, 3, 0.3), lam(adColors[bb % adColors.length]));
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(10.4, 3.4, 0.3), lam(0x1d2230)); // the frame: a sponsor's poster goes on each face
     panel.position.y = 4; panel.castShadow = true; grp.add(panel);
-    const band = new THREE.Mesh(new THREE.BoxGeometry(10.1, 0.7, 0.34), lam(0x1d2230)); band.position.y = 4; grp.add(band);
     for (const x of [-4, 4]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7, 0.3), postMat); leg.position.set(x, 0, 0); grp.add(leg); }
     grp.position.copy(p);
     grp.rotation.y = rot;
     worldGroup.add(grp);
+    grp.updateMatrixWorld();
+    for (const [z, k] of [[0.16, bb], [-0.16, bb + 2]]) addPoster([[-5, 2.5], [5, 2.5], [5, 5.5], [-5, 5.5]].map(([x, y]) => V(z > 0 ? x : -x, y, z).applyMatrix4(grp.matrixWorld)), k);
     for (const e of [-0.8, 0.8]) solid({ x: p.x + ex * e, z: p.z + ez * e, y: p.y }, 0.45);
     const pole = at(s, -side * (hw + 6));
     if (!gravel && isFree(track, pole.x, pole.z, 1, hw + 3)) {
@@ -1733,7 +1948,7 @@ function insideLoop(track, x, z) {
 }
 
 // A street circuit (Sydney CBD): concrete walls down both sides of the road,
-// just past the kerbs, painted in blocks of colour on the road side. Side
+// just past the kerbs, with the sponsors' banners along them. Side
 // streets break them now and then, always on the outside of the circuit, so
 // there's a way out to the rest of the city (and 9LAT2) but no short cut
 // across the middle. track.gaps keeps the buildings out of those streets.
@@ -1763,8 +1978,7 @@ function buildStreetWalls(track) {
     if (track.theme !== 'city') for (let lat = hw + 6; lat < hw + 46; lat += 6) claim(s.p.x + s.left.x * out * lat, s.p.z + s.left.z * out * lat, 8);
   }
   const inGap = (side, i) => gaps.some(g => g.side === side && i >= g.a && i <= g.b);
-  const adCols = [0xff8a3d, 0x3d8bff, 0x7ed957, 0xffd23f, 0xff6bcb, 0x2ec4b6];
-  const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e), ad = new THREE.Color();
+  const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e);
   const pos = [], col = [];
   track.wallAt = {}; // which samples have a wall beside them, each side (the city puts its crowds behind them)
   for (const side of [1, -1]) {
@@ -1790,12 +2004,18 @@ function buildStreetWalls(track) {
     }
     track.wallAt[side] = hasIn.map((v, i) => v | hasOut[i]);
     const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
+    // is the wall whole and near its proper length for the three samples from g0? (on the inside of a tight bend it
+    // bunches up, on the outside it stretches: a banner there would come out squashed, cut short or pulled wide)
+    const whole = (g0) => [0, 1, 2].every((j) => { const u = P[(g0 + j) % N], v = P[(g0 + j + 1) % N]; if (!u || !v) return false; const t = samples[u.i].th, run = (v.p.x - u.p.x) * t.x + (v.p.z - u.p.z) * t.z; return run > 1.05 && run < 2.1; });
     for (const [a, b] of links) {
       // faces: road side, top, back (each facing out, whichever side of the road)
       const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
       const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
-      const blk = Math.floor(a.i / 10);
-      const face = blk % 3 === 1 ? ad.set(adCols[(blk + (side > 0 ? 0 : 3)) % adCols.length]) : concrete;
+      const blk = Math.floor(a.i / 10), k = a.i % 10, face = concrete;
+      if (blk % 3 === 1 && k < 9 && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // sponsors' banners: three to a stretch, each three samples long
+        const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.03, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.03 }), c = samples[a.i].p;
+        addBanner(blk + Math.floor(k / 3) + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
+      }
       if (side > 0) { pushQuad(pos, col, A0, A1, B1, B0, face); pushQuad(pos, col, A1, C1, D1, B1, topC); pushQuad(pos, col, C0, D0, D1, C1, backC); }
       else { pushQuad(pos, col, A0, B0, B1, A1, face); pushQuad(pos, col, A1, B1, D1, C1, topC); pushQuad(pos, col, C0, C1, D1, D0, backC); }
       track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2 });
@@ -3666,7 +3886,7 @@ function buildRoseBay(track, rnd, randIn) {
     // the sea wall, or runs into the tunnel's wall, so there's no way round it.
     {
       const railMat = lam(0xc9ced6), QRAIL = hw + 2.7, tyreGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.85, 8), tyres = [0xe6453a, 0xf6f2e8, 0x1d2230];
-      const span = (a, b) => { const m = strut(V(a[0], a[1] + 0.78, a[2]), V(b[0], b[1] + 0.78, b[2]), 0.25, 0.5, railMat); m.castShadow = true; worldGroup.add(m); walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 }); };
+      const span = (a, b) => { const m = strut(V(a[0], a[1] + 0.78, a[2]), V(b[0], b[1] + 0.78, b[2]), 0.25, 0.5, railMat, true); m.castShadow = true; worldGroup.add(m); walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 }); };
       const on = (i) => !!onQuay(i, 1) && !inTunnel(i, 0);
       const end = (j, i, sd, y) => { if (inTunnel(j, 0)) { const [x, z] = P(j, sd * TUN); return [x, y, z]; } const e = nearEdge(i); return e && [e.x, y, e.z]; }; // what the rail meets beyond sample i, towards j
       let prev = null, nt = 0;
@@ -3677,7 +3897,15 @@ function buildRoseBay(track, rnd, randIn) {
         if (prev && !last && i % 4) continue;
         const [x, z] = P(i, sd * QRAIL), q = [x, s.p.y - 0.16, z];
         box(worldGroup, 0.2, 1.0, 0.2, 0x5a6372, x, q[1] + 0.4, z);
-        if (prev) span(prev, q); else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
+        if (prev) {
+          span(prev, q);
+          const dx = q[0] - prev[0], dz = q[2] - prev[2], len = Math.hypot(dx, dz);
+          if (len > 5 && (i >> 2) % 2 === 0) { // a sponsor's banner on every other length of it
+            const ins = (len - 4.4) / 2 / len, nx = s.p.x - x, nz = s.p.z - z, nl = Math.hypot(nx, nz) || 1;
+            const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.2, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.2 });
+            addBanner(i >> 3, on(ins), on(1 - ins), 0.14, 0.96, 0, 1, s.p.x, s.p.z);
+          }
+        } else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
         if (last) { const e = end(i + 1, i, sd, q[1]); if (e) span(q, e); }
         prev = last ? null : q;
         // tyres at the sharpest of a corner the water is on the outside of
@@ -3900,8 +4128,14 @@ function buildRoseBay(track, rnd, randIn) {
   // the bank and join the shops' street, leaving out the straight and the second hairpin altogether. ----
   {
     const w0 = nearestI(53.5, 164.3), w1 = nearestI(-125, 160), LAT = FRONT + 9.8, TOP = 5.9, STONE = C(0xcdb88a), COPING = C(0xb9a878); // (from where the hairpin's two legs part)
+    // a banner's place on the wall (the three samples from i): is it free of anything big standing in front, like a marshal's stand?
+    const bayClear = (i) => { const [ax, az] = P(i, LAT + 1.6), [bx, bz] = P(i + 3, LAT + 1.6), mx = (ax + bx) / 2, mz = (az + bz) / 2, y = samples[wrap(i + 1)].p.y + TOP - 1; return !solids.some((c) => c.r >= 1.2 && Math.abs(c.y - y) < 3 && Math.hypot(c.x - mx, c.z - mz) < c.r + 2.6); };
     for (let i = w0; i < w1; i++) {
       ribbon(i, 1, LAT, LAT + 0.02, -1.5, TOP, STONE); ribbon(i, 1, LAT + 0.7, LAT + 0.72, -1.5, TOP, STONE); ribbon(i, 1, LAT, LAT + 0.7, TOP, TOP, COPING);
+      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 2 === 1 && bayClear(i - ((i - w0) % 3))) { // beside the road above: sponsors' banners along the top of it, every other 4.5 m
+        const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, LAT + 0.76), [bx, bz] = P(i + 1, LAT + 0.76), [tx, tz] = P(i, LAT + 12), f = ((i - w0) % 3) / 3;
+        addBanner(Math.floor((i - w0) / 6), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
+      }
       if ((i - w0) % 3 === 0) { // solid from either level
         const y = samples[wrap(i)].p.y, [ax, az] = P(i, LAT + 0.35), [bx, bz] = P(Math.min(i + 3, w1), LAT + 0.35);
         for (const dy of [1.2, 5.6]) walls.push({ ax, az, bx, bz, y: y + dy });
@@ -4543,7 +4777,7 @@ function buildCity(track, rnd) {
       }
       // and now and then a billboard higher up
       if (r.top - r.gtop > 20 && w > 11 && rnd() < 0.4) {
-        const bw = Math.min(w - 2, 12 + rnd() * 3), bh = bw / 2, y = r.gtop + 10.5 + bh / 2 + rnd() * Math.max(0, r.top - r.gtop - 13.5 - bh);
+        const bw = Math.min(w - 2, 12 + rnd() * 3), bh = bw * 0.3, y = r.gtop + 10.5 + bh / 2 + rnd() * Math.max(0, r.top - r.gtop - 13.5 - bh); // (a poster's shape)
         const f = lat - d / 2 - 0.45;
         boards.push({ c: V(s.p.x + s.left.x * side * f, y, s.p.z + s.left.z * side * f), n: V(-s.left.x * side, 0, -s.left.z * side), w: bw, h: bh });
       }
@@ -4618,34 +4852,16 @@ function buildCity(track, rnd) {
     neon.renderOrder = 2; worldGroup.add(neon);
   }
 
-  // ---- billboards up on the buildings along the circuit: made-up brands, lit up ----
+  // ---- billboards up on the buildings along the circuit: the sponsors' posters, lit up ----
   if (boards.length) {
-    const ADS = [['DINGO DONUTS', 'Fresh all night', '#ff6bcb', '#ffffff'], ['BILBY BURGERS', 'Open late', '#ff8a3d', '#ffffff'], ['CROC CRISPS', 'Snap them up', '#2fbf55', '#ffffff'], ['SUNBURNT SODA', 'Ice cold', '#3d8bff', '#ffffff'],
-      ['ROO RIDES', 'Hop in', '#ffd23f', '#1d2230'], ['TURBO TEA', 'Full throttle', '#a259ff', '#ffffff'], ['DRIFT CLUB', 'Race your mates', '#1d2230', '#ffd23f'], ['GALAH GAMES', 'Play all night', '#e6453a', '#ffffff']];
-    const bc = document.createElement('canvas'); bc.width = 1024; bc.height = 1024;
-    const bx = bc.getContext('2d'); bx.textAlign = 'center'; bx.textBaseline = 'middle';
-    ADS.forEach(([name, tag, bg, ink], k) => {
-      const x = (k % 2) * 512, y = Math.floor(k / 2) * 256;
-      bx.fillStyle = bg; bx.fillRect(x, y, 512, 256);
-      bx.fillStyle = ink; bx.fillRect(x + 40, y + 150, 432, 4);
-      let size = 96; do { bx.font = `900 ${size}px "Segoe UI", Arial, sans-serif`; size -= 4; } while (bx.measureText(name).width > 460);
-      bx.fillText(name, x + 256, y + 92);
-      bx.font = '700 40px "Segoe UI", Arial, sans-serif'; bx.fillText(tag, x + 256, y + 200);
-    });
-    const bp = [], buv = [], frame = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
+    const frame = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
     boards.forEach((g) => {
-      const ad = Math.floor(rnd() * ADS.length), u0 = (ad % 2) * 0.5, v1 = 1 - Math.floor(ad / 2) * 0.25, v0 = v1 - 0.25;
+      const ad = Math.floor(rnd() * SPONSOR_ART.length);
       const r = V(g.n.z, 0, -g.n.x).multiplyScalar(g.w / 2), up = V(0, g.h / 2, 0);
-      const c = [g.c.clone().sub(r).sub(up), g.c.clone().add(r).sub(up), g.c.clone().add(r).add(up), g.c.clone().sub(r).add(up)];
-      const t = [[u0, v0], [u0 + 0.5, v0], [u0 + 0.5, v1], [u0, v1]];
-      for (const i of [0, 1, 2, 0, 2, 3]) { bp.push(c[i].x, c[i].y, c[i].z); buv.push(...t[i]); }
+      addPoster([g.c.clone().sub(r).sub(up), g.c.clone().add(r).sub(up), g.c.clone().add(r).add(up), g.c.clone().sub(r).add(up)], ad);
       const f = new THREE.Mesh(new THREE.BoxGeometry(g.w + 0.8, g.h + 0.8, 0.3), frame);
       f.position.copy(g.c).addScaledVector(g.n, -0.22); f.rotation.y = Math.atan2(g.n.x, g.n.z); worldGroup.add(f);
     });
-    const bgeo = new THREE.BufferGeometry();
-    bgeo.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
-    bgeo.setAttribute('uv', new THREE.Float32BufferAttribute(buv, 2));
-    worldGroup.add(new THREE.Mesh(bgeo, new THREE.MeshBasicMaterial({ map: cleanTexture(bc), color: 0xe4e4e4 })));
   }
 
   // ---- traffic: cars going round the blocks out past the wall round the map,

@@ -116,7 +116,8 @@ screen.
 
 Drive through the orange gates in order. The glowing one is your next gate.
 Going through one a little wide (a wheel on the grass, or just outside a
-post) still counts, but a shortcut that skips a gate doesn't: a yellow
+post) still counts, and the posts aren't solid, so clipping one costs
+nothing. A shortcut that skips a gate doesn't count: a yellow
 "Missed a gate!" banner points back to it until you drive through it or press
 R. The minimap marks your next gate with an orange bar (red once you've missed
 it). There is no automatic reset: drive back on, or press R.
@@ -210,7 +211,9 @@ before.
 ## The map
 
 Barriers, fences, buildings, trees, big rocks and posts are solid, and a
-stone wall rings the edge of the map. Away from the circuit there are
+stone wall rings the edge of the map. (The checkpoint gates and the arch over
+the start line are the exception: a car goes straight through their posts.)
+Away from the circuit there are
 places to explore: a lake you can wade through, a fairground, a
 village, a stone circle, a campsite, a windmill and a radio mast. These
 are the **expanded map**, which is on by default;
@@ -240,7 +243,7 @@ buoys mark the edge of the map out on the water. It has no lake.
 Sydney CBD (the sixth) is a street circuit at night: concrete walls down both
 sides (`walls` in `tracks.js`), a hairpin at the end of the main straight, a
 flyover that crosses above it, and a chicane; office blocks with lit windows,
-neon signs, lit billboards for made-up brands and a skyline, crowds behind the
+neon signs, lit billboards for the trackside sponsors and a skyline, crowds behind the
 walls, and traffic going round the blocks out past the edge of the map. A few
 side streets, always on the outside of the
 circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
@@ -302,6 +305,18 @@ black swans at Centennial Park; a chairlift across the track, skiers and A-frame
 Thredbo; the real corner names on signs and campers round their fires at Mount
 Panorama; surfers and koalas at Noosa Heads; Sydney Tower, the Harbour Bridge
 and the Opera House around Sydney CBD.
+The posters, and the banners along the barriers, carry the trackside sponsors,
+which the owner chose: nine kilometre, PWD and Glory Dates (puns on Nine Mile,
+PwC and Glory Days), and Tenth Floor Chambers and Frangos as themselves, each
+in its company's own colours and lettering (`SPONSOR_ART` in `game.js`). They
+are on every billboard (each turned to face the cars coming) and on Sydney
+CBD's lit boards, and as banners on the
+rails on the outside of corners, on bridge railings, on Sydney CBD's walls and
+on Rose Bay's guard rail and stone wall. Nothing is a picture: the boards are
+drawn in the browser, in open-licence typefaces from `public/vendor/fonts`
+(nine kilometre's letters are drawn one by one, `NM_GLYPHS`), onto two sheets
+that every poster and banner in the world shares. Cars still only carry
+made-up names.
 A track's look
 comes from `THEMES` in `game.js`, and jumps and the arch are set on the
 track in `tracks.js`.
@@ -399,7 +414,8 @@ get a red dot on the button until they've read it.
   impossible laps). Changing a track's layout? Bump its `v` in `tracks.js` and
   in `TRACK_VERSION` in `server/core.js`: its leaderboard starts again, and old
   times don't come back from players' browsers.
-- `public/vendor/`: Three.js r187, copied from npm so nothing loads from a CDN.
+- `public/vendor/`: Three.js r187, and in `fonts/` the typefaces the sponsors'
+  boards are lettered in, all copied from npm so nothing loads from a CDN.
 
 Physics runs on each player's own computer (there are no car-to-car
 collisions, so nobody can push you off). The server trusts clients for
