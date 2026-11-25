@@ -74,6 +74,11 @@
   the home screen or the pause menu (the owner asked), and the record
   ghost's switch sits near the top of Settings and in the Polytrack pause
   menu ("too hard to find" where it was, low down in Settings).
+- **Nothing a few centimetres in front of something else on far-off
+  scenery** (window panes on a wall, a band round a tower): from a few
+  hundred metres the two flicker, and the test renderer doesn't show it
+  ("City flickers from far away"). Make the detail part of the surface
+  (README, "Far-off things and depth").
 - **Testing:** headless Playwright (SwiftShader). Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update

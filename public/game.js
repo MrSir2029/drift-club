@@ -868,6 +868,30 @@ function buildRibbon(track, offA, offB, colorFn, yLift = 0) {
   return { pos, col };
 }
 
+// The centre line: a strip half a metre wide down the middle of the road, white for four samples and road grey
+// for the next four. The road between two samples is two flat triangles, cut corner to corner (from its left
+// edge at this sample to its right edge at the next). On a bend that climbs or drops, that is not the surface a
+// strip laid straight from one sample's centre to the next lies on: round a downhill hairpin the road stood two
+// or three centimetres proud of the dashes and buried bits of them. So each length of the line is cut along the
+// same diagonal as the road under it, and lies flat on each of the two triangles, 2 cm up.
+function centreDashes(track) {
+  const { samples, N, hw } = track, pos = [], col = [], white = new THREE.Color(0xf6f2e8), grey = new THREE.Color(0x5b6472), W = 0.25, LIFT = 0.04;
+  const at = (s, lat) => V(s.p.x + s.left.x * lat, s.p.y + LIFT, s.p.z + s.left.z * lat);
+  for (let i = 0; i < N; i++) {
+    const s = samples[i], n = samples[(i + 1) % N], c = Math.floor(i / 4) % 2 ? white : grey;
+    const A = at(s, W), B = at(s, -W), C = at(n, -W), D = at(n, W);
+    const lx = s.p.x + s.left.x * hw, lz = s.p.z + s.left.z * hw, fx = n.p.x - n.left.x * hw - lx, fz = n.p.z - n.left.z * hw - lz; // the road's cut: from (lx, lz), along (fx, fz)
+    const cut = (P, Q) => { // where the cut crosses the side of the strip that runs from P to Q, at the height the road has there
+      const ex = Q.x - P.x, ez = Q.z - P.z, gx = lx - P.x, gz = lz - P.z, den = ex * fz - ez * fx;
+      const v = Math.abs(den) < 1e-9 ? 0.5 : clamp((gx * fz - gz * fx) / den, 0, 1), u = Math.abs(den) < 1e-9 ? 0.5 : clamp((gx * ez - gz * ex) / den, 0, 1);
+      return V(P.x + ex * v, s.p.y + (n.p.y - s.p.y) * u + LIFT, P.z + ez * v);
+    };
+    const P1 = cut(A, D), P0 = cut(B, C);
+    pushQuad(pos, col, A, B, P0, P1, c); pushQuad(pos, col, P1, P0, C, D, c);
+  }
+  return { pos, col };
+}
+
 let menuOrbit = 0;
 
 // Centennial Park is a gravel rally stage with two jumps, made for the rally car. In
@@ -883,7 +907,7 @@ const worldStale = (trackId, car) => app.trackId !== trackId || !app.track || ap
 function buildWorld(trackId, car = app.worldCar || 'open') {
   // clear old
   while (worldGroup.children.length) disposeTree(worldGroup.children.pop());
-  occupied.length = 0; anim.length = 0;
+  occupied.length = 0; anim.length = 0; cityTowers.length = 0; cityTowers.left = 0;
   for (const Q of Object.values(sponsorQuads)) { Q.pos.length = 0; Q.uv.length = 0; }
   gfx.hold = performance.now() + 3000;
   app.worldCar = car;
@@ -929,10 +953,11 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   roadMesh.receiveShadow = true;
   worldGroup.add(roadMesh);
 
-  // centre dashes (tarmac only)
+  // centre dashes (tarmac only). Drawn a shade nearer than they are (the offset), so the road under them never wins
+  // the pixel from far off, and kept out of the merged scenery for the sake of that.
   if (!gravel) {
-    const dash = buildRibbon(track, 0.25, -0.25, (i) => (Math.floor(i / 4) % 2 ? 0xf6f2e8 : 0x5b6472), 0.04);
-    worldGroup.add(flatMesh(dash.pos, dash.col, vcMat));
+    const dash = centreDashes(track), m = flatMesh(dash.pos, dash.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
+    m.userData.dyn = true; worldGroup.add(m);
   }
 
   // Road edges. Normally a short verge skirt joins the curb to the ground so
@@ -3567,14 +3592,23 @@ function parkedCarGeometry() {
 // seen from a way off. Each stands on y = 0 with four metres of wall below that, to sit on sloping ground.
 function suburbGeometry() {
   const WALL = new THREE.Color(1, 1, 1), ROOF = new THREE.Color(0.74, 0.36, 0.27), GLASS = new THREE.Color(0.3, 0.38, 0.47), TRIM = new THREE.Color(0.8, 0.8, 0.8);
+  // (Windows are lengths of the wall itself, not panes standing just in front of it: these are seen from half a
+  // kilometre off and more, where two faces 12 cm apart come out at the same depth and flicker.)
   const house = blockShape((block) => {
-    block(5, -4, 4, -4, 5, -4, 4, 3.4, WALL, null);
+    block(5, -4, 4, -4, 5, -4, 4, 3.4, WALL, null, 0, 11);                                              // the back and the two ends
+    const front = (x0, x1, y0, y1, c) => block((x1 - x0) / 2, 4, 4, y0, (x1 - x0) / 2, 4, 4, y1, c, null, (x0 + x1) / 2, 4);
+    front(-5, 5, -4, 0.9, WALL); front(-5, 5, 2.3, 3.4, WALL);                                           // the front: wall below and above,
+    for (const [x0, x1, c] of [[-5, -3.3, WALL], [-3.3, -1.1, GLASS], [-1.1, 1.1, WALL], [1.1, 3.3, GLASS], [3.3, 5, WALL]]) front(x0, x1, 0.9, 2.3, c); // and two windows between
     block(5.5, -4.5, 4.5, 3.4, 1.2, -0.3, 0.3, 6.2, ROOF, ROOF);
-    block(1.1, 4, 4.12, 0.9, 1.1, 4, 4.12, 2.3, GLASS, null, -2.2, 4); block(1.1, 4, 4.12, 0.9, 1.1, 4, 4.12, 2.3, GLASS, null, 2.2, 4); // two windows on the front
   });
   const flats = blockShape((block) => {
-    block(8, -6, 6, -4, 8, -6, 6, 13, WALL, null);
-    for (const y of [1.3, 4.5, 7.7, 10.9]) block(8.14, -6.14, 6.14, y, 8.14, -6.14, 6.14, y + 1.3, GLASS, null);
+    block(8, -6, 6, -4, 8, -6, 6, 13, WALL, null, 0, 10);                                                // the two end walls
+    let y = -4;
+    for (const g of [1.3, 4.5, 7.7, 10.9, 13]) { // the long sides: a band of wall, then a row of windows, four floors of them
+      block(8, -6, 6, y, 8, -6, 6, g, WALL, null, 0, 5);
+      if (g < 13) block(8, -6, 6, g, 8, -6, 6, g + 1.3, GLASS, null, 0, 5);
+      y = g + 1.3;
+    }
     block(8.3, -6.3, 6.3, 13, 8.3, -6.3, 6.3, 13.6, TRIM, TRIM);
   });
   return { house, flats };
@@ -4140,31 +4174,84 @@ function sailGeometry(H, L) {
 }
 
 // A city tower seen from far off, with enough to it to read as a building: rows of windows as darker bands (or
-// upright strips), and a top of its own (a set-back upper part, a plant room, a mast, a fin, or just a cap). All
-// plain boxes in flat colours, so they go into the one merged mesh with everything else. `far` is the group to
-// put it in, c its colour, y0 the height of its foot; which kind it is follows from where it stands.
+// upright strips), and a top of its own (a set-back upper part, a plant room, a mast, a fin, or just a cap).
+// `far` is the group to put it in (one that isn't turned), c its colour, y0 the height of its foot; which kind it
+// is follows from where it was asked for.
+//
+// Nothing on it lies just in front of anything else. From a kilometre off the graphics card can't tell two faces
+// apart that are less than half a metre or so from each other (less still from the cockpit, whose camera has to
+// see things a hand's breadth away), and draws now one, now the other: the city flickered. The windows used to
+// be dark boxes standing 40 cm proud of the wall. Now each tower is one skin, drawn wall by wall with the windows
+// as lengths of the wall itself, a top is a band of the same size as what it stands on, and a fin stands outside
+// the wall. Towers also stood through one another wherever they happened to fall, some with walls nearly in
+// line: each is now moved the few metres it takes to keep its walls CITY_GAP clear of any neighbour's that
+// face the same way and overlap them (and the odd one that can't be is left out).
+const cityTowers = [], CITY_GAP = 4; // the blocks of the towers built so far in this world, each [x0, x1, z0, z1, y0, y1] (emptied for each world)
+const CITY_STEPS = (() => { const o = []; for (let i = -20; i <= 20; i++) for (let j = -20; j <= 20; j++) o.push([i, j]); return o.sort((p, q) => p[0] * p[0] + p[1] * p[1] - (q[0] * q[0] + q[1] * q[1])); })(); // moves to try, nearest first
 function cityTower(far, x, z, w, h, c, y0 = 0) {
   const r = (n) => { const v = Math.sin(x * 12.9898 + z * 78.233 + n * 37.719) * 43758.5453; return v - Math.floor(v); }; // a number from 0 to 1 that goes with the place
   const base = new THREE.Color(c), dark = base.clone().multiplyScalar(0.62).lerp(new THREE.Color(0x24384f), 0.25), pale = base.clone().lerp(new THREE.Color(0xffffff), 0.4);
-  const mat = (col) => new THREE.MeshLambertMaterial({ color: col, flatShading: true });
-  const box = (bw, bh, bd, col, bx, by, bz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mat(col)); m.position.set(x + bx, y0 + by, z + bz); m.castShadow = false; far.add(m); };
   const d = w * (0.7 + 0.5 * r(1)), kind = r(2), upright = r(3) < 0.3;
-  // the body, with its windows
-  const body = (bw, bd, from, to) => {
-    box(bw, to - from, bd, base, 0, (from + to) / 2, 0);
-    if (upright) { for (const f of [-0.31, 0, 0.31]) { box(bw * 0.17, to - from - 6, bd + 0.8, dark, bw * f, (from + to) / 2, 0); box(bw + 0.8, to - from - 6, bd * 0.17, dark, 0, (from + to) / 2, bd * f); } }
-    else for (let y = from + 8; y < to - 4; y += 14) box(bw + 0.8, 4.4, bd + 0.8, dark, 0, y, 0);
+  const setBack = kind < 0.3 && h > 90, room = !setBack && kind < 0.55, fin = !setBack && !room && kind < 0.75, FIN = Math.max(w * 0.16, 3.5), cut = h * (0.62 + 0.14 * r(4));
+  // The blocks it would be made of, standing at (px, pz) in the world. Two blocks flicker against each other where
+  // a wall of one lies just behind the same wall of the other (both facing the same way) and the two overlap.
+  const wy = far.position.y + y0;
+  const blocks = (px, pz) => {
+    const B = [[px - w / 2, px + w / 2, pz - d / 2, pz + d / 2, wy, wy + (setBack ? cut : h + (room || fin ? 0 : 2.6))]];
+    if (setBack) B.push([px - w * 0.35, px + w * 0.35, pz - d * 0.35, pz + d * 0.35, wy + cut, wy + h + 2.2]);
+    if (room) B.push([px - w * 0.29, px + w * 0.29, pz - d * 0.29, pz + d * 0.29, wy + h, wy + h + 8]);
+    if (fin) B.push([px - w / 2 - FIN, px - w / 2, pz - d * 0.25, pz + d * 0.25, wy, wy + h + 7]);
+    return B;
   };
-  if (kind < 0.3 && h > 90) { // the upper part set back
-    const cut = h * (0.62 + 0.14 * r(4));
-    body(w, d, 0, cut); body(w * 0.7, d * 0.7, cut, h); box(w * 0.7 + 1.2, 2.2, d * 0.7 + 1.2, pale, 0, h + 1.1, 0);
+  const clash = (P, Q) => Math.min(P[5], Q[5]) > Math.max(P[4], Q[4])
+    && ((Math.min(P[3], Q[3]) > Math.max(P[2], Q[2]) - 0.5 && (Math.abs(P[0] - Q[0]) < CITY_GAP || Math.abs(P[1] - Q[1]) < CITY_GAP))
+      || (Math.min(P[1], Q[1]) > Math.max(P[0], Q[0]) - 0.5 && (Math.abs(P[2] - Q[2]) < CITY_GAP || Math.abs(P[3] - Q[3]) < CITY_GAP)));
+  const clear = (B) => B.every((P) => cityTowers.every((Q) => !clash(P, Q)));
+  const wx = far.position.x + x, wz = far.position.z + z;
+  const move = CITY_STEPS.find(([i, j]) => clear(blocks(wx + i, wz + j)));
+  if (!move) { cityTowers.left++; return; } // (nowhere within 20 m to stand clear of the rest: it's left out; one or two of a skyline's worth)
+  cityTowers.push(...blocks(wx + move[0], wz + move[1]));
+  // its skin: every wall a row of upright lengths, each its own colour
+  const pos = [], col = [];
+  const ring = (bw, bd, ya, yb, cuts, colours, ox = 0, oz = 0, skip = -1) => {
+    const C = [[ox - bw / 2, oz + bd / 2], [ox + bw / 2, oz + bd / 2], [ox + bw / 2, oz - bd / 2], [ox - bw / 2, oz - bd / 2]]; // (round it this way, each wall is drawn facing out)
+    for (let k = 0; k < 4; k++) {
+      if (k === skip) continue;
+      const [ax, az] = C[k], [bx, bz] = C[(k + 1) % 4];
+      for (let j = 0; j + 1 < cuts.length; j++) {
+        const f0 = cuts[j] + 0.5, f1 = cuts[j + 1] + 0.5, px = ax + (bx - ax) * f0, pz = az + (bz - az) * f0, qx = ax + (bx - ax) * f1, qz = az + (bz - az) * f1;
+        pushQuad(pos, col, V(px, ya, pz), V(qx, ya, qz), V(qx, yb, qz), V(px, yb, pz), colours[j]);
+      }
+    }
+  };
+  const lid = (bw, bd, y, colour, ox = 0, oz = 0) => pushQuad(pos, col, V(ox - bw / 2, y, oz + bd / 2), V(ox + bw / 2, y, oz + bd / 2), V(ox + bw / 2, y, oz - bd / 2), V(ox - bw / 2, y, oz - bd / 2), colour);
+  const WHOLE = [-0.5, 0.5], STRIPS = [-0.5, -0.395, -0.225, -0.085, 0.085, 0.225, 0.395, 0.5];
+  // a block of the tower from one height to another, with its windows: three upright strips a side, or a band every 14 m
+  const body = (bw, bd, from, to) => {
+    if (upright) {
+      ring(bw, bd, from, from + 3, WHOLE, [base]); ring(bw, bd, from + 3, to - 3, STRIPS, [base, dark, base, dark, base, dark, base]); ring(bw, bd, to - 3, to, WHOLE, [base]);
+    } else {
+      let y = from;
+      for (let b = from + 8; b < to - 4; b += 14) { ring(bw, bd, y, b - 2.2, WHOLE, [base]); ring(bw, bd, b - 2.2, b + 2.2, WHOLE, [dark]); y = b + 2.2; }
+      ring(bw, bd, y, to, WHOLE, [base]);
+    }
+  };
+  if (setBack) { // the upper part set back, under a pale top
+    body(w, d, 0, cut); lid(w, d, cut, base); body(w * 0.7, d * 0.7, cut, h); ring(w * 0.7, d * 0.7, h, h + 2.2, WHOLE, [pale]); lid(w * 0.7, d * 0.7, h + 2.2, pale);
   } else {
     body(w, d, 0, h);
-    if (kind < 0.55) { box(w * 0.58, 8, d * 0.58, pale, 0, h + 4, 0); if (r(5) < 0.6) box(1.5, 22 + 16 * r(6), 1.5, pale, w * 0.12, h + 8 + 14, 0); } // a plant room, and often a mast
-    else if (kind < 0.75) box(w * 0.2, h + 7, d + 1.2, pale, -w * 0.32, (h + 7) / 2, 0); // a fin up one side, standing above the roof
-    else box(w + 1.4, 2.6, d + 1.4, pale, 0, h + 1.3, 0); // a cap
+    if (room) { // a plant room on the roof, and often a mast
+      lid(w, d, h, base); ring(w * 0.58, d * 0.58, h, h + 8, WHOLE, [pale]); lid(w * 0.58, d * 0.58, h + 8, pale);
+      if (r(5) < 0.6) { const top = h + 33 + 8 * r(6); ring(1.5, 1.5, h + 8, top, WHOLE, [pale], w * 0.12, 0); lid(1.5, 1.5, top, pale, w * 0.12, 0); }
+    } else if (fin) { // a fin up one side, standing above the roof (outside the wall, and without the face it has against it)
+      lid(w, d, h, base); ring(FIN, d * 0.5, 0, h + 7, WHOLE, [pale], -w / 2 - FIN / 2, 0, 1); lid(FIN, d * 0.5, h + 7, pale, -w / 2 - FIN / 2, 0);
+    } else { ring(w, d, h, h + 2.6, WHOLE, [pale]); lid(w, d, h + 2.6, pale); } // a cap
   }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, cityMat); m.position.set(x + move[0], y0, z + move[1]); m.castShadow = false; far.add(m); // (merged with the rest of the scenery, like any plain mesh)
 }
+const cityMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }); cityMat.userData.keep = true; // shared by every tower: never disposed with a world
 
 function buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, ohRy, ohScale = 1, night = false) {
   const mats = new Map();
@@ -5820,6 +5907,9 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, 
     label.position.y = cls === 'rally' ? 2.8 : cls === 'camry' ? 2.7 : 2.5;
     g.add(label);
   }
+  // Your own open car is drawn twice from the cockpit (renderFrame): once with everything else, then again on its
+  // own with the camera's near plane close in. Layer 1 is that second drawing.
+  if (cockpit && !inside) g.traverse((o) => o.layers.enable(1));
   return { group: g, wheels, label, bodyMat: K.body, brakeMat: K.brake, cls, interior: inside?.group, steer: inside?.steer, lean, decals: K.decalMeshes || null };
 }
 
@@ -6861,7 +6951,10 @@ function updateCamera(dt) {
     app.inCockpit = true;
     const k = clamp(Math.abs(car.speed) / PHYS.maxSpeed, 0, 1);
     camera.fov = lerp(camera.fov, CAR.ckFov + k * CAR.ckFovAdd, 1 - Math.exp(-dt * 4));
-    camera.near = 0.12;
+    // A closed car's body comes within a hand's breadth of the eye, so the near plane has to be close in. The
+    // open car is drawn a second time on its own for that (renderFrame), and the world gets the chase camera's
+    // near plane: four times the depth to tell far-off things apart with, which is what stops them flickering.
+    camera.near = car.mesh.interior ? COCKPIT_NEAR : 0.5;
     camera.updateProjectionMatrix();
     camInit = false; // so the chase camera snaps into place when you switch back
     return;
@@ -8164,15 +8257,23 @@ function frame(now) {
 
 // The scene, then (in cockpit view) the car's cabin on top of it with its own
 // depth, so the solid body can't hide the dash or the steering wheel.
+const COCKPIT_NEAR = 0.12; // how close the cockpit camera has to see: the wheel and the cockpit's rim are a hand's breadth from the eye
 function renderFrame() {
   renderer.render(scene, camera);
-  if (!app.inCockpit || !app.local?.mesh.interior) return;
-  const bg = scene.background;
+  if (!app.inCockpit || !app.local) return;
+  // From the cockpit a second drawing goes over the first, with the depth cleared between: layer 1 only. In a
+  // closed car that is the interior (dash, wheel, door panels), which the solid body would otherwise bury. In
+  // the open car it is the car itself. A near plane 12 cm out leaves so little depth for the distance that two
+  // faces 10 cm apart can't be told apart from 300 m, and far-off buildings flickered; so the first drawing has
+  // its near plane half a metre out, which cuts off the nearest of the car, and this one puts the whole car back.
+  const open = !app.local.mesh.interior, bg = scene.background;
   scene.background = null;
   renderer.autoClear = false; renderer.shadowMap.autoUpdate = false;
   renderer.clearDepth();
   camera.layers.set(1);
+  if (open) { camera.near = COCKPIT_NEAR; camera.updateProjectionMatrix(); }
   renderer.render(scene, camera);
+  if (open) { camera.near = 0.5; camera.updateProjectionMatrix(); }
   camera.layers.set(0);
   renderer.autoClear = true; renderer.shadowMap.autoUpdate = true;
   scene.background = bg;
@@ -8183,7 +8284,7 @@ function renderFrame() {
 // ---------------------------------------------------------------------------
 buildWorld(0);
 wireUI();
-window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; app.rollSlot = rollSlot; app.wantRecordGhost = wantRecordGhost; // handy for poking at the game from the console
+window.__dc = app; app.gfx = gfx; app.scene = scene; app.renderer = renderer; app.makeCarMesh = makeCarMesh; app.terrainHeight = terrainHeight; app.rollSlot = rollSlot; app.wantRecordGhost = wantRecordGhost; app.cityTowers = cityTowers; // handy for poking at the game from the console
 $('#btn-create').disabled = true; $('#btn-join').disabled = true;
 connect();
 requestAnimationFrame(frame);

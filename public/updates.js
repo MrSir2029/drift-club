@@ -8,6 +8,19 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.44', date: '26 Nov 2026', title: 'The centre line, whole again',
+    items: [
+      'The white dashes down the middle of the road had bits missing on corners that climb or drop, like Rose Bay\'s second hairpin. They follow the road properly now, on every track.',
+    ],
+  },
+  {
+    v: '3.43', date: '26 Nov 2026', title: 'No more flicker in the distance',
+    items: [
+      'The city across the water at Rose Bay, the suburbs round the bay and Westfield\'s skyline flickered from far away. The windows of those towers and houses are part of their walls now, and towers that stood through one another have been moved apart.',
+      'From the open seater\'s cockpit everything far off is steadier too: the game tells distant things apart four times better there than it did.',
+    ],
+  },
+  {
     v: '3.42', date: '26 Nov 2026', title: 'Balloons with their baskets tied on',
     items: [
       'The hot-air balloons\' baskets hang from them by ropes now, with a burner in between, instead of floating a little way underneath.',
