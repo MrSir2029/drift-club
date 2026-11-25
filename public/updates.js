@@ -8,6 +8,13 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.36', date: '25 Nov 2026', title: 'Rose Bay gets its suburbs',
+    items: [
+      'There\'s a town round Rose Bay now, where there were only bare hills: streets of houses and flats beyond the circuit, and hills behind them with houses up the sides and apartment towers along the top.',
+      'A lighthouse stands on the head at the far end of the bay, there are houses along the north shore, and the city across the water has more towers.',
+    ],
+  },
+  {
     v: '3.35', date: '25 Nov 2026', title: 'Rose Bay\'s tunnel floor',
     items: [
       'The floor on the left as you come out of Rose Bay\'s tunnel doesn\'t flicker any more.',
