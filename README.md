@@ -284,7 +284,10 @@ third) is the snowy one: white ground, snowy pines, snowmen, white mountains
 and falling snow, with the bridge over the straight (railed, so you can't
 drive off it). Pinto Speedway (the fourth; Mount Panorama until 3.55) is raced at night, under floodlights,
 with fireworks overhead, searchlights sweeping the sky and glowing studs
-along the track edges. Noosa Heads (the fifth) is an island: along the seafront, up a clifftop
+along the track edges. On a night track the pit garages beside the grid are
+lit from inside, all but a couple, with a strip of lamps under the roof
+(3.69: unlit, the pit building was a black slab 52 m long, which the owner
+took for a random wall at Sydney CBD's start). Noosa Heads (the fifth) is an island: along the seafront, up a clifftop
 headland to a hairpin round the lighthouse, back down and over the start
 straight on a bridge, then through the palms past the village. Sand, palms,
 beach huts and umbrellas, and boats out at sea. The bay by the start straight

@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.69', date: '26 Nov 2026', title: 'The pits light up at night',
+    items: [
+      'On the night tracks, Sydney CBD and Pinto Speedway, the pit garages beside the grid are lit from inside, with a strip of lamps under the roof. Unlit, the pit building was a long black wall next to the start.',
+    ],
+  },
+  {
     v: '3.68', date: '26 Nov 2026', title: 'Painted barriers',
     items: [
       'The sponsors on the race barriers at Westfield and Rose Bay are painted along the barrier now, as they are at a grand prix: the barrier in the sponsor\'s colours with the name repeated along it. Before, each was one small banner on bare concrete.',
