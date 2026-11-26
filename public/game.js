@@ -1775,7 +1775,9 @@ function addBanner(k, p, q, y0, y1, fp, fq, tx, tz, twice, plain) {
 // and asked for the barriers' sponsors to "look somewhat like this": until 3.68 a sponsored barrier was bare
 // concrete with one banner 4.5 m long on it.) (tx, tz): a point on the road side, as for addBanner.
 function paintBarrier(k, p, q, y0, y1, tx, tz) {
-  const len = Math.hypot(q.x - p.x, q.z - p.z), wide = Math.min((y1 - y0) * (512 / 96), len), n = Math.max(1, Math.round(len / 8.6)), pad = Math.max(0, (len - n * wide) / (2 * n));
+  // (the name three times on a length, spread along it: the owner asked for "groups of 3 not 2". It was once every
+  // 8.6 m, which came to two on the shorter lengths and four on the longest. Fewer only where three won't fit.)
+  const len = Math.hypot(q.x - p.x, q.z - p.z), wide = Math.min((y1 - y0) * (512 / 96), len), n = Math.max(1, Math.min(3, Math.floor(len / (wide * 1.04)))), pad = Math.max(0, (len - n * wide) / (2 * n));
   const at = (d) => ({ x: p.x + ((q.x - p.x) * d) / len, y: p.y + ((q.y - p.y) * d) / len, z: p.z + ((q.z - p.z) * d) / len });
   for (let j = 0, d = 0; j < n; j++) {
     if (pad > 0.01) addBanner(k, at(d), at(d + pad), y0, y1, 0, 1, tx, tz, false, true);
@@ -4436,6 +4438,53 @@ function buildMall(track, rnd) {
       fans.finish();
       if (par.pos.length) { const m = flatMesh(par.pos, par.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); }
     }
+    // The other ramp, the one the lap comes down from the roof on, at the east end of the street: the same again.
+    // Its own rails stop where the drop gets small, and from there to the height bar at its foot nothing stood at
+    // either edge: a car could run off the side of the ramp and end up beside the bar, off the track (the owner,
+    // from just there: "Fence here"). And round the inside of the corner at the bottom, from the ramp to the end of
+    // the race barrier along Oxford Street, the way was open onto the forecourt of the car park ("why is the fence
+    // gap still there"). A concrete parapet now carries on down each edge of the ramp from its rails. On the
+    // outside it turns out at the foot to meet the first post of the rail round the corner. On the inside it goes
+    // on round the corner and in to the end of the race barrier.
+    {
+      const LIP = hw + 1.4, RAIL = hw + 5.2, CONC = C(0xd4d7dc), COPE = C(0xb9bdc5), par = { pos: [], col: [] };
+      const xr = samples[i0].p.x; // (the east ramp is in line with the doors the lap goes in by)
+      let iFoot = samples.findIndex((a, i) => i > 60 && i < i0 && Math.abs(a.p.x - xr) < 1.5 && a.p.z > 46 && samples[i + 1].p.z <= 46); // the foot of the ramp, at the height bar
+      if (iFoot > 0) {
+        let iRail = iFoot; while (Math.max(track.vergeDrop[iRail], track.vergeDrop[iRail - 1]) <= VERGE_MAX_DROP && iRail > iFoot - 80) iRail--; // where the ramp's own rails end, coming down
+        // a length of parapet between two points, each [x, road height, z]; sd: which side of the road it's on (so which face is the outer one)
+        const piece = (a, b, sd) => {
+          const dx = b[0] - a[0], dz = b[2] - a[2], l = Math.hypot(dx, dz) || 1, nx = (-dz / l) * 0.2 * sd, nz = (dx / l) * 0.2 * sd; // (towards the road's left, times sd: outwards)
+          const A = [a[0] - nx, a[2] - nz], B = [b[0] - nx, b[2] - nz], Co = [b[0] + nx, b[2] + nz], D = [a[0] + nx, a[2] + nz];
+          quad(par, [A[0], a[1] - 0.1, A[1]], [B[0], b[1] - 0.1, B[1]], [B[0], b[1] + 1, B[1]], [A[0], a[1] + 1, A[1]], CONC);       // its face to the road
+          quad(par, [A[0], a[1] + 1, A[1]], [B[0], b[1] + 1, B[1]], [Co[0], b[1] + 1, Co[1]], [D[0], a[1] + 1, D[1]], COPE);         // its top
+          quad(par, [D[0], a[1] + 1, D[1]], [Co[0], b[1] + 1, Co[1]], [Co[0], b[1] - 1.4, Co[1]], [D[0], a[1] - 1.4, D[1]], CONC);   // its outer face, down over the edge of the deck
+          walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 });
+        };
+        const cap = (a, sd, t) => { const nx = -t[1] * 0.2 * sd, nz = t[0] * 0.2 * sd; quad(par, [a[0] - nx, a[1] - 1.4, a[2] - nz], [a[0] + nx, a[1] - 1.4, a[2] + nz], [a[0] + nx, a[1] + 1, a[2] + nz], [a[0] - nx, a[1] + 1, a[2] - nz], CONC); }; // an end
+        const at3 = (i, lat) => { const [x, z] = P(i, lat); return [x, samples[wrap(i)].p.y, z]; };
+        // the inside of the corner: on until the parapet's line reaches the end of the race barrier (MED.x1, where the two legs part)
+        let iEnd = iFoot; while (iEnd < iFoot + 60 && P(iEnd, LIP)[0] > MED.x1 + 2.5) iEnd++;
+        for (const sd of [1, -1]) { // +1: the left coming down, which is the inside of the corner at the bottom
+          const last = sd > 0 ? iEnd : iFoot;
+          for (let i = iRail; i < last; i++) piece(at3(i, sd * LIP), at3(i + 1, sd * LIP), sd);
+          { const a = at3(iRail, sd * LIP), t = samples[iRail].th; cap(a, sd, [t.x, t.z]); }
+          if (sd > 0) piece(at3(iEnd, LIP), [MED.x1 + 0.05, 0, WIDE + 0.3], sd); // in to the end of the race barrier
+          else {
+            // out to the first post of the rail round the outside of the corner (the trackside builder's, RAIL out)
+            let post = null, best = 7;
+            for (const w of walls) for (const [x, z] of [[w.ax, w.az], [w.bx, w.bz]]) {
+              if (Math.abs(w.y ?? 0) > 1.5) continue;
+              const k = nearestI(x, z), q = samples[k], lat = (x - q.p.x) * q.left.x + (z - q.p.z) * q.left.z, d = Math.hypot(x - P(iFoot, -RAIL)[0], z - P(iFoot, -RAIL)[1]);
+              if (Math.abs(lat + RAIL) < 0.4 && d < best) { best = d; post = [x, q.p.y, z]; }
+            }
+            const a = at3(iFoot, -LIP);
+            if (post) piece(a, post, sd); else { const t = samples[iFoot].th; cap(a, sd, [t.x, t.z]); }
+          }
+        }
+        if (par.pos.length) { const m = flatMesh(par.pos, par.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); }
+      }
+    }
   }
 
   // ---- the streets round about: blocks of shops and flats, a few towers further off, trees ----
@@ -5167,9 +5216,10 @@ function buildRoseBay(track, rnd, randIn) {
       for (const j of [0, n]) { const q = pt(i0 + j, sd, o(j) + mid, 0); box(worldGroup, 0.66, 1.9, 0.66, 0xcdb88a, q.x, q.y + 0.35, q.z); } // a pier at each end, like the harbour wall's
       // a sponsor's banner every 80 m or so, on the road side (not where it runs in at an end, nor behind a gate's post).
       // (It was every 40 m: with the signs "way too intrusive", half of them went.)
-      // a sponsor's stretch every 80 m: 15 m of the barrier in its colours with its name on it twice (until 3.68,
-      // one banner 4.5 m long). PAINT: for each of the stretch's ten samples, which third of the name it carries, or -1 for plain paint
-      const PAINT = [-1, 0, 1, 2, -1, -1, 0, 1, 2, -1];
+      // a sponsor's stretch every 80 m: 22 m of the barrier in its colours with its name on it three times (twice,
+      // on 15 m, until the owner asked for "groups of 3 not 2"; and until 3.68, one banner 4.5 m long). PAINT: for
+      // each of the stretch's samples, which third of the name it carries, or -1 for plain paint
+      const PAINT = [-1, 0, 1, 2, -1, -1, 0, 1, 2, -1, -1, 0, 1, 2, -1];
       for (let j = 12; ads && j + PAINT.length <= n - 8; j += 54) {
         if (track.cps.some((c) => Math.abs(((i0 + j + PAINT.length / 2 - c) % N + N + N / 2) % N - N / 2) < 9)) continue;
         PAINT.forEach((third, k) => { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, Math.max(third, 0) / 3, (Math.max(third, 0) + 1) / 3, a.p.x, a.p.z, false, third < 0); });

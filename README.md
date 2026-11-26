@@ -414,7 +414,13 @@ Oxford Street and climbs the ramp, there was nothing either side (the owner:
 sides, in from each edge of the doorway, across the street with the crowd on
 two steps behind it, and in again to the foot of the ramp, where a concrete
 parapet carries on up each edge as far as the ramp's own rails
-(`raceFenceTo`, the same barrier between any two points).
+(`raceFenceTo`, the same barrier between any two points). The ramp the lap
+comes down on at the east end has the same parapet down both edges from its
+rails to the height bar (3.78: a car could run off the side of the ramp
+there and end up beside the bar, off the track, and the owner sent a photo
+from the spot, "Fence here"); on the outside it turns out to meet the first
+post of the rail round the corner, and on the inside it goes on round the
+corner to the end of the race barrier along Oxford Street.
 Outside: a row of parked cars each side of the roof, back behind the crowd,
 and more on the main roof (`parkedCarGeometry`: one shape for all of them, a
 body, a glasshouse and wheels, after the owner called the old boxes buns),
@@ -475,10 +481,11 @@ round the roof where the cars drive straight at it (the end of the start
 straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
 are left bare. On the race barriers a sponsor isn't a banner but paint
 (`paintBarrier`, 3.68): the barrier's face in the sponsor's colours, with
-the name every 8 m or so and plain paint between, as on the barriers at a
-grand prix (the owner sent a picture of one and asked for the barriers'
-sponsors to look like it). At Westfield that is the whole of every other
-length; at Rose Bay, 15 m with the name twice, every 80 m. By day the signs
+the name three times along it and plain paint between, as on the barriers at
+a grand prix (the owner sent a picture of one and asked for the barriers'
+sponsors to look like it; then, in 3.79, for "groups of 3 not 2": the name
+came twice on the shorter lengths). At Westfield that is the whole of every
+other length; at Rose Bay, 22 m with the name three times, every 80 m. By day the signs
 are lit and shadowed by the scene like the
 walls they hang on (3.50; lit from inside they looked stuck on), and at night
 they glow. Nothing is a picture: the boards are drawn in the browser, in
