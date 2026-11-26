@@ -4034,12 +4034,78 @@ function buildMall(track, rnd) {
     // their names up as well: the owner had those signs taken down with the made-up shop names)
     hang(nearestI(-190, -120), 'PARKING  ROOFTOP', '#1f6fb5', '#ffffff');
     hang(i1 - 22, 'OXFORD ST EXIT', '#2f6b4a', '#ffffff');
-    // an escalator up to the gallery, here and there
-    for (const [x, z, sd] of [[100, -110, -1], [-40, -100, 1], [-190, -100, 1], [160, -70, -1]]) {
-      const i = nearestI(x, z), a = samples[i], b = samples[wrap(i + 7)], [ax0, az0] = P(i, sd * (SHOPS - 2.1)), [bx0, bz0] = P(i + 7, sd * (SHOPS - 2.1));
-      const m = strut(V(ax0, a.p.y, az0), V(bx0, b.p.y + 4.9, bz0), 1.5, 0.5, lam(0x5a6372)); worldGroup.add(m);
-      for (const j of [0, 1.5, 3]) { const [sx, sz] = P(i + j, sd * (SHOPS - 2.1)); solids.push({ x: sx, z: sz, r: 1, y: a.p.y }); } // (its foot is solid)
-      for (const off of [-0.75, 0.75]) { const [cx, cz] = P(i, sd * (SHOPS - 2.1 + off)), [dx, dz] = P(i + 7, sd * (SHOPS - 2.1 + off)); quad(glow, [cx, a.p.y + 0.2, cz], [dx, b.p.y + 5.1, dz], [dx, b.p.y + 6.0, dz], [cx, a.p.y + 1.1, cz], C(0xbfe3f5)); }
+    // An escalator up to the gallery, here and there. (Each was one bare slab sloping up between two sheets of glass:
+    // no steps, no landings, it stopped in the air beside the gallery's glass, and on a bend the slab lay twisted
+    // over on its side. The owner: "Escalator is slanted for no reason".) Now it is an escalator: a flat landing on
+    // the floor, steps going up at 30 degrees between glass balustrades with dark handrails, a flat landing at the
+    // top, and a piece of the gallery's floor that comes out to meet it. Each stands along the front of a shop that
+    // has no crowd barrier, so nobody is standing where it goes. It is all flat faces with none lying over another:
+    // the glass and the gallery's floor in the mall's glowing sheet, the rest in a sheet of its own (`steel`. Not the
+    // mall's lit one: that is drawn a touch nearer than it is, which let a step seen edge on show through the
+    // escalator's side). Solid (two walls, its sides) as far up as a car couldn't pass under it, and no nearer the
+    // road than the old one's foot was.
+    {
+      const TAN = Math.tan(Math.PI / 6), HALF = 0.65, IN = 0.45, FOOT = 1, HEAD = 0.8, LAND = 1.7, DEEP = 1, PLINTH = 0.12, THICK = 0.4;
+      const TREAD = C(0x2b303b), FRONT = C(0xaab0ba), CLAD = C(0xd9dde3), HAND = C(0x1d2230), steel = { pos: [], col: [] };
+      for (const [x, z, sd] of [[100, -110, -1], [-40, -100, 1], [-190, -100, 1], [160, -70, -1]]) {
+        // the shop it stands outside: every other one has a barrier with people behind it, and then it's the one before
+        let n = Math.floor((nearestI(x, z) - i0 + (sd > 0 ? 0 : 4)) / SHOP); if (n % 2 === (sd > 0 ? 0 : 1)) n--;
+        const i = i0 + n * SHOP - (sd > 0 ? 0 : 4), a = samples[i], y0 = a.p.y + PAVE + PLINTH, rise = samples[wrap(i + SHOP)].p.y + 4.9 - y0, run = rise / TAN;
+        const K = [0, FOOT, FOOT + run, FOOT + run + HEAD], len = K[3] + LAND; // (where its slope starts and stops, and where its handrails end)
+        // It lies along the line from that shop's pillar to the next one, its middle at the middle of the shop.
+        // s: metres along it from its foot; x: across it, towards the shops; y: above its lower landing.
+        const [px, pz] = P(i, sd * (SHOPS - 2.4)), [qx, qz] = P(i + SHOP, sd * (SHOPS - 2.4)), d = Math.hypot(qx - px, qz - pz), ux = (qx - px) / d, uz = (qz - pz) / d;
+        const vs = (uz * a.left.x - ux * a.left.z) * sd > 0 ? 1 : -1, vx = uz * vs, vz = -ux * vs;
+        let ox = (px + qx - ux * len) / 2, oz = (pz + qz - uz * len) / 2;
+        // how far its centre line is from the middle of the road, s metres along
+        const latOf = (s) => {
+          const X = ox + ux * s, Z = oz + uz * s; let best = Infinity, lat = 0;
+          for (let j = i - 6; j <= i + SHOP + 6; j++) { const q = samples[wrap(j)], e = (X - q.p.x) ** 2 + (Z - q.p.z) ** 2; if (e < best) { best = e; lat = sd * ((X - q.p.x) * q.left.x + (Z - q.p.z) * q.left.z); } }
+          return lat;
+        };
+        // (round a bend the road comes nearer its middle or its ends: move it in until none of it is nearer than the old one's foot)
+        const inwards = Math.max(0, ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((t) => SHOPS - 3.05 + HALF - latOf((t * len) / 8))); ox += vx * inwards; oz += vz * inwards;
+        const pt = (s, x, y) => [ox + ux * s + vx * x, y0 + y, oz + uz * s + vz * x], steps = (s) => Math.min(rise, Math.max(0, (s - FOOT) * TAN)); // (steps: the height of the line the steps follow)
+        // a face along it at x, from h0 to h1 above the steps' line; one lying across it from x0 to x1; and one standing across it
+        const sideQ = (Q, s0, s1, x, h0, h1, c) => quad(Q, pt(s0, x, steps(s0) + h0), pt(s1, x, steps(s1) + h0), pt(s1, x, steps(s1) + h1), pt(s0, x, steps(s0) + h1), c);
+        const flat = (Q, s0, s1, x0, x1, h, c) => quad(Q, pt(s0, x0, steps(s0) + h), pt(s1, x0, steps(s1) + h), pt(s1, x1, steps(s1) + h), pt(s0, x1, steps(s0) + h), c);
+        const endQ = (Q, s, x0, x1, h0, h1, c) => quad(Q, pt(s, x0, steps(s) + h0), pt(s, x1, steps(s) + h0), pt(s, x1, steps(s) + h1), pt(s, x0, steps(s) + h1), c);
+        for (let k = 0; k < 3; k++) {
+          const s0 = K[k], s1 = K[k + 1];
+          if (k) flat(steel, s0, s1, -HALF, HALF, -DEEP, CLAD);                                    // its underside
+          for (const m of [-1, 1]) {
+            sideQ(steel, s0, s1, m * HALF, -DEEP, 0.22, CLAD);                                     // its side, down from beside the steps
+            flat(steel, s0, s1, m * IN, m * HALF, 0.22, CLAD); sideQ(steel, s0, s1, m * IN, -0.3, 0.22, CLAD); // the ledge the glass stands on, and its face beside the steps
+            sideQ(glow, k ? s0 : 0.14, k < 2 ? s1 : s1 - 0.14, m * 0.55, 0.22, 0.92, RAIL);      // the glass
+            for (const hx of [0.48, 0.62]) sideQ(steel, s0, s1, m * hx, 0.92, 1.02, HAND);         // the handrail, on top of the glass
+            for (const hy of [0.92, 1.02]) flat(steel, s0, s1, m * 0.48, m * 0.62, hy, HAND);
+          }
+        }
+        for (const m of [-1, 1]) for (const [s0, s1] of [[0, 0.14], [K[3] - 0.14, K[3]]]) { // each handrail turns down to the ledge at both ends
+          for (const hx of [0.48, 0.62]) sideQ(steel, s0, s1, m * hx, 0.22, 0.92, HAND);
+          endQ(steel, s0, m * 0.48, m * 0.62, 0.22, s0 ? 0.92 : 1.02, HAND); endQ(steel, s1, m * 0.48, m * 0.62, 0.22, s0 ? 1.02 : 0.92, HAND);
+          endQ(steel, s0 ? s1 : s0, m * IN, m * HALF, 0, 0.22, CLAD);
+        }
+        endQ(steel, 0, -HALF, HALF, -PLINTH - 0.2, 0, CLAD); endQ(steel, K[3], -HALF, HALF, -DEEP, -THICK, CLAD); // its two ends: the step up onto it, and the machine under the top
+        flat(steel, 0, K[1], -IN, IN, 0, TREAD); flat(steel, K[2], K[3], -IN, IN, 0, TREAD);       // the two flat landings
+        // the steps: each one's front is pale with a dark edge, so they show as stripes from a car coming up to it
+        for (let nS = Math.round(run / 0.42), go = run / nS, up = rise / nS, j = 0; j <= nS; j++) {
+          const s = FOOT + j * go, lo = Math.max(0, (j - 0.5) * up), hi = Math.min(rise, (j + 0.5) * up), mid = hi - lo < 0.15 ? lo : hi - 0.09;
+          if (mid > lo) quad(steel, pt(s, -IN, lo), pt(s, IN, lo), pt(s, IN, mid), pt(s, -IN, mid), FRONT);
+          quad(steel, pt(s, -IN, mid), pt(s, IN, mid), pt(s, IN, hi), pt(s, -IN, hi), TREAD);
+          if (j < nS) quad(steel, pt(s, -IN, hi), pt(s, IN, hi), pt(s + go, IN, hi), pt(s + go, -IN, hi), TREAD);
+        }
+        // where it arrives: the gallery's floor comes out to its top landing, with the gallery's glass round the edge
+        const g0 = SHOPS - 1.3 - latOf(K[3]), g1 = SHOPS - 1.3 - latOf(len); // (the gallery's edge, across from its top and from the end of the floor)
+        quad(glow, pt(K[3], -HALF, rise), pt(len, -HALF, rise), pt(len, g1, rise), pt(K[3], g0, rise), SLAB);
+        quad(glow, pt(K[3], -HALF, rise - THICK), pt(len, -HALF, rise - THICK), pt(len, g1 + 0.3, rise - THICK), pt(K[3], g0 + 0.3, rise - THICK), SLAB); // (its underside runs in under the gallery's)
+        sideQ(steel, K[3], len, -HALF, -THICK, 0, CLAD); endQ(steel, len, -HALF, g1 + 0.3, -THICK, 0, CLAD); endQ(steel, K[3], HALF, g0 + 0.3, -THICK, 0, CLAD);
+        sideQ(glow, K[3], len, -0.55, 0, 0.8, RAIL); endQ(glow, len, -0.55, g1, 0, 0.8, RAIL); endQ(glow, K[3], HALF, g0, 0, 0.8, RAIL);
+        // solid from its foot to where its underside is 2.4 m off the floor: past that a car goes under it
+        for (const m of [-HALF, HALF]) { const sE = FOOT + (2.4 + DEEP - PLINTH) / TAN, [wx0, , wz0] = pt(0, m, 0), [wx1, , wz1] = pt(sE, m, 0); walls.push({ ax: wx0, az: wz0, bx: wx1, bz: wz1, y: a.p.y }); }
+      }
+      const mesh = flatMesh(steel.pos, steel.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
+      mesh.userData.dyn = true; worldGroup.add(mesh); // (kept as it is, like the mall's sheets: no shadow from it indoors)
     }
   }
 
