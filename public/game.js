@@ -2140,23 +2140,9 @@ function buildProps(track) {
     const ex = Math.cos(rot) * 5, ez = -Math.sin(rot) * 5;
     if (![-1, 0, 1].every(e => isFree(track, p.x + ex * e, p.z + ez * e, 1.5, hw + 5))) continue;
     for (const e of [-1, 0, 1]) claim(p.x + ex * e, p.z + ez * e, 2.6);
-    const grp = new THREE.Group();
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(10.4, 3.4, 0.3), lam(0x1d2230)); // the frame: a sponsor's poster goes on the face turned to the road
-    panel.position.y = 4; panel.castShadow = true; grp.add(panel);
-    // The board hangs on the front of two posts, with two rails across its back, so from behind it's plainly the back
-    // of a sign and not a board whose poster is missing. (The posts used to stand inside the board, their faces level
-    // with its own: that was hidden while there was a poster on each face.) `back` is which way the back looks.
-    const back = side;
-    for (const x of [-4, 4]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 9, 0.3), postMat); leg.position.set(x, 1, back * 0.3); grp.add(leg); } // (from well under the ground, for slopes, to just short of the top)
-    for (const y of [3.1, 4.9]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.16, 0.12), postMat); rail.position.set(0, y, back * 0.21); grp.add(rail); }
-    grp.position.copy(p);
-    grp.rotation.y = rot;
-    worldGroup.add(grp);
-    grp.updateMatrixWorld();
-    // One poster, on the face that looks at the road and the cars coming. (Until 3.58 the back had one too, a different
-    // sponsor's, facing away over the scenery: the owner asked for the signs to be single sided.)
-    { const z = -back * 0.22; addPoster([[-5, 2.5], [5, 2.5], [5, 5.5], [-5, 5.5]].map(([x, y]) => V(z > 0 ? x : -x, y, z).applyMatrix4(grp.matrixWorld)), bb); }
-    for (const e of [-0.8, 0.8]) solid({ x: p.x + ex * e + Math.sin(rot) * back * 0.3, z: p.z + ez * e + Math.cos(rot) * back * 0.3, y: p.y }, 0.45); // (the posts)
+    // (A billboard with a sponsor's poster stood here, on every track. The owner had them all taken down: "please
+    // remove the signs with sponsors on side of track". Its place is still claimed, so nothing else moves into it or
+    // shifts; the lamp post across the road stays. The sponsors on the walls and barriers are another matter and stay.)
     const pole = at(s, -side * (hw + 6));
     if (!gravel && isFree(track, pole.x, pole.z, 1, hw + 3)) {
       claim(pole.x, pole.z, 1);
@@ -6199,17 +6185,9 @@ function buildCity(track, rnd) {
     neon.renderOrder = 2; worldGroup.add(neon);
   }
 
-  // ---- billboards up on the buildings along the circuit: the sponsors' posters, lit up ----
-  if (boards.length) {
-    const frame = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
-    boards.forEach((g) => {
-      const ad = Math.floor(rnd() * SPONSOR_ART.length);
-      const r = V(g.n.z, 0, -g.n.x).multiplyScalar(g.w / 2), up = V(0, g.h / 2, 0);
-      addPoster([g.c.clone().sub(r).sub(up), g.c.clone().add(r).sub(up), g.c.clone().add(r).add(up), g.c.clone().sub(r).add(up)], ad);
-      const f = new THREE.Mesh(new THREE.BoxGeometry(g.w + 0.8, g.h + 0.8, 0.3), frame);
-      f.position.copy(g.c).addScaledVector(g.n, -0.22); f.rotation.y = Math.atan2(g.n.x, g.n.z); worldGroup.add(f);
-    });
-  }
+  // (The buildings along the circuit had billboards with the sponsors' posters on them: they came down with the
+  // trackside ones. One random number each is still drawn, so everything after this comes out as it always has.)
+  boards.forEach(() => { rnd(); });
 
   // ---- traffic: cars going round the blocks out past the wall round the map,
   // driving on the left, headlights on ----

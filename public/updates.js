@@ -8,6 +8,12 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.4', date: '26 Nov 2026', title: 'The sponsors\' billboards come down',
+    items: [
+      'The billboards with sponsors\' posters beside the tracks are gone, on every track, and so are the ones on the buildings at Sydney CBD. The sponsors painted on walls and barriers are still there.',
+    ],
+  },
+  {
     v: '4.3', date: '26 Nov 2026', title: 'What\'s new waits to be asked',
     items: [
       'This list no longer opens by itself after an update. The What\'s new button in the corner shows a dot when there is something you haven\'t read.',
