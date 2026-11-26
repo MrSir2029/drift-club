@@ -4436,6 +4436,53 @@ function buildMall(track, rnd) {
       fans.finish();
       if (par.pos.length) { const m = flatMesh(par.pos, par.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); }
     }
+    // The other ramp, the one the lap comes down from the roof on, at the east end of the street: the same again.
+    // Its own rails stop where the drop gets small, and from there to the height bar at its foot nothing stood at
+    // either edge: a car could run off the side of the ramp and end up beside the bar, off the track (the owner,
+    // from just there: "Fence here"). And round the inside of the corner at the bottom, from the ramp to the end of
+    // the race barrier along Oxford Street, the way was open onto the forecourt of the car park ("why is the fence
+    // gap still there"). A concrete parapet now carries on down each edge of the ramp from its rails. On the
+    // outside it turns out at the foot to meet the first post of the rail round the corner. On the inside it goes
+    // on round the corner and in to the end of the race barrier.
+    {
+      const LIP = hw + 1.4, RAIL = hw + 5.2, CONC = C(0xd4d7dc), COPE = C(0xb9bdc5), par = { pos: [], col: [] };
+      const xr = samples[i0].p.x; // (the east ramp is in line with the doors the lap goes in by)
+      let iFoot = samples.findIndex((a, i) => i > 60 && i < i0 && Math.abs(a.p.x - xr) < 1.5 && a.p.z > 46 && samples[i + 1].p.z <= 46); // the foot of the ramp, at the height bar
+      if (iFoot > 0) {
+        let iRail = iFoot; while (Math.max(track.vergeDrop[iRail], track.vergeDrop[iRail - 1]) <= VERGE_MAX_DROP && iRail > iFoot - 80) iRail--; // where the ramp's own rails end, coming down
+        // a length of parapet between two points, each [x, road height, z]; sd: which side of the road it's on (so which face is the outer one)
+        const piece = (a, b, sd) => {
+          const dx = b[0] - a[0], dz = b[2] - a[2], l = Math.hypot(dx, dz) || 1, nx = (-dz / l) * 0.2 * sd, nz = (dx / l) * 0.2 * sd; // (towards the road's left, times sd: outwards)
+          const A = [a[0] - nx, a[2] - nz], B = [b[0] - nx, b[2] - nz], Co = [b[0] + nx, b[2] + nz], D = [a[0] + nx, a[2] + nz];
+          quad(par, [A[0], a[1] - 0.1, A[1]], [B[0], b[1] - 0.1, B[1]], [B[0], b[1] + 1, B[1]], [A[0], a[1] + 1, A[1]], CONC);       // its face to the road
+          quad(par, [A[0], a[1] + 1, A[1]], [B[0], b[1] + 1, B[1]], [Co[0], b[1] + 1, Co[1]], [D[0], a[1] + 1, D[1]], COPE);         // its top
+          quad(par, [D[0], a[1] + 1, D[1]], [Co[0], b[1] + 1, Co[1]], [Co[0], b[1] - 1.4, Co[1]], [D[0], a[1] - 1.4, D[1]], CONC);   // its outer face, down over the edge of the deck
+          walls.push({ ax: a[0], az: a[2], bx: b[0], bz: b[2], y: (a[1] + b[1]) / 2 });
+        };
+        const cap = (a, sd, t) => { const nx = -t[1] * 0.2 * sd, nz = t[0] * 0.2 * sd; quad(par, [a[0] - nx, a[1] - 1.4, a[2] - nz], [a[0] + nx, a[1] - 1.4, a[2] + nz], [a[0] + nx, a[1] + 1, a[2] + nz], [a[0] - nx, a[1] + 1, a[2] - nz], CONC); }; // an end
+        const at3 = (i, lat) => { const [x, z] = P(i, lat); return [x, samples[wrap(i)].p.y, z]; };
+        // the inside of the corner: on until the parapet's line reaches the end of the race barrier (MED.x1, where the two legs part)
+        let iEnd = iFoot; while (iEnd < iFoot + 60 && P(iEnd, LIP)[0] > MED.x1 + 2.5) iEnd++;
+        for (const sd of [1, -1]) { // +1: the left coming down, which is the inside of the corner at the bottom
+          const last = sd > 0 ? iEnd : iFoot;
+          for (let i = iRail; i < last; i++) piece(at3(i, sd * LIP), at3(i + 1, sd * LIP), sd);
+          { const a = at3(iRail, sd * LIP), t = samples[iRail].th; cap(a, sd, [t.x, t.z]); }
+          if (sd > 0) piece(at3(iEnd, LIP), [MED.x1 + 0.05, 0, WIDE + 0.3], sd); // in to the end of the race barrier
+          else {
+            // out to the first post of the rail round the outside of the corner (the trackside builder's, RAIL out)
+            let post = null, best = 7;
+            for (const w of walls) for (const [x, z] of [[w.ax, w.az], [w.bx, w.bz]]) {
+              if (Math.abs(w.y ?? 0) > 1.5) continue;
+              const k = nearestI(x, z), q = samples[k], lat = (x - q.p.x) * q.left.x + (z - q.p.z) * q.left.z, d = Math.hypot(x - P(iFoot, -RAIL)[0], z - P(iFoot, -RAIL)[1]);
+              if (Math.abs(lat + RAIL) < 0.4 && d < best) { best = d; post = [x, q.p.y, z]; }
+            }
+            const a = at3(iFoot, -LIP);
+            if (post) piece(a, post, sd); else { const t = samples[iFoot].th; cap(a, sd, [t.x, t.z]); }
+          }
+        }
+        if (par.pos.length) { const m = flatMesh(par.pos, par.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); }
+      }
+    }
   }
 
   // ---- the streets round about: blocks of shops and flats, a few towers further off, trees ----
