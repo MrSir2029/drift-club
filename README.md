@@ -355,7 +355,10 @@ the outside of Heartbreak Hill, both sides of the straight along the top and
 of the shops' street, the inside of the corner after it, and the shops' side
 of the hill down, run in to the tunnel's wall (so it is unbroken on that side
 from the second hairpin to the tunnel: "there should be a fence on the inside
-here", 3.46). The crowd stands behind them on two stone steps wherever
+here", 3.46), and on from the tunnel's far end round the chicane to the
+barrier along the start straight (3.75: the owner sent a picture of the fence
+on the hill down, "put this wired fence in the other side" of the
+InterContinental; the short rail that stood there came away). The crowd stands behind them on two stone steps wherever
 nothing else is in the way, or on the footpath in front of the shops; it is a
 set of people of its own with its own random numbers, so the rest of the bay
 stays put. Where a barrier comes to a corner's rail it is run in to meet the
@@ -389,15 +392,22 @@ and back out, across Oxford Street and up the other ramp, with the Harbour
 Bridge and the city dead ahead as you come back onto the roof. Inside: tiled
 walkways, shopfronts (windows with mannequins and goods on show, doorways
 taped off with shoppers watching from them, signs), a gallery above them with
-more shoppers, a skylight, boards hanging over the road, escalators, benches
+more shoppers, a skylight, boards hanging over the road, escalators (each a
+landing on the floor, steps at 30 degrees between glass balustrades with dark
+handrails, and a landing where a piece of the gallery's floor comes out to
+meet it: until 3.77 each was one bare slab, and the owner asked why it was
+"slanted for no reason"), benches
 and plants; tables, a juice bar and palms in the middle of the food-court
 hairpin, behind a glass screen; and a crowd barrier outside every other shop
 with people behind it. It's dressed as a race track (the owner: "remember
 this is a racing track"): race barrier (`raceFence`: a concrete block with a
 wire catch fence on top) with the crowd behind it, unbroken down both sides
 of the start straight from the top of the ramp to the corner at the far end
-(the owner didn't want it cut off between the stands) and in lengths along
-Oxford Street's two carriageways; a grandstand each side just past the line,
+(the owner didn't want it cut off between the stands) and down the outside
+of each of Oxford Street's two carriageways, from the hairpin to where the
+two legs part (one unbroken run each side since 3.76: it came in four lengths
+of 24 m with 12 m of nothing between, and the owner asked why there were
+"random holes"); a grandstand each side just past the line,
 and a crowd round the hairpin. Where the lap leaves the west doors, crosses
 Oxford Street and climbs the ramp, there was nothing either side (the owner:
 "this whole area should have barriers"): now the barrier runs down both
