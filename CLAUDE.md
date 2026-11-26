@@ -65,8 +65,12 @@
   - No billboards (4.4): the owner had the sponsors' posters on boards beside
     the tracks taken down ("please remove the signs with sponsors on side of
     track"), and the ones on Sydney CBD's buildings with them. Don't put
-    them back. The sponsors on walls and barriers were left: he calls those
-    "barrier ads", and didn't ask for them to go.
+    them back. Sponsors go in two places only: "just have them on the
+    barriers and those big overhang things that go over the track", "ideally
+    in rows of 3 or more". So each checkpoint gate carries one sponsor's name
+    three times across its top (4.5), and every wall or barrier ad is the
+    same name three times in a row, with a longer plain stretch between rows
+    (about as much advertising as before, not more). No single banners.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
     not illuminated"): they take the scene's light, dim at night.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
