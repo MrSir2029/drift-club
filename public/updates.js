@@ -8,6 +8,19 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '4.0', date: '26 Nov 2026', title: 'Liveries in famous F1 colours',
+    items: [
+      'Every car colour is now a livery in a famous Formula 1 team\'s colours: Ferrari red, McLaren papaya, Jordan yellow, Sauber green, Mercedes silver, Williams blue, Red Bull navy, Alpine pink, Haas white, Lotus black and gold, and Renault sky blue and yellow. The colours only: your name, your number and DRIFT CLUB are still what\'s written on the car.',
+      'The colour you had picked is still picked. Two have changed: the teal car is now the silver one and the purple car is now the navy one.',
+    ],
+  },
+  {
+    v: '3.80', date: '26 Nov 2026', title: 'A slightly sharper front end',
+    items: [
+      'The open seater turns in a little more sharply: a touch more grip at the front and quicker steering. Thanks to archer and the others who said it understeered.',
+    ],
+  },
+  {
     v: '3.79', date: '26 Nov 2026', title: 'Sponsors on the barriers in threes',
     items: [
       'On the painted race barriers at Rose Bay and Westfield each sponsor\'s name now comes three times in a row. It came twice on most of them.',

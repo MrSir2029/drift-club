@@ -211,6 +211,22 @@ you get without picking one, isn't in it. It's all worked out in the browser
 from the boards everyone already has (`overallStandings` in `game.js`), so the
 server doesn't know about it.
 
+**The cars' colours** are liveries (4.0; the owner: "have every livery look
+like famous f1 team"). Each of the eleven a player can pick is painted in a
+famous Formula 1 team's colours (`TEAM` in `game.js`, beside the paint
+itself in `paintLivery`): red with black and white (Ferrari), papaya into
+anthracite with a blue line (McLaren), yellow and black (Jordan), bright
+green into black (Sauber), silver into black with a teal line (Mercedes),
+blue and white with a red line (Williams), navy with red and a yellow nose
+(Red Bull), pink into blue (Alpine's pink car), white into black with a red
+line (Haas), black and gold (Lotus), sky blue into yellow (Renault's 2005 and
+2006 cars). It is the paint and where it goes, nothing more: no team's name,
+badge or sponsors is on a car, which carries DRIFT CLUB, the driver's name
+and the race number as before. The swatches on the home screen show each
+livery's three colours. The colours' numbers are what they were (a player's
+saved choice still means the same swatch); two changed hue, teal to silver
+and purple to navy. A dark car's dot has a pale ring on the minimap.
+
 There are no accounts: it goes by the name you race with, one line per name. Names with a
 bad word in them (a short blocklist in `server/core.js`) are swapped for
 "Racer" everywhere, not just on the board. The blocklist also catches
