@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.64', date: '26 Nov 2026', title: 'Real shops at Westfield',
+    items: [
+      'Every shop at Westfield has a real name now. The made-up ones are gone, so you\'ll pass Myer, Kmart, JB Hi-Fi and the rest more than once.',
+    ],
+  },
+  {
     v: '3.63', date: '26 Nov 2026', title: 'No fairground at Westfield',
     items: [
       'The fairground behind Westfield\'s car park is gone: a big wheel and a circus tent looked out of place at a shopping centre. There\'s a small park there now.',

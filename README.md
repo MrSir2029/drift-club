@@ -389,9 +389,13 @@ mall, so nothing else is put on them. Oxford Street is the way out to the
 streets and to 9LAT2. The town's fairground isn't built here (the owner found
 it out of place at a shopping centre): its spot behind the car park is
 still picked and kept clear, so the mast and the streets stay where they
-were, and `buildMall` plants a park on it. As at Rose
-Bay, the signs are a mix of made-up names and real ones in plain lettering,
-and there are no walls along the road: the car park roof is open to drive on,
+were, and `buildMall` plants a park on it. The shops' signs are real names
+only, in plain lettering: eight shops and four places to eat, each several
+times over, in an order that never puts two the same next door or facing
+each other (`turn`). There were made-up names among them until 3.64, when
+the owner asked for those to go and the real ones to be repeated. (Rose
+Bay's signs are still a mix of made-up names and real ones.) There are no
+walls along the road: the car park roof is open to drive on,
 out to the low wall round its edge (parked cars, lamps and the lifts are
 solid), the ramps have railings because they're bridges, the shopfronts are
 the walls inside, and the glass screen keeps cars out of the food court. In

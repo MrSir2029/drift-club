@@ -3743,12 +3743,15 @@ function buildMall(track, rnd) {
   const inU = (i) => { const s = samples[wrap(i)].p; return s.z < fc.z + 1 && Math.hypot(s.x - fc.x, s.z - fc.z) < 40; };
 
   // ---- the shops' signs, all on one sheet ----
-  const MAIN = [['Myer', '#111318', '#ffffff'], ['Dingo Donuts', '#ff8fb0', '#ffffff'], ['Kmart', '#d62f2f', '#ffffff'], ['Galah Games', '#ff6bcb', '#2a1030'], ['David Jones', '#ffffff', '#111318'], ['Wombat Toys', '#ffd23f', '#3b2a1e'],
-    ['JB Hi-Fi', '#ffd400', '#111318'], ['Bondi Surf Co', '#2ec4b6', '#0f2f3a'], ['Coles', '#ffffff', '#d62f2f'], ['Kookaburra Kicks', '#3d8bff', '#ffffff'], ['Rebel', '#111318', '#e6453a'], ['Junction Books', '#8a5a2b', '#fff1d6'],
-    ['Woolworths', '#2f9e44', '#ffffff'], ['Platypus Phones', '#1d2230', '#9ad0ff'], ['Event Cinemas', '#16204a', '#ffffff'], ['Quokka Candy', '#ff8a3d', '#ffffff'], ['Roo Rides', '#7ed957', '#1d3b1f'], ['Emu Eyewear', '#f1e9d6', '#3b2a1e'],
-    ['Drift Club Store', '#1d2230', '#ff8a3d'], ['Possum Pets', '#9ad0ff', '#16204a'], ['Numbat News', '#ffffff', '#1f6fb5'], ['Turbo Tea', '#2f6b4a', '#f6e7c8']];
-  const FOOD = [["Chargrill Charlie's", '#e6453a', '#fff6dc'], ['Bilby Burgers', '#ffd23f', '#3b2a1e'], ['Oporto', '#ff8a3d', '#ffffff'], ['Koala Kebabs', '#7ed957', '#1d3b1f'], ['Boost Juice', '#8fd400', '#ffffff'],
-    ['Croc Crisps', '#2f6b4a', '#ffe9a8'], ['Guzman y Gomez', '#ffd400', '#111318'], ['Sunburnt Soda', '#3d8bff', '#ffffff'], ['Cockatoo Coffee', '#3b2a1e', '#f6e7c8'], ['Bandicoot Bakery', '#f1e9d6', '#8a5a2b']];
+  // Every shop has a real name, in plain lettering. (There were made-up ones among them, Galah Games and Platypus
+  // Phones and so on, until 3.64: the owner asked for those to go and for "duplicates of the other real ones".) There
+  // are many more shops than names, so the names come round again: `turn` says which the nth shop gets.
+  const MAIN = [['Myer', '#111318', '#ffffff'], ['Kmart', '#d62f2f', '#ffffff'], ['David Jones', '#ffffff', '#111318'], ['JB Hi-Fi', '#ffd400', '#111318'],
+    ['Woolworths', '#2f9e44', '#ffffff'], ['Rebel', '#111318', '#e6453a'], ['Coles', '#ffffff', '#d62f2f'], ['Event Cinemas', '#16204a', '#ffffff']];
+  const FOOD = [["Chargrill Charlie's", '#e6453a', '#fff6dc'], ['Oporto', '#ff8a3d', '#ffffff'], ['Boost Juice', '#8fd400', '#ffffff'], ['Guzman y Gomez', '#ffd400', '#111318']];
+  // Shops come one side of the road and then the other, so the names go round one side while the other side is
+  // half a turn ahead: next-door neighbours differ, and so do the two shops facing each other.
+  const turn = (n, len) => ((n >> 1) + (n % 2 ? len >> 1 : 0)) % len;
   const NAMES = [...MAIN, ...FOOD], COLS = 2, ROWS = 16;
   const atlas = document.createElement('canvas'); atlas.width = atlas.height = 1024;
   const ax = atlas.getContext('2d'); ax.textAlign = 'center'; ax.textBaseline = 'middle';
@@ -3830,7 +3833,7 @@ function buildMall(track, rnd) {
         if (first) {
           const [x, z] = P(i, sd * (SHOPS - 0.15)), g = at(x, z, along(i), s.p.y + PAVE);
           box(g, 0.5, 5.1, 0.7, 0xd9dde3, 0, 2.55, 0).castShadow = false;       // the pillar between two shops
-          if (i + SHOP <= i1 && !(sd === 1 && inU(i + SHOP))) signStrip(i + 1, SHOP - 2, sd, SHOPS - 0.06, 3.6, 4.7, food ? MAIN.length + (shop[1]++ % FOOD.length) : shop[0]++ % MAIN.length);
+          if (i + SHOP <= i1 && !(sd === 1 && inU(i + SHOP))) signStrip(i + 1, SHOP - 2, sd, SHOPS - 0.06, 3.6, 4.7, food ? MAIN.length + turn(shop[1]++, FOOD.length) : turn(shop[0]++, MAIN.length));
         }
         if (k % 4 === 0) { const [ax0, az0] = P(i, sd * SHOPS), [bx0, bz0] = P(Math.min(i + 4, i1), sd * SHOPS); walls.push({ ax: ax0, az: az0, bx: bx0, bz: bz0, y: s.p.y }); }
         // shoppers watch from the gallery, up out of the way; benches and plants by the shopfronts (solid)
