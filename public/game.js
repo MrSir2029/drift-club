@@ -1206,7 +1206,7 @@ function collideWalls(car) {
   };
   for (off of [2.1, 0, -1.9]) {
     for (const w of walls) {
-      if (Math.abs(w.y - car.pos.y) > 3) continue;
+      if (w.off || Math.abs(w.y - car.pos.y) > 3) continue; // (off: a side street's gate, taken away for Race to 9LAT2)
       const px = car.pos.x + fx * off, pz = car.pos.z + fz * off;
       const ex = w.bx - w.ax, ez = w.bz - w.az;
       const t = clamp(((px - w.ax) * ex + (pz - w.az) * ez) / (ex * ex + ez * ez || 1), 0, 1);
@@ -2223,53 +2223,111 @@ function buildStreetWalls(track) {
   }
   const inGap = (side, i) => gaps.some(g => g.side === side && i >= g.a && i <= g.b);
   const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e);
-  const pos = [], col = [];
+  const pos = [], col = [], gpos = [], gcol = [], gateWalls = [], rails = track.walls.slice(); // (rails: what's solid already, the railings of the bridge decks)
+  // how near the road comes to a spot, counting only road on the spot's own level: a flyover overhead is no reason
+  // to leave the wall out. (It used to count, and the wall stopped short of the bridge over Sydney CBD's start
+  // straight and took up again past it, on both sides: "random holes at start of track in the barriers", said the
+  // owner, "a piece of wall is missing, just add it back".)
+  const levelGap = (x, z, y) => { let best = Infinity; for (let i = 0; i < N; i += 2) { const q = samples[i].p; if (Math.abs(q.y - y) > 3) continue; const d = (q.x - x) ** 2 + (q.z - z) ** 2; if (d < best) best = d; } return Math.sqrt(best); };
+  const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
+  // one length of wall, from a to b: its faces (road side, top, back: each facing out, whichever side of the road)
+  const length = (P, C, side, a, b) => {
+    const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
+    const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
+    if (side > 0) { pushQuad(P, C, A0, A1, B1, B0, concrete); pushQuad(P, C, A1, C1, D1, B1, topC); pushQuad(P, C, C0, D0, D1, C1, backC); }
+    else { pushQuad(P, C, A0, B0, B1, A1, concrete); pushQuad(P, C, A1, B1, D1, C1, topC); pushQuad(P, C, C0, C1, D1, D0, backC); }
+  };
   track.wallAt = {}; // which samples have a wall beside them, each side (the city puts its crowds behind them)
   for (const side of [1, -1]) {
     // the wall's road-side face, IN metres out; where the inside of a tight
     // bend folds that line back on itself the points come too near the road
     // and are dropped, and the wall cuts straight across instead
-    const P = samples.map((s, i) => {
-      const p = V(s.p.x + s.left.x * side * IN, s.p.y, s.p.z + s.left.z * side * IN);
-      if (inGap(side, i) || track.vergeDrop[i] > VERGE_MAX_DROP || roadGap(track, p.x, p.z) < IN - 0.35) return null; // (a bridge deck has railings instead)
+    const point = (i, gap, gate) => {
+      const s = samples[i], p = V(s.p.x + s.left.x * side * IN, s.p.y, s.p.z + s.left.z * side * IN);
+      if ((!gate && inGap(side, i)) || track.vergeDrop[i] > VERGE_MAX_DROP || gap(p.x, p.z, p.y) < IN - 0.35) return null; // (a bridge deck has railings instead)
       return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g: terrainHeight(p.x, p.z) };
-    });
+    };
     // join each point to the next one; across a run of dropped points (but
     // never a side street) only if a straight wall there keeps clear of the road
-    const links = [], hasIn = new Uint8Array(N), hasOut = new Uint8Array(N);
-    for (let i = 0; i < N; i++) {
-      if (!P[i]) continue;
-      let m = 1;
-      while (m < 24 && !P[(i + m) % N] && !inGap(side, (i + m) % N)) m++;
-      const j = (i + m) % N, c = P[j];
-      if (!c) continue;
-      if (m > 1 && roadGap(track, (P[i].p.x + c.p.x) / 2, (P[i].p.z + c.p.z) / 2) < hw + 1.9) continue;
-      links.push([P[i], c]); hasOut[i] = 1; hasIn[j] = 1;
-    }
-    track.wallAt[side] = hasIn.map((v, i) => v | hasOut[i]);
-    const lo = (v, g = Infinity) => V(v.x, Math.min(v.y - SINK, g - 0.3), v.z), hi = (v) => V(v.x, v.y + H, v.z); // down to the ground, where the road is up on a ramp
+    const join = (P, gap) => {
+      const links = [], hasIn = new Uint8Array(N), hasOut = new Uint8Array(N);
+      for (let i = 0; i < N; i++) {
+        if (!P[i]) continue;
+        let m = 1;
+        while (m < 24 && !P[(i + m) % N] && !inGap(side, (i + m) % N)) m++;
+        const j = (i + m) % N, c = P[j];
+        if (!c) continue;
+        if (m > 1 && gap((P[i].p.x + c.p.x) / 2, (P[i].p.z + c.p.z) / 2, (P[i].p.y + c.p.y) / 2) < hw + 1.9) continue;
+        links.push([P[i], c]); hasOut[i] = 1; hasIn[j] = 1;
+      }
+      return { links, hasIn, hasOut };
+    };
+    // (the crowds go where the wall always was: none under a bridge, and nobody moves for the lengths added there)
+    const was = join(samples.map((s, i) => point(i, (x, z) => roadGap(track, x, z))), (x, z) => roadGap(track, x, z));
+    track.wallAt[side] = was.hasIn.map((v, i) => v | was.hasOut[i]);
+    const P = samples.map((s, i) => point(i, levelGap)), { links, hasIn, hasOut } = join(P, levelGap);
     // is the wall whole and near its proper length for the three samples from g0? (on the inside of a tight bend it
     // bunches up, on the outside it stretches: a banner there would come out squashed, cut short or pulled wide)
     const whole = (g0) => [0, 1, 2].every((j) => { const u = P[(g0 + j) % N], v = P[(g0 + j + 1) % N]; if (!u || !v) return false; const t = samples[u.i].th, run = (v.p.x - u.p.x) * t.x + (v.p.z - u.p.z) * t.z; return run > 1.05 && run < 2.1; });
     for (const [a, b] of links) {
-      // faces: road side, top, back (each facing out, whichever side of the road)
-      const A0 = lo(a.p, a.g), A1 = hi(a.p), B0 = lo(b.p, b.g), B1 = hi(b.p);
-      const C0 = A0.clone().add(a.o), C1 = A1.clone().add(a.o), D0 = B0.clone().add(b.o), D1 = B1.clone().add(b.o);
-      const blk = Math.floor(a.i / 15), k = a.i % 15, face = concrete;
+      const blk = Math.floor(a.i / 15), k = a.i % 15;
       if (k >= 6 && k < 9 && blk * 15 + 9 <= N && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 22.5 m (and never one cut short where the lap's samples run out)
         const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.08, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.08 }), c = samples[a.i].p;
         addBanner(blk + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
       }
-      if (side > 0) { pushQuad(pos, col, A0, A1, B1, B0, face); pushQuad(pos, col, A1, C1, D1, B1, topC); pushQuad(pos, col, C0, D0, D1, C1, backC); }
-      else { pushQuad(pos, col, A0, B0, B1, A1, face); pushQuad(pos, col, A1, B1, D1, C1, topC); pushQuad(pos, col, C0, C1, D1, D0, backC); }
+      length(pos, col, side, a, b);
       track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2 });
     }
     // close off the ends of each run of wall (drawn both sides, so either way round is fine)
     for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) { const q = P[i], b0 = q.p, b1 = q.p.clone().add(q.o); pushQuad(pos, col, lo(b0, q.g), lo(b1, q.g), hi(b1), hi(b0), backC); }
+    // where a run of wall ends at a bridge deck it turns in to meet the end of the deck's railing, which stands
+    // nearer the road: no way between the two (the owner, of Rose Bay: "gap between fence and barrier here")
+    for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) {
+      const q = P[i], dir = hasOut[i] ? -1 : 1, t = samples[i].th; // (dir: the deck lies this way along the track)
+      let end = null, best = 2.6;
+      for (const w of rails) {
+        if (Math.abs((w.y ?? 0) - q.p.y) > 3) continue;
+        for (const [x, z] of [[w.ax, w.az], [w.bx, w.bz]]) { const d = Math.hypot(x - q.p.x, z - q.p.z); if (d < best) best = d, end = [x, z]; }
+      }
+      if (!end || best < 0.5) continue;
+      const o = V(t.x * dir * THICK, 0, t.z * dir * THICK), g = Math.min(q.g, terrainHeight(end[0], end[1]));
+      length(pos, col, side * dir, { p: q.p, o, g }, { p: V(end[0], q.p.y, end[1]), o, g });
+      track.walls.push({ ax: q.p.x, az: q.p.z, bx: end[0], bz: end[1], y: q.p.y });
+    }
+    // and a gate across each side street: the same wall, from one end of the opening to the other, that can be
+    // taken away (setGates)
+    for (const g of gaps) {
+      if (g.side !== side) continue;
+      const G = []; for (let i = g.a - 1; i <= g.b + 1; i++) G.push(P[((i % N) + N) % N] || point(((i % N) + N) % N, levelGap, true));
+      for (let k = 0; k + 1 < G.length; k++) {
+        const a = G[k], b = G[k + 1];
+        if (!a || !b) continue;
+        length(gpos, gcol, side, a, b);
+        const w = { ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2, gate: true };
+        track.walls.push(w); gateWalls.push(w);
+      }
+    }
   }
-  const mesh = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
+  const wallMat = () => new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+  const mesh = flatMesh(pos, col, wallMat());
   mesh.castShadow = mesh.receiveShadow = true;
   worldGroup.add(mesh);
+  // The gates stand shut for a race and for Polytrack: the barrier has no holes in it. Race to 9LAT2 leaves the
+  // circuit by the side streets, so for that they come away.
+  track.gates = null;
+  if (gateWalls.length) {
+    const gm = flatMesh(gpos, gcol, wallMat());
+    gm.castShadow = gm.receiveShadow = true; gm.userData.dyn = true; // (kept out of the merged scenery: it comes and goes)
+    worldGroup.add(gm);
+    track.gates = { mesh: gm, walls: gateWalls };
+  }
+}
+// shut the side streets' gates, or take them away
+function setGates(open) {
+  const G = app.track?.gates;
+  if (!G) return;
+  G.mesh.visible = !open;
+  for (const w of G.walls) w.off = open;
 }
 
 // The mouth of each side street (track.gaps). The street walls open there and a street leads off into the city, but
@@ -2292,7 +2350,7 @@ function buildSideStreets(track, night) {
     if ((TERRAIN.wet && wetAt(x, z)) || (v > hw + 6 && roadGap(track, x, z) < hw + 4)) return true; // (another stretch of the circuit: the one the street leaves is further off than that by then)
     for (const o of occupied) if (o.r >= 2.5 && (o.x - x) ** 2 + (o.z - z) ** 2 < (o.r + 0.6) ** 2) return true;
     for (const w of track.walls) { // a building, or anything else solid
-      if (Math.abs((w.y ?? 0) - y) > 3) continue;
+      if (w.gate || Math.abs((w.y ?? 0) - y) > 3) continue; // (not the street's own gate)
       const ex = w.bx - w.ax, ez = w.bz - w.az, t = clamp(((x - w.ax) * ex + (z - w.az) * ez) / (ex * ex + ez * ez || 1), 0, 1), dx = x - w.ax - ex * t, dz = z - w.az - ez * t;
       if (dx * dx + dz * dz < 1.3) return true;
     }
@@ -7431,6 +7489,7 @@ function beginRace(msg) {
   app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Lap time' : 'Time';
   if (worldStale(msg.trackId, msg.car)) buildWorld(msg.trackId, msg.car || 'open');
+  setGates(app.mode === 'dash'); // (the side streets' gates: shut, but for Race to 9LAT2)
   setCarClass(msg.car);
   clearCars();
   // A new race: everyone in the room is in it. (Only someone joining part-way

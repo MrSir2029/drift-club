@@ -312,7 +312,17 @@ first one, just past the bridge, runs along the foot of the flyover's bank.
 eyes are about as high as the wall's top, so the dark ground behind filled
 just the band a wall would, and the owner took the first one for a "random
 black wall".) They are built last, so nothing else in the city moves for
-them. Its only landmarks are 9LAT2,
+them. From 3.72 the barrier has no holes in a race or in Polytrack ("a piece
+of wall is missing, just add it back", said the owner): each side street has
+a gate, the same wall carried across its mouth, and the gates come away only
+for Race to 9LAT2, which has no other way off the circuit (`setGates` in
+`game.js`, called when a race starts; a gate's walls are in `track.walls`
+with `gate` set, and `off` when it is open). The wall also carries on under
+the flyover, on both sides: it used to stop short of the bridge and take up
+again past it, because the road overhead counted as road too near the wall
+(`levelGap` counts only road on the wall's own level). And where a run of
+wall ends at a bridge deck it turns in to meet the end of the deck's railing.
+Its only landmarks are 9LAT2,
 the fairground and the radio mast.
 Rose Bay (the seventh) is Sydney's own Monaco, by day (`buildRoseBay` in
 `game.js`): a street circuit along a harbour quay, up Heartbreak Hill,
