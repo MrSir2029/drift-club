@@ -297,10 +297,9 @@ input:focus { border-color: var(--blue); }
 .secrets .label { margin: 0; }
 .secrets .hint { font-size: 12px; font-weight: 600; color: var(--muted); }
 .secrets.locked .carpick, .secrets.locked .btn { cursor: default; opacity: .6; }
-.dash-nav { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; font-weight: 900; box-shadow: 0 4px 0 var(--ink); }
+.race-nav { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; font-weight: 900; box-shadow: 0 4px 0 var(--ink); }
 /* the arrows to 9LAT2 and to a missed gate: a point at the front, a tail at the back */
 .nav-arrow { width: 30px; height: 30px; flex: none; fill: var(--orange); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; transform-origin: 50% 50%; }
-#dash-dist { font-variant-numeric: tabular-nums; color: var(--muted); }
 .gate-nav { background: #ffd23f; animation: gate-pulse 0.9s ease-in-out infinite alternate; }
 .gate-nav b, .gate-nav span { white-space: nowrap; }
 .gate-nav span { font-weight: 700; font-size: 14px; }
@@ -362,7 +361,7 @@ input:focus { border-color: var(--blue); }
   .hud-speed { font-size: 36px; }
   .standings { display: none; }
   .countdown { font-size: 100px; }
-  .dash-nav { top: 70px; }
+  .race-nav { top: 70px; }
   .lights { top: 70px; gap: 10px; padding: 10px 12px; }
   .lights span { width: 30px; height: 30px; }
   .toast-race { top: 140px; font-size: 16px; padding: 8px 14px; white-space: normal; width: max-content; max-width: 74vw; text-align: center; } /* clear of the Menu button */
@@ -391,7 +390,7 @@ input:focus { border-color: var(--blue); }
   .hud-left { flex-wrap: wrap; max-width: calc(100vw - 136px); }
   .lights { top: 210px; gap: 10px; padding: 10px 12px; }
   .lights span { width: 30px; height: 30px; }
-  .dash-nav { top: 210px; }
+  .race-nav { top: 210px; }
   .toast-race { top: 280px; font-size: 16px; padding: 8px 14px; white-space: normal; width: max-content; max-width: 86vw; text-align: center; }
 }
 
@@ -445,7 +444,7 @@ input:focus { border-color: var(--blue); }
 /* ---------- podium ---------- */
 #screen-race.podium-on .hud-left, #screen-race.podium-on .hud-right, #screen-race.podium-on .hud-speed,
 #screen-race.podium-on #lights, #screen-race.podium-on #countdown, #screen-race.podium-on #toast-race,
-#screen-race.podium-on #respawn-tip, #screen-race.podium-on #dash-nav, #screen-race.podium-on #gate-nav, #screen-race.podium-on #btn-endq { display: none !important; }
+#screen-race.podium-on #respawn-tip, #screen-race.podium-on #gate-nav, #screen-race.podium-on #btn-endq { display: none !important; }
 .podium-ui { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); text-align: center; pointer-events: none; width: 92%; }
 .podium-title { font-size: 46px; font-weight: 900; line-height: 1.05; color: #ffd23f; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; min-height: 1.05em; }
 .podium-title.pop { animation: pop .5s ease-out; }
