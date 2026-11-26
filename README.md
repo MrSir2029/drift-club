@@ -515,7 +515,10 @@ anything that has claimed the ground, and of the circuit's other parts; they
 claim no ground themselves, so nothing else moves for them, and their legs
 aren't solid. A track can name its own spots instead, as `sponsorBridges:
 [[x, z], …]` in `tracks.js` (the nearest point of the lap to each):
-Westfield does, for Oxford Street, where the rules find no room. By day the signs
+Westfield does, for Oxford Street, where the rules find no room. Every other
+checkpoint gate carries a name three times across its top as well (every
+gate did from 4.5 to 4.8): of the two ways of taking every other gate, the
+one that keeps the names further from the bridges. By day the signs
 are lit and shadowed by the scene like the
 walls they hang on (3.50; lit from inside they looked stuck on), and at night
 they glow. Nothing is a picture: the boards are drawn in the browser, in

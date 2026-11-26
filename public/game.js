@@ -1103,16 +1103,6 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
     bar.position.copy(s.p); bar.position.y += 5.2;
     bar.rotation.y = Math.atan2(s.th.x, s.th.z);
     worldGroup.add(bar);
-    // A sponsor's name three times across the top of the gate, facing the cars coming. (The owner, when the
-    // billboards came down: "just have them on the barriers and those big overhang things that go over the track",
-    // "ideally in rows of 3 or more".) A dark board stands on the bar behind them; the bar itself still glows.
-    {
-      const W = hw * 2 + 3.6, one = W / 3, h = one / (512 / 96), y0 = 5.5, ad = k - 1 + app.trackId;
-      const back = new THREE.Mesh(new THREE.BoxGeometry(W + 0.3, h + 0.24, 0.24), gateBoard);
-      back.position.copy(s.p); back.position.y += y0 + h / 2; back.rotation.y = bar.rotation.y; worldGroup.add(back);
-      const at = (lat) => ({ x: s.p.x + s.left.x * lat - s.th.x * 0.14, y: s.p.y, z: s.p.z + s.left.z * lat - s.th.z * 0.14 });
-      for (let j = 0; j < 3; j++) addBanner(ad, at(W / 2 - j * one), at(W / 2 - (j + 1) * one), y0, y0 + h, 0, 1, s.p.x - s.th.x * 30, s.p.z - s.th.z * 30);
-    }
   }
 
   if (track.def.walls) buildStreetWalls(track);
@@ -1126,6 +1116,25 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   buildSideStreets(track, !!look.night);
   buildHelicopter(track);
   buildSponsorBridges(track);
+  // A sponsor's name three times across the top of every other checkpoint gate, facing the cars coming. (The owner,
+  // when the billboards came down: "just have them on the barriers and those big overhang things that go over the
+  // track", "ideally in rows of 3 or more". Every gate had one until 4.9: "not over every single gate mate".) Of
+  // the two ways of taking every other gate, the one whose gates stand further from the sponsor bridges; the
+  // second and fourth on a tie. A dark board stands on the bar behind the names; the bar itself still glows.
+  {
+    const apart = (i, j) => { const d = Math.abs(i - j) % N; return Math.min(d, N - d); };
+    const room = (odd) => Math.min(...cps.flatMap((c, k) => (k > 0 && k % 2 === odd ? track.sponsorBridges.map((b) => apart(c, b)) : [])), N);
+    const odd = room(1) > room(0) ? 1 : 0;
+    track.sponsorGates = cps.map((c, k) => k).filter((k) => k > 0 && k % 2 === odd);
+    for (let k = 1; k < cps.length; k++) {
+      if (k % 2 !== odd) continue;
+      const s = samples[cps[k]], W = hw * 2 + 3.6, one = W / 3, h = one / (512 / 96), y0 = 5.5, ad = k - 1 + app.trackId;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(W + 0.3, h + 0.24, 0.24), gateBoard);
+      back.position.copy(s.p); back.position.y += y0 + h / 2; back.rotation.y = Math.atan2(s.th.x, s.th.z); worldGroup.add(back);
+      const at = (lat) => ({ x: s.p.x + s.left.x * lat - s.th.x * 0.14, y: s.p.y, z: s.p.z + s.left.z * lat - s.th.z * 0.14 });
+      for (let j = 0; j < 3; j++) addBanner(ad, at(W / 2 - j * one), at(W / 2 - (j + 1) * one), y0, y0 + h, 0, 1, s.p.x - s.th.x * 30, s.p.z - s.th.z * 30);
+    }
+  }
   // the sponsors' posters and banners, every one in the world: a mesh for each kind
   for (const [kind, Q] of Object.entries(sponsorQuads)) {
     if (!Q.pos.length) continue;

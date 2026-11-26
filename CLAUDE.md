@@ -67,8 +67,10 @@
     track"), and the ones on Sydney CBD's buildings with them. Don't put
     them back. Sponsors go in two places only: "just have them on the
     barriers and those big overhang things that go over the track", "ideally
-    in rows of 3 or more". So each checkpoint gate carries one sponsor's name
-    three times across its top (4.5), and no wall or barrier carries a
+    in rows of 3 or more". So a checkpoint gate carries one sponsor's name
+    three times across its top (4.5), but only every other gate (4.9: with
+    the bridges up too, "not over every single gate mate"); the gates
+    between are plain. And no wall or barrier carries a
     single banner. From 4.7 the rows are long ("keep all the advertisements
     on barriers but have them in long rows, you can add more if you need"):
     one name six times or more along a stretch (six on the walls, nine down
