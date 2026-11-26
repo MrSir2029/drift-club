@@ -2014,10 +2014,11 @@ function buildProps(track) {
     if (corner && flat(i) && !street) {
       const p = at(s, outside * (hw + 5.2));
       if (isFree(track, p.x, p.z, 0.6, hw + 3)) {
-        here = { p, outside, i };
+        here = { p, outside, i, bits: [] }; // (bits: its post, and the rail on from the last one)
         if (!firstRail) firstRail = here;
         lastRail = here;
-        if (!gravel) { const post = new THREE.Mesh(railPostGeo, postMat); post.position.set(p.x, p.y + 0.4, p.z); worldGroup.add(post); }
+        if (!gravel) { const post = new THREE.Mesh(railPostGeo, postMat); post.position.set(p.x, p.y + 0.4, p.z); worldGroup.add(post); here.bits.push(post); }
+        (track.rails ||= []).push(here); // (for a track whose own barrier takes a rail's place: Rose Bay's, out of the tunnel)
       }
     }
     // join this barrier post to the last one so the rail has no gaps or overlaps
@@ -2026,6 +2027,7 @@ function buildProps(track) {
       const rail = gravel ? strut(V(a.x, a.y + 0.45, a.z), V(b.x, b.y + 0.45, b.z), 1.0, 0.9, baleMat, true) : strut(V(a.x, a.y + 0.78, a.z), V(b.x, b.y + 0.78, b.z), 0.25, 0.5, railMat, true);
       rail.castShadow = true; worldGroup.add(rail);
       wall(a, b);
+      here.bits.push(rail); here.wall = walls[walls.length - 1];
       // (no sponsors' banners here: a rail on posts is a fence to the owner's eye, and banners go on solid walls only)
     }
     prev = here;
@@ -5004,13 +5006,14 @@ function buildRoseBay(track, rnd, randIn) {
   // more of them at Rose Bay, so they line the straights that had nothing beside them: the land side of the
   // start straight (run in to the pit wall at each end, which carries the fence past the garages), the outside
   // of Heartbreak Hill, both sides of the straight along the top and of the shops' street, and the shops' side
-  // of the hill down, run in to the tunnel's wall. Corners keep their rails, and a barrier that comes to one is
+  // of the hill down, run in to the tunnel's wall, and on from the tunnel's far end round the chicane to the start
+  // straight's. Corners keep their rails, and a barrier that comes to one is
   // run in to meet its end. The water and the lookout keep their view. Behind the
   // barriers on the grass the crowd stands on two stone steps, to see over the block (and be seen over it). ----
   {
     const STONE = C(0xcdb88a), COPE = C(0xb9a878), STEEL = C(0x8d93a0), TREAD = C(0xd9d2c0), RISER = C(0xbfb394);
     const TH = 0.5, FACE = hw + 2.7 - TH / 2, TOP = 1.0, RUN = 6, rndC = mulberry32(6102); // (its middle is on the harbour wall's line, hw + 2.7)
-    const fans = makePeople(900, rndC); // the crowd behind them: a set of its own with its own random numbers, so the rest of the bay stays where it was
+    const fans = makePeople(1100, rndC); // the crowd behind them: a set of its own with its own random numbers, so the rest of the bay stays where it was
     const pt = (i, sd, lat, h) => { const a = samples[wrap(i)]; return V(a.p.x + a.left.x * sd * lat, a.p.y + h, a.p.z + a.left.z * sd * lat); };
     const part = (i, f, sd, lat, h) => pt(i, sd, lat, h).lerp(pt(i + 1, sd, lat, h), f); // f of the way on from sample i to the next
     // a strip from sample i to sample i + m: one edge `a` metres out at height y0 (b at the far end), the other a1 out at y1 (b1 at the far end)
@@ -5020,6 +5023,11 @@ function buildRoseBay(track, rnd, randIn) {
       const c = [[-r, -r], [r, -r], [r, r], [-r, r]].map(([u, v]) => [x + a.th.x * u + a.left.x * v, z + a.th.z * u + a.left.z * v]);
       for (let k = 0; k < 4; k++) { const [ax, az] = c[k], [bx, bz] = c[(k + 1) % 4]; pushQuad(wires.pos, wires.col, V(ax, a.p.y + y0, az), V(bx, a.p.y + y0, bz), V(bx, a.p.y + 3.56, bz), V(ax, a.p.y + 3.56, az), STEEL); }
     };
+    // The land side from the tunnel's far end to the chicane gets a barrier of its own, below. What the trackside
+    // builder left there, a rail three posts long and one post standing by itself, comes away first: they'd be
+    // behind it, 2.5 m back, guarding nothing.
+    const CH = 992; // where the chicane comes out onto the start straight, and the barrier along its land side begins
+    for (const r of track.rails || []) if (r.outside === -1 && r.i > t1 && r.i < CH) { worldGroup.remove(...r.bits); if (r.wall) walls.splice(walls.indexOf(r.wall), 1); }
     // What already stands behind where a barrier goes, sample by sample and side by side (braking boards, light
     // poles, marshals' stands, the spectators' own fences, grandstands): the crowd's steps keep clear of it all.
     const taken = { 1: new Uint8Array(N), [-1]: new Uint8Array(N) }, stood = { 1: new Uint8Array(N), [-1]: new Uint8Array(N) }; // (stood: just the things with a foot on the ground there, which people on a footpath step round)
@@ -5081,7 +5089,10 @@ function buildRoseBay(track, rnd, randIn) {
       }
       if (crowd !== 'steps') return;
       // the crowd's steps, wherever there's room for a length of them: two, each 1.4 m deep and half a metre up
-      const S0 = lat + TH + 0.9, D = 1.4, room = (j) => j >= RUN && j <= n - RUN && !taken[sd][wrap(i0 + j)];
+      // (not round the inside of a tight bend, where the back of them would bunch up and the crowd stand on each other:
+      // nowhere the back of the steps is under two thirds as long as the road beside it)
+      const S0 = lat + TH + 0.9, D = 1.4, bunched = (j) => pt(i0 + j, sd, S0 + 2 * D, 0).distanceTo(pt(i0 + j + 1, sd, S0 + 2 * D, 0)) < 0.67 * pt(i0 + j, sd, 0, 0).distanceTo(pt(i0 + j + 1, sd, 0, 0));
+      const room = (j) => j >= RUN && j <= n - RUN && !taken[sd][wrap(i0 + j)] && !bunched(j);
       for (let j = 0; j < n;) {
         if (!room(j)) { j++; continue; }
         let e = j; while (e - j < 24 && room(e + 1)) e++;
@@ -5109,7 +5120,7 @@ function buildRoseBay(track, rnd, randIn) {
       barrier(ra ?? a, rb ?? b, sd, { ...o, ...(ra != null ? { from: RAIL - TH / 2 } : {}), ...(rb != null ? { to: RAIL - TH / 2 } : {}) });
     };
     // the start straight's land side: out of the chicane, in to the pit wall, the fence along the top of that, and on to the first corner
-    const pit = track.pitWall && track.pitWall.side === -1 ? track.pitWall : null, T1 = N + 113, CH = 992;
+    const pit = track.pitWall && track.pitWall.side === -1 ? track.pitWall : null, T1 = N + 113;
     if (pit) {
       const pi = pit.i < N / 2 ? pit.i + N : pit.i, half = Math.floor(pit.half / 1.5), PL = pit.lat - TH / 2;
       barrier(CH, pi - half, -1, { to: PL });
@@ -5128,6 +5139,10 @@ function buildRoseBay(track, rnd, randIn) {
     // tunnel (the owner: "there should be a fence on the inside here"). No banner on it: round the inside of a bend
     // this tight one would come out squashed. No crowd: there's no footpath there.
     barrier(768, 806, -1, { crowd: null, ads: false });
+    // And on the far side of the hotel: out of the tunnel's wall, round the chicane and up to the barrier that starts
+    // there, on the land side, which had nothing but grass beside it. (The owner sent a picture of the fence on the
+    // hill down: "put this wired fence in the other side" of the InterContinental.)
+    barrier(t1, CH, -1, { from: TUN - TH / 2 - 0.15 });
     fans.finish();
   }
 
