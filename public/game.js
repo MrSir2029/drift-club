@@ -703,6 +703,7 @@ function renderSettings() {
   document.querySelectorAll('#seg-map button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.expanded));
   document.querySelectorAll('#seg-sound button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === audio.on));
   document.querySelectorAll('#seg-recghost button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'on') === app.recGhostOn));
+  $('#row-recghost').classList.toggle('hidden', !recGhostReady()); // (not on offer until every track's record has its line: see wantRecordGhost)
   document.querySelectorAll('#seg-cam button').forEach(b => b.classList.toggle('on', b.dataset.v === app.camMode));
   const pct = Math.round(audio.vol * 100);
   $('#vol').value = pct; $('#vol-val').textContent = pct + '%';
@@ -1290,11 +1291,16 @@ function unpackPath(p) {
 // The record holder's ghost: in Polytrack mode the lap at the top of the track's leaderboard drives round with
 // you, a see-through gold car with its driver's name and time over it, setting off as you cross the line. The
 // server keeps how each leaderboard lap was driven (laps set since 3.34) and sends it when asked.
+// It is only on offer once the lap at the top of every track's board is one the server has the path of: its switches
+// in Settings and the pause menu stay hidden until then, and nothing is chased. (Until 3.65 it was offered from the
+// first lap that had a path, and on a track whose record had none it chased the best lap that did, which wasn't the
+// record. The owner: "don't offer the fastest lap option until every track's genuine fastest lap has the data".)
+function recGhostReady() { return TRACKS.every((_, t) => !!boardList(t)[0]?.g); }
 function wantRecordGhost() {
   if (!app.room || app.mode !== 'quali' || !app.recGhostOn) return;
-  // the lap to chase: the fastest on the track's board that the server has the path of (the record itself, once
-  // it has been set since ghosts came in; until then, the best lap that has one)
-  const list = boardList(app.trackId), at = list.findIndex((e) => e.g), top = at >= 0 ? list[at] : null;
+  if (!recGhostReady()) { app.recLap = null; app.recKey = null; ghostButton(); return; }
+  // the lap to chase: the record, at the top of the track's board
+  const list = boardList(app.trackId), at = 0, top = list[0]?.g ? list[0] : null;
   const key = top ? `${app.trackId}|${top.n}|${top.ms}` : null;
   if (!key) { app.recLap = null; app.recKey = null; ghostButton(); return; }
   if (key === app.recKey) return;
@@ -3858,8 +3864,8 @@ function buildMall(track, rnd) {
       sign(g, text, bg, ink, 11.6, 1.2, 0, 6.9, 0.1);
     };
     hang(i0 + 16, 'WELCOME TO WESTFIELD', '#ffffff', '#d62f2f');
-    hang(nearestI(60, -100), 'FOOD COURT  AHEAD', '#1d2230', '#ffd23f');
-    hang(nearestI(-140, -140), 'FOOD COURT', '#e6453a', '#ffffff');
+    // (two more hung here until 3.67, FOOD COURT AHEAD and FOOD COURT, and the food court and its juice bar had
+    // their names up as well: the owner had those signs taken down with the made-up shop names)
     hang(nearestI(-190, -120), 'PARKING  ROOFTOP', '#1f6fb5', '#ffffff');
     hang(i1 - 22, 'OXFORD ST EXIT', '#2f6b4a', '#ffffff');
     // an escalator up to the gallery, here and there
@@ -3887,10 +3893,8 @@ function buildMall(track, rnd) {
     // the end of the block of shops between the two legs, facing the food court
     wallQ(glow, fc.x - half, back, fc.x + half, back, PAVE, 3.4, C(0xfff3d6)); wallQ(lit, fc.x - half, back, fc.x + half, back, 3.4, CEIL, C(0xf6f2e8));
     walls.push({ ax: fc.x - half, az: back, bx: fc.x + half, bz: back, y: 0 });
-    { const e = at(fc.x, back - 0.12, Math.PI, 0); sign(e, 'FOOD COURT', '#e6453a', '#ffffff', 12, 1.1, 0, 4.15, 0); }
     add(g, new THREE.CylinderGeometry(2.6, 2.6, 1.1, 10), 0xf6f2e8, 0, 0.55, -1).castShadow = false; add(g, new THREE.CylinderGeometry(3.2, 3.2, 0.25, 10), 0x8fd400, 0, 2.9, -1).castShadow = false;
     for (let k = 0; k < 5; k++) box(g, 0.12, 1.7, 0.12, 0xd9dde3, Math.cos(k * 1.257) * 2.4, 1.95, -1 + Math.sin(k * 1.257) * 2.4).castShadow = false;
-    sign(g, 'JUICE BAR', '#8fd400', '#ffffff', 3.6, 0.7, 0, 3.5, 2.25); sign(g, 'JUICE BAR', '#8fd400', '#ffffff', 3.6, 0.7, 0, 3.5, -4.25, Math.PI);
     for (let k = 0, n = 0; k < 60 && n < 13; k++) {
       const a = rnd() * 6.2832, d = 5.2 + rnd() * 7.2, lx = Math.cos(a) * d, lz = -1 + Math.sin(a) * d * 0.95;
       if (lz > 1.5 || Math.hypot(lx, lz) > 12.6) continue;
@@ -4726,10 +4730,10 @@ function buildRoseBay(track, rnd, randIn) {
   }
 
   // ---- shops down New South Head Road: both sides of the long run after the hairpins, and the hill down to the tunnel ----
-  const SHOPS = [["Chargrill Charlie's", '#e6453a', '#fff6dc'], ['Sonoma', '#f1e9d6', '#3b2a1e'], ['Sushi Train', '#1d2230', '#ff8a3d'], ['Woolworths Metro', '#2f9e44', '#ffffff'],
-    ['Rose Bay Pharmacy', '#ffffff', '#1f6fb5'], ['Rose Bay Newsagency', '#ffd23f', '#1d2230'], ['Bay Fruit Market', '#7ed957', '#1d3b1f'], ['Bay Gelato', '#ff8fb0', '#ffffff'],
-    ['Fish & Chips', '#3d8bff', '#ffffff'], ['Rose Bay Cellars', '#5c1f3a', '#f6e7c8'], ['The Bay Barber', '#26303f', '#f6f2e8'], ['Harbour Books', '#8a5a2b', '#fff1d6'],
-    ['Rose Bay Pizza', '#c0392b', '#ffe9a8'], ['Surf & Sail', '#2ec4b6', '#0f2f3a'], ['Heartbreak Hill Cafe', '#ff8a3d', '#2a1a10'], ['Rose Bay Hardware', '#9aa3ad', '#1d2230']];
+  // Every shop has a real name, in plain lettering: these four, over and over. (There were a dozen made-up ones as
+  // well until 3.67, Bay Gelato and Harbour Books and so on: the owner had them taken out, here as at Westfield.)
+  const SHOPS = [["Chargrill Charlie's", '#e6453a', '#fff6dc'], ['Sonoma', '#f1e9d6', '#3b2a1e'], ['Sushi Train', '#1d2230', '#ff8a3d'], ['Woolworths Metro', '#2f9e44', '#ffffff']];
+  const named = []; // where each shop stands and which name it has, so the next one can be different from those near it
   const atlas = document.createElement('canvas'); atlas.width = atlas.height = 1024;
   const ax = atlas.getContext('2d'); ax.textAlign = 'center'; ax.textBaseline = 'middle';
   SHOPS.forEach(([name, bg, ink], k) => {
@@ -4756,7 +4760,11 @@ function buildRoseBay(track, rnd, randIn) {
       const nw = Math.max(2, Math.floor((w - 2) / 2.6));
       for (let j = 0; j < nw; j++) box(g, 1.3, 1.2, 0.1, 0x3b556e, (j - (nw - 1) / 2) * 2.6, 6.2, D / 2 + 0.03);
       // its sign, between the awning and the upstairs windows (all the signs are one mesh)
-      const sw = Math.min(w - 1.6, 6.4), sh = sw / 4, cell = k % SHOPS.length, u0 = (cell % 2) * 0.5, v1 = 1 - Math.floor(cell / 2) / 8, v0 = v1 - 1 / 8;
+      // (which name: the one least like its neighbours'. Next door counts most, then the shops across the road)
+      let cell = 0, least = Infinity;
+      for (let j = 0; j < SHOPS.length; j++) { const c = (k + j) % SHOPS.length; let near = 0; for (const q of named) { const d = Math.hypot(q.x - x, q.z - z); if (q.c === c && d < 46) near += 1 / Math.max(d, 1); } if (near < least - 1e-9) { least = near; cell = c; } }
+      named.push({ x, z, c: cell });
+      const sw = Math.min(w - 1.6, 6.4), sh = sw / 4, u0 = (cell % 2) * 0.5, v1 = 1 - Math.floor(cell / 2) / 8, v0 = v1 - 1 / 8;
       g.updateMatrixWorld();
       const q = [[-sw / 2, 3.6], [sw / 2, 3.6], [sw / 2, 3.6 + sh], [-sw / 2, 3.6 + sh]].map(([lx, ly]) => V(lx, ly, D / 2 + 0.1).applyMatrix4(g.matrixWorld)), t = [[u0, v0], [u0 + 0.5, v0], [u0 + 0.5, v1], [u0, v1]];
       for (const j of [0, 1, 2, 0, 2, 3]) { sp.push(q[j].x, q[j].y, q[j].z); suv.push(...t[j]); }
@@ -7380,6 +7388,7 @@ function boardsChanged(key) {
   { const top = overallStandings()[0]; app.king = top && top.pts > 0 ? top.name.toLowerCase() : null; } // (whose car wears the Drift King's livery)
   if (!$('#board').classList.contains('hidden')) renderBoard(); // (whichever board changed: the Drift King is worked out from them all)
   renderRecord();
+  renderSettings(); // (the record holder's ghost comes on offer, or goes, with the boards)
 }
 // The Drift King championship: every name's results over all the tracks' leaderboards. Each board's top ten score
 // as in F1 (25 for the record, then 18, 15, 12, 10, 8, 6, 4, 2 and 1) and the points add up. Level on points, more
@@ -7725,7 +7734,7 @@ function setMenu(open) {
   if (open) {
     const poly = app.mode === 'quali' && app.phase === 'racing';
     $('#btn-restart').classList.toggle('hidden', !poly);
-    $('#btn-recghost').classList.toggle('hidden', !poly); ghostButton();
+    $('#btn-recghost').classList.toggle('hidden', !poly || !recGhostReady()); ghostButton();
     $('#pause-hint').textContent = `Esc menu · ${keyOf('cam')} camera · ${keyOf('mute')} sound · ${keyOf('reset')} reset to last gate${poly ? ` · ${keyOf('restart')} restart your run` : ''}`;
   }
 }

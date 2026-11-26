@@ -8,6 +8,24 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.67', date: '26 Nov 2026', title: 'The last made-up signs come down',
+    items: [
+      'Rose Bay\'s shops have real names only now, like Westfield\'s. And Westfield\'s Food Court and Juice Bar signs are gone.',
+    ],
+  },
+  {
+    v: '3.66', date: '26 Nov 2026', title: 'A bigger version number',
+    items: [
+      'The version number beside the game\'s name on the home screen is bigger.',
+    ],
+  },
+  {
+    v: '3.65', date: '26 Nov 2026', title: 'The record ghost waits for the real records',
+    items: [
+      'The Record holder\'s ghost option is hidden for now. On most tracks the game doesn\'t have the racing line of the real record yet, so the ghost wasn\'t always the fastest lap. It comes back by itself once every track\'s record has its line: laps set in Polytrack mode save theirs.',
+    ],
+  },
+  {
     v: '3.64', date: '26 Nov 2026', title: 'Real shops at Westfield',
     items: [
       'Every shop at Westfield has a real name now. The made-up ones are gone, so you\'ll pass Myer, Kmart, JB Hi-Fi and the rest more than once.',
