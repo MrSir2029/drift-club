@@ -164,54 +164,6 @@ export const TRACKS = [
       [-190, 10, 160], [-190, 10, 168], [-188.3, 10, 176.4], [-183.6, 10, 183.6], [-176.4, 10, 188.3], [-168, 10, 190], [-148, 10, 190], [-100, 10, 190],
     ],
   },
-  {
-    name: 'Circuit de Double Bay',
-    local: 'doublebay',
-    short: 'Double Bay',
-    fresh: true,
-    blurb: 'Along the beach, up Bay Street, past the shops on New South Head Road, up the hill and through Cranbrook, then back down to the bay.',
-    theme: 'beach',
-    urban: true,
-    width: 15,
-    scale: 1.35,
-    // the harbour: beyond the beach, along the start straight (z < 0)
-    sea: { level: -1.2, shore: 30, from: 34, sand: 0.2, fade: 0.5 },
-    // the shops' two streets, the school's oval and its main building: nothing else gets built on them
-    blocks: [[226, 40, 292, 132], [310, 148, 486, 214], [398, 238, 560, 336], [450, 356, 600, 420]],
-    points: [
-      // the beach front
-      [0, 0, 0], [70, 0, 0], [140, 0, 0],
-      // right, up Bay Street, and left onto New South Head Road: the shops
-      [178, 0, 10], [192, 0, 40], [192, 0, 85], [202, 0, 118], [232, 0, 132], [290, 0.5, 134], [350, 2, 134],
-      // up the hill to Cranbrook, through the school's gate and along past the oval
-      [400, 5, 142], [440, 9, 165], [455, 12, 200], [448, 14, 235], [420, 15, 255], [370, 15, 262], [320, 14, 258],
-      // back down the hill: a chicane, then the S down to the park
-      [260, 11, 262], [200, 8, 255], [150, 5, 240], [110, 3.5, 255], [60, 2, 262], [0, 1, 250],
-      [-55, 0, 232], [-92, 0, 200], [-95, 0, 160], [-68, 0, 136], [-28, 0, 128], [-6, 0, 104], [-14, 0, 76], [-50, 0, 62],
-      [-84, 0, 44], [-78, 0, 14], [-50, 0, 1],
-    ],
-  },
-  {
-    name: 'Eastgate Circuit',
-    local: 'eastgate',
-    short: 'Eastgate',
-    fresh: true,
-    blurb: 'Short and flat out at sunset: round the long loop, up and over the start straight, across the roof of Eastgate and down again.',
-    theme: 'dusk',
-    urban: true,
-    width: 15,
-    scale: 1.3,
-    deckAbove: 1.5, // the raised road stands on piers: the ground takes no notice of it
-    points: [
-      [0, 0, 0], [80, 0, 0], [170, 0, 0],
-      // the long loop, climbing
-      [225, 0, 12], [255, 1, 50], [250, 3, 95], [215, 5.5, 125], [165, 7.5, 128], [128, 9, 105],
-      // over the start straight and across the roof
-      [120, 10, 55], [120, 10, 0], [120, 10, -55], [122, 10, -115],
-      // and down again
-      [105, 9.5, -152], [60, 8, -170], [0, 6, -165], [-55, 4, -135], [-85, 2, -90], [-90, 0.5, -45], [-70, 0, -12], [-35, 0, 0],
-    ],
-  },
 ];
 
 export const CHECKPOINT_COUNT = 6;

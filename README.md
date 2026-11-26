@@ -211,29 +211,6 @@ you get without picking one, isn't in it. It's all worked out in the browser
 from the boards everyone already has (`overallStandings` in `game.js`), so the
 server doesn't know about it.
 
-**The ninth and tenth tracks** (4.4; the owner asked for both by name).
-Circuit de Double Bay is a proper circuit like Queens Park, and the longest
-lap (2,110 m): the beach front, right up Bay Street and left along New South
-Head Road between two rows of shops (`shops` in `buildLocal`: real names in
-plain lettering, Sushi Maru and NAB first as he asked, with Woolworths,
-Australia Post, Commonwealth Bank and Westpac repeated; the InterContinental
-on the corner), up the hill to Cranbrook: through a sandstone gatehouse with
-the school's name over the road, past the main building with its tower, and
-round the oval on its terrace over the sports hall, then a chicane and an S
-back down. It uses the beach theme and its sea. The buildings stand on
-`block`s whose feet go well down, since the ground slopes; `blocks` in
-`tracks.js` keeps other scenery off the shops' streets and the school. It was
-built from what is known of the place, not from photographs.
-Eastgate Circuit is the shortest (1,446 m) and the only one at sunset (the
-`dusk` look in `THEMES`): a figure of eight whose long loop climbs onto piers
-(`deckAbove`), crosses over the start straight, and runs across the roof of
-the Eastgate centre (a block under the raised road with its car park on top,
-the shops' names on its walls and two towers of flats) before dropping back.
-A new track needs its length and layout number in `TRACK_LENGTH` and
-`TRACK_VERSION` and `TRACK_COUNT` raised in `server/core.js`. A board's key
-starts with the track's one digit, so ten tracks is the most this scheme
-holds: an eleventh needs that changed first.
-
 **The cars' colours** are liveries (4.0; the owner: "have every livery look
 like famous f1 team"). Each of the eleven a player can pick is painted in a
 famous Formula 1 team's colours (`TEAM` in `game.js`, beside the paint
