@@ -159,6 +159,13 @@
   remove cinema": a lit window behind it, its blind half down, showed
   through the sign as a white line). Its place in the list of words stays
   empty so the other signs keep theirs.
+- The ninth and tenth tracks are the owner's by name: Circuit de Double Bay
+  ("a proper circuit like qp", "large", "through the main shops strip where
+  sushi maru and nab are", "past and through cranbrook") and Eastgate
+  Circuit ("whatever you think is different and interesting": a figure of
+  eight at sunset over the centre's roof). Shop names there are real ones in
+  plain lettering, as at Rose Bay. Ten tracks is the most the leaderboard's
+  keys hold (one digit): change that before adding an eleventh.
 - The fourth track is Pinto Speedway (the owner's name for it; it was Mount
   Panorama Circuit). The signs with Mount Panorama's corner names came down
   at the owner's request ("Remove them pls"): don't put them back.

@@ -25,6 +25,8 @@ const SEND_HZ = 30; // positions a second (sent two at a time when the server as
 // the forest is dark green, thick with pines, with ferns and mossy rocks.
 const THEMES = {
   meadow: { sky: 0x8ad4f5, skyLight: 0xcfeeff, bounce: 0x5f9c48, lo: 0x6db85e, hi: 0x9ad46a, rock: 0x8f917c, verge: 0x5fa653, gravelVerge: 0x9c8a62, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x6fb963, noise: 1 },
+  // sunset: an orange sky and a low, warm sun (Eastgate)
+  dusk: { sky: 0xf2a268, skyLight: 0xffd2a8, bounce: 0x6b5a48, lo: 0x5f9a52, hi: 0x86b860, rock: 0x8f8778, verge: 0x5a9450, gravelVerge: 0x9c8a62, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x7d6a78, noise: 1, hemiI: 1.15, sunI: 2.3, sunColor: 0xffa860 },
   night: { sky: 0x0b1430, skyLight: 0x5b6b9c, bounce: 0x151b2c, lo: 0x4f8a4a, hi: 0x6aa35a, rock: 0x6b6f7c, verge: 0x4f8a4a, gravelVerge: 0x6b5d45, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0x1c2638, noise: 1, night: true, hemiI: 0.95, sunI: 0.7, sunColor: 0xa9c0ff },
   snow: { sky: 0xc8d6e4, skyLight: 0xeef4ff, bounce: 0xb9c6d3, lo: 0xdce3ea, hi: 0xeef2f6, rock: 0x7d8794, verge: 0xe2e8ee, gravelVerge: 0xe2e8ee, road: 0xb49c70, curbs: [0x7d6d52, 0xe9dec4], hills: 0xe8eef4, noise: 1.6 },
   forest: { sky: 0xa9d3c4, skyLight: 0xdcefe4, bounce: 0x3f6b3a, lo: 0x4a8442, hi: 0x6a9c4e, rock: 0x7d8173, verge: 0x467c3e, gravelVerge: 0x8a7a58, road: 0x9c8462, curbs: [0x6d5a40, 0xe2d7bd], hills: 0x2f5e3a, noise: 1.8 },
@@ -2969,6 +2971,121 @@ function buildLocal(track) {
     const DECK = buildSydneyIcons(cx, cz, px, pz, WL, ohx, ohz, Math.atan2(px, pz) + 0.4, 1, true);
     spots.push({ name: 'bridge', x: cx, z: cz, h: DECK });
     spots.push({ name: 'opera', x: ohx, z: ohz, h: 30 });
+  }
+
+  // ---- what the two newest tracks share: places are given as the track's own points are (tracks.js), and scaled ----
+  const K = track.def.scale || 1.6, walls = track.walls;
+  const nearI = (x, z) => { let b = 0, d = Infinity; for (let i = 0; i < N; i++) { const s = samples[i], e = (s.p.x - x * K) ** 2 + (s.p.z - z * K) ** 2; if (e < d) { d = e; b = i; } } return b; };
+  const beside = (i, lat) => { const s = samples[((i % N) + N) % N]; return [s.p.x + s.left.x * lat, s.p.z + s.left.z * lat]; };
+  // a sign: plain lettering on a board, drawn a touch nearer than the wall it's on (so the two never flicker)
+  const board = (g, text, bg, ink, w, h, x, y, z, ry = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: signTexture(text, bg, ink, 512, Math.max(32, Math.round(512 * h / w))), polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 }));
+    m.position.set(x, y, z); m.rotation.y = ry; g.add(m); return m;
+  };
+  // a block standing on ground at y (its foot goes well down, for sloping ground), solid, and nothing else is put there
+  const block = (x, z, w, h, d, ry, c, y) => {
+    const g = at(x, z, ry, y); box(g, w, h + 14, d, c, 0, (h - 14) / 2, 0);
+    const cn = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([lx, lz]) => W(x, z, ry, lx, lz));
+    for (let k = 0; k < 4; k++) for (const wy of [y, y - 6, y - 12]) walls.push({ ax: cn[k][0], az: cn[k][1], bx: cn[(k + 1) % 4][0], bz: cn[(k + 1) % 4][1], y: wy });
+    for (let u = -w / 2; u <= w / 2; u += 8) for (let v = -d / 2; v <= d / 2; v += 8) claim(...W(x, z, ry, u, v), 7);
+    return g;
+  };
+  // a row of shops beside the road from sample a to sample b, on side sd: real names in plain lettering, the same few repeated
+  const shops = (a, b, sd, names, k0 = 0) => {
+    const COL = [0xe9e4d8, 0xd9c7a8, 0xc9d3dc, 0xe6d2c4, 0xcfd8c2, 0xdcd3e4], AWN = [0x1d2b5c, 0x8a1f1f, 0x2f6b4a, 0x1d2230, 0xb3642a];
+    for (let i = a, k = k0; i + 8 <= b; i += 9, k++) {
+      const s = samples[(i + 4) % N], lat = sd * (hw + 11.5), [x, z] = beside(i + 4, lat);
+      if (roadGap(track, x, z) < hw + 4.5) continue; // (the street is the track's own: tracks.js keeps everything else off it)
+      const ry = Math.atan2(s.th.x, s.th.z), h = 6.5 + (k % 3) * 1.6, g = block(x, z, 11, h, 12.4, ry, COL[k % COL.length], s.p.y);
+      const f = -sd; // (the side of the block that faces the road: local x)
+      box(g, 0.5, 2.6, 9.4, 0x9ad0ff, f * 5.56, 1.7, 0);                                   // the shop window
+      box(g, 2.2, 0.25, 11.6, AWN[k % AWN.length], f * 6.5, 3.35, 0);                       // its awning
+      board(g, names[k % names.length], '#f6f2e8', '#1d2230', 8.6, 1.25, f * 5.78, 4.4, 0, f > 0 ? Math.PI / 2 : -Math.PI / 2);
+      box(g, 11.4, 0.4, 12.8, 0x5a6372, 0, h + 0.2, 0);                                     // the roof's edge
+    }
+  };
+
+  if (which === 'doublebay') {
+    const REAL = ['Sushi Maru', 'NAB', 'Woolworths', 'Australia Post', 'Commonwealth Bank', 'Westpac'];
+    // Bay Street, both sides, then New South Head Road, both sides: Sushi Maru and NAB first on the strip
+    shops(nearI(192, 36), nearI(192, 92), 1, REAL, 2); shops(nearI(192, 36), nearI(192, 92), -1, REAL, 4);
+    shops(nearI(236, 132), nearI(352, 134), 1, REAL, 0); shops(nearI(236, 132), nearI(352, 134), -1, REAL, 1);
+    spots.push({ name: 'shops', x: 290 * K, z: 134 * K });
+    // the hotel on the corner of Bay Street (the InterContinental is in Double Bay)
+    { const [x, z] = [150 * K, 62 * K], y = terrainHeight(x, z); if (isFree(track, x, z, 16, hw + 6)) { const g = block(x, z, 26, 24, 20, 0, 0xe6dcc8, y);
+      for (let f = 0; f < 6; f++) box(g, 26.3, 0.5, 20.3, 0x3b4250, 0, 4.2 + f * 3.6, 0); box(g, 27, 0.8, 21, 0x5a6372, 0, 24.4, 0);
+      for (const [rz, rot] of [[10.16, 0], [-10.16, Math.PI]]) board(g, 'INTERCONTINENTAL', '#1d2b5c', '#f6f2e8', 15, 1.8, 0, 21.6, rz, rot); } }
+
+    // ---- Cranbrook, at the top of the hill ----
+    const iG = nearI(352, 261), sG = samples[iG], yT = sG.p.y, ryG = Math.atan2(sG.th.x, sG.th.z), SAND = 0xcdb88a, SAND2 = 0xb9a878, SLATE = 0x4a5568;
+    // the gatehouse the road goes through: a sandstone tower each side, a room over the road, the school's name on it
+    {
+      const g = at(sG.p.x, sG.p.z, ryG, yT), GW = hw + 4.2;
+      for (const sx of [-1, 1]) {
+        box(g, 5, 30, 7, SAND, sx * (GW + 2.5), 1, 0); box(g, 5.6, 0.6, 7.6, SAND2, sx * (GW + 2.5), 16.3, 0);
+        for (const [cx, cz] of [[-2, -3], [2, -3], [-2, 3], [2, 3]]) box(g, 1, 1.4, 1, SAND, sx * (GW + 2.5) + cx, 17.2, cz); // battlements
+        const [wx, wz] = W(sG.p.x, sG.p.z, ryG, sx * (GW + 2.5), 0); solids.push({ x: wx, z: wz, r: 3.6, y: yT }); claim(wx, wz, 6);
+      }
+      box(g, 2 * GW, 5.4, 6, SAND, 0, 10.2, 0); box(g, 2 * GW + 0.4, 0.5, 6.6, SAND2, 0, 13.1, 0); box(g, 2 * GW, 0.5, 6.4, SAND2, 0, 7.3, 0);
+      for (let x = -GW + 2.2; x < GW - 1; x += 3.2) box(g, 1.5, 2.4, 6.16, 0x9ad0ff, x, 10.4, 0);
+      for (const [rz, rot] of [[-3.3, Math.PI], [3.3, 0]]) board(g, 'CRANBROOK SCHOOL', '#1d2b5c', '#f6f2e8', 13, 1.5, 0, 8.55, rz, rot);
+      spots.push({ name: 'cranbrook', x: sG.p.x, z: sG.p.z, h: 16 });
+    }
+    // the main building beside the road: sandstone, a slate roof, a tower with a flag
+    {
+      const [x, z] = beside(iG - 34, hw + 26), s = samples[iG - 34], ry = Math.atan2(s.th.x, s.th.z) + Math.PI / 2, g = block(x, z, 62, 11, 17, ry, SAND, s.p.y);
+      const roof = new THREE.Mesh(prism(18, 6, 62.6), lam(SLATE)); roof.rotation.y = Math.PI / 2; roof.position.y = 11; roof.castShadow = true; g.add(roof);
+      for (let f = 0; f < 3; f++) for (let wx = -28; wx <= 28; wx += 4) { if (Math.abs(wx) < 5) continue; box(g, 1.7, 2.1, 17.2, 0x26303f, wx, 2 + f * 3.3, 0); }
+      box(g, 9, 22, 9, SAND, 0, 11, 6); box(g, 9.8, 0.7, 9.8, SAND2, 0, 22.3, 6); for (const [cx, cz] of [[-4, 2], [4, 2], [-4, 10], [4, 10]]) box(g, 1.4, 1.8, 1.4, SAND, cx, 23.4, cz);
+      box(g, 3.2, 5, 9.2, 0x26303f, 0, 2.5, 6.1); box(g, 0.2, 9, 0.2, 0xd9dde3, 0, 27, 6); box(g, 0.08, 1.6, 2.6, 0x1d2b5c, 0, 30.6, 7.4);
+    }
+    // the oval inside the bend, on its terrace over the sports hall: grass, a cricket pitch, rugby posts, the school watching
+    {
+      const X0 = 300 * K, X1 = 410 * K, Z0 = 182 * K, Z1 = 244 * K, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, w = X1 - X0, d = Z1 - Z0, top = yT - 0.6;
+      const g = block(cx, cz, w, 0, d, 0, SAND, top); g.children[0].material = lam(0xd9c9a3);
+      box(g, w - 3, 0.3, d - 3, 0x5fae4e, 0, 0.16, 0).castShadow = false;
+      for (let f = 0; f < 3; f++) box(g, w - 14, 2.2, 0.3, 0x9ad0ff, 0, -3.2 - f * 3.6, -d / 2 - 0.02); // the hall's windows, to the road below
+      board(g, 'CRANBROOK', '#1d2b5c', '#f6f2e8', 24, 2.6, 0, -1.2, -d / 2 - 0.2, Math.PI);
+      const R = d / 2 - 6, RX = w / 2 - 8;
+      for (let k = 0; k < 44; k++) { const a0 = (k / 44) * 6.2832, a1 = ((k + 1) / 44) * 6.2832; const m = box(g, 0.25, 0.06, Math.hypot((Math.cos(a1) - Math.cos(a0)) * RX, (Math.sin(a1) - Math.sin(a0)) * R) + 0.1, 0xf6f2e8, (Math.cos(a0) + Math.cos(a1)) / 2 * RX, 0.34, (Math.sin(a0) + Math.sin(a1)) / 2 * R); m.rotation.y = Math.atan2((Math.cos(a1) - Math.cos(a0)) * RX, (Math.sin(a1) - Math.sin(a0)) * R); m.castShadow = false; }
+      box(g, 20, 0.06, 3, 0xd8c79a, 0, 0.35, 0).castShadow = false; // the pitch
+      for (const sx of [-1, 1]) { for (const pz of [-2.8, 2.8]) cyl(g, 0.14, 0.14, 9, 6, 0xf6f2e8, sx * (RX - 6), 4.8, pz); box(g, 0.2, 0.2, 5.6, 0xf6f2e8, sx * (RX - 6), 3.3, 0); }
+      for (let x = -w / 2 + 2; x <= w / 2 - 2; x += 4) for (const ez of [-d / 2 + 0.6, d / 2 - 0.6]) box(g, 0.14, 1.1, 0.14, 0x8d93a0, x, 0.85, ez);
+      for (const ez of [-d / 2 + 0.6, d / 2 - 0.6]) box(g, w - 3, 0.1, 0.1, 0x8d93a0, 0, 1.35, ez);
+      const kids = makePeople(120, mulberry32(8101)), rk = mulberry32(8102);
+      for (let k = 0; k < 110; k++) { const x = cx - w / 2 + 4 + rk() * (w - 8), z = cz + d / 2 - 2 - rk() * 3.5; kids.add(x, top + 0.32, z, (rk() - 0.5) * 0.8); }
+      kids.finish();
+      spots.push({ name: 'oval', x: cx, z: cz });
+    }
+  }
+
+  if (which === 'eastgate') {
+    // The centre the road crosses the roof of: a long flat-roofed block under the raised road, its car park on the roof,
+    // the names of the shops inside on its walls, and the two towers of flats that stand on it.
+    const iR = nearI(121, -85), sR = samples[iR], top = sR.p.y - 0.34, cx = sR.p.x + 6 * K, cz = sR.p.z, w = 96 * K, d = 132 * K, CONC = 0xd4d7dc;
+    const g = block(cx, cz, w, 0, d, 0, CONC, top);
+    for (const sx of [-1, 1]) box(g, 0.6, 1.3, d + 0.6, 0xb9bdc5, sx * w / 2, 0.45, 0); // a parapet down the roof's two long sides (the road comes on and off over the ends)
+    box(g, w - 1.2, 0.5, d - 0.4, 0x6b7280, 0, -0.22, 0).castShadow = false; // (the roof's deck, a little under the road)
+    for (let f = 0; f < 2; f++) for (const [sx, sz, len, rot] of [[0, -1, w, 0], [0, 1, w, 0], [-1, 0, d, 1], [1, 0, d, 1]]) { const m = box(g, len - 10, 1.5, 0.3, 0x26303f, sx * (w / 2 + 0.02), -2.6 - f * 3.4, sz * (d / 2 + 0.02)); if (rot) m.rotation.y = Math.PI / 2; }
+    const names = [['EASTGATE', '#d62f2f', '#ffffff', 28, 3.2, 0], ['Kmart', '#f6f2e8', '#d62f2f', 11, 2.2, -34], ['Coles', '#f6f2e8', '#d62f2f', 11, 2.2, 34]];
+    for (const [text, bg, ink, bw, bh, off] of names) { board(g, text, bg, ink, bw, bh, -w / 2 - 0.25, -6.4, off, -Math.PI / 2); board(g, text, bg, ink, bw, bh, off * 0.7, -6.4, d / 2 + 0.25, 0); }
+    board(g, 'ALDI', '#1d2b5c', '#f6f2e8', 9, 2.2, w / 2 + 0.25, -6.4, 0, Math.PI / 2);
+    // parked cars on the roof, in rows clear of the road (which keeps its own rails across the roof)
+    const cars = new THREE.InstancedMesh(parkedCarGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), 240), M4 = new THREE.Matrix4(), col = new THREE.Color(), rc = mulberry32(8201);
+    const CARS = [0xe6453a, 0xf6f2e8, 0x3d8bff, 0x2b2f3a, 0xb9c0cc, 0xffd23f, 0x2ec4b6, 0x7a4a2a];
+    let n = 0;
+    for (let x = cx - w / 2 + 6; x < cx + w / 2 - 5; x += 3.1) for (let z = cz - d / 2 + 8; z < cz + d / 2 - 6; z += 13) {
+      if (n >= 240 || rc() < 0.35 || roadGap(track, x, z) < hw + 6) continue;
+      M4.makeRotationY(rc() < 0.5 ? 0 : Math.PI); M4.setPosition(x, top + 0.05, z); cars.setMatrixAt(n, M4); cars.setColorAt(n++, col.set(CARS[Math.floor(rc() * CARS.length)]));
+    }
+    cars.count = n; cars.castShadow = true; cars.userData.dyn = true; worldGroup.add(cars);
+    // the two towers
+    for (const tz of [-34 * K, 30 * K]) {
+      const tx = cx + w / 2 - 15, t = at(tx, cz + tz, 0, top);
+      box(t, 20, 58, 20, 0xe9e4d8, 0, 29, 0); for (let f = 0; f < 15; f++) box(t, 20.3, 1.5, 20.3, 0x3b4250, 0, 4.4 + f * 3.6, 0);
+      box(t, 21, 1, 21, 0x5a6372, 0, 58.5, 0);
+    }
+    spots.push({ name: 'eastgate', x: cx, z: cz, h: top });
   }
 }
 
@@ -8207,6 +8324,7 @@ function buildTrackCards() {
     if (def.theme === 'snow') cv.style.background = '#e6edf3';
     if (def.theme === 'night') cv.style.background = '#1b2442';
     if (def.theme === 'beach') cv.style.background = '#8fd6e6';
+    if (def.theme === 'dusk') cv.style.background = '#f2a268';
     if (def.theme === 'city') cv.style.background = '#141a33';
     if (def.theme === 'mall') cv.style.background = '#aeb6c2';
     card._track = buildTrack(def);
