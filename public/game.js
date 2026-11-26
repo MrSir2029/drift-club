@@ -8334,9 +8334,9 @@ function wireUI() {
   }));
   $('#btn-start').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'race' }); });
   $('#btn-quali').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'quali' }); });
-  // what's new: it opens by itself when someone comes back after an update,
-  // once per update, with what's new since they last looked marked New.
-  // Someone here for the first time starts up to date.
+  // what's new: behind its button, which shows a dot when there's an update someone coming back hasn't looked at;
+  // what's new since they last looked is marked New. It doesn't open by itself (it did, once per update, until 4.3:
+  // the owner, "dont auto bring up whats new anymore"). Someone here for the first time starts up to date.
   const latest = UPDATES[0].v, store = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const seen = store('dc-seen'), back = VISITED_BEFORE;
   const since = seen == null ? -1 : UPDATES.findIndex(u => vnum(u.v) <= vnum(seen)); // entries newer than the version they saw (never looked: just the latest)
@@ -8348,7 +8348,7 @@ function wireUI() {
   const openUpdates = () => { $('#updates').classList.remove('hidden'); markSeen(); };
   $('#btn-updates').addEventListener('click', openUpdates);
   $('#btn-refresh').addEventListener('click', () => location.reload()); // (the notice of a newer version)
-  if (seen !== latest) { if (back) openUpdates(); else markSeen(); }
+  if (seen !== latest && !back) markSeen();
   $('#btn-updates-close').addEventListener('click', () => $('#updates').classList.add('hidden'));
   $('#updates').addEventListener('click', (e) => { if (e.target.id === 'updates') $('#updates').classList.add('hidden'); });
   $('#btn-endq').addEventListener('click', (e) => { e.currentTarget.blur(); send({ t: 'endquali' }); });
