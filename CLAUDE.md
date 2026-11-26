@@ -70,7 +70,9 @@
     here"); the harbour and the lookout keep their view. The outside of the
     top straight is one unbroken barrier: it had two ways through for Race
     to 9LAT2, and the owner took them for holes ("please fix these two big
-    ones").
+    ones"). And the fenced barrier carries on past the tunnel under the
+    InterContinental, round the chicane to the start straight's ("put this
+    wired fence in the other side").
 - **What's new** (`public/updates.js`): one entry per version, newest first.
   Every change gets its own version and its own entry (the owner asked for
   this; the entries before 3.17 are a day each). Player-facing wording, and
@@ -91,11 +93,15 @@
   barrier and add way more spectator spots"): race barriers with catch
   fences, grandstands and crowds, not a car park. The barrier down the start
   straight is unbroken ("it just cut off between grandstands" was a
-  complaint about gaps in it), and the crossing from the west doors over
+  complaint about gaps in it), so is the one down each side of Oxford
+  Street ("These should all be one long barrier why tf are there random
+  holes"), and the crossing from the west doors over
   Oxford Street to the ramp has it down both sides, joined to the doorway
   and to the ramp ("this whole area should have barriers"). No fairground
   at Westfield ("seems out of place"): a park stands on its spot. Parked cars stay back from
   the road and must look like cars (the owner called the boxy ones "buns").
+  The escalators are proper ones, with steps, balustrades and landings: a
+  bare sloping slab read as "slanted for no reason".
 - No tyre stacks on corners: the owner had them taken out on every track
   ("the little black pole things on all the corners"). The rails and their
   posts stay.

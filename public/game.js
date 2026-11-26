@@ -2014,10 +2014,11 @@ function buildProps(track) {
     if (corner && flat(i) && !street) {
       const p = at(s, outside * (hw + 5.2));
       if (isFree(track, p.x, p.z, 0.6, hw + 3)) {
-        here = { p, outside, i };
+        here = { p, outside, i, bits: [] }; // (bits: its post, and the rail on from the last one)
         if (!firstRail) firstRail = here;
         lastRail = here;
-        if (!gravel) { const post = new THREE.Mesh(railPostGeo, postMat); post.position.set(p.x, p.y + 0.4, p.z); worldGroup.add(post); }
+        if (!gravel) { const post = new THREE.Mesh(railPostGeo, postMat); post.position.set(p.x, p.y + 0.4, p.z); worldGroup.add(post); here.bits.push(post); }
+        (track.rails ||= []).push(here); // (for a track whose own barrier takes a rail's place: Rose Bay's, out of the tunnel)
       }
     }
     // join this barrier post to the last one so the rail has no gaps or overlaps
@@ -2026,6 +2027,7 @@ function buildProps(track) {
       const rail = gravel ? strut(V(a.x, a.y + 0.45, a.z), V(b.x, b.y + 0.45, b.z), 1.0, 0.9, baleMat, true) : strut(V(a.x, a.y + 0.78, a.z), V(b.x, b.y + 0.78, b.z), 0.25, 0.5, railMat, true);
       rail.castShadow = true; worldGroup.add(rail);
       wall(a, b);
+      here.bits.push(rail); here.wall = walls[walls.length - 1];
       // (no sponsors' banners here: a rail on posts is a fence to the owner's eye, and banners go on solid walls only)
     }
     prev = here;
@@ -2034,7 +2036,7 @@ function buildProps(track) {
       [60, 40, 20].forEach((back, k) => {
         const bi = wrap(i - back), b = samples[bi];
         if (Math.abs(turn[bi]) > 0.12 || !flat(bi)) return;
-        const p = at(b, outside * (street ? hw + 5.4 : hw + 4)); // behind the wall on a street circuit
+        const p = at(b, outside * (street ? hw + 5.4 : track.theme === 'mall' ? hw + 5.6 : hw + 4)); // behind the wall on a street circuit, and behind the race barrier at Westfield (where it stood on the barrier's own line)
         if (!isFree(track, p.x, p.z, 0.8, hw + 2.5)) return;
         const board = new THREE.Mesh(boardGeo, boardMats[k]);
         board.position.set(p.x, p.y + 1.7, p.z); board.rotation.y = heading(b); board.castShadow = true; worldGroup.add(board);
@@ -4032,12 +4034,78 @@ function buildMall(track, rnd) {
     // their names up as well: the owner had those signs taken down with the made-up shop names)
     hang(nearestI(-190, -120), 'PARKING  ROOFTOP', '#1f6fb5', '#ffffff');
     hang(i1 - 22, 'OXFORD ST EXIT', '#2f6b4a', '#ffffff');
-    // an escalator up to the gallery, here and there
-    for (const [x, z, sd] of [[100, -110, -1], [-40, -100, 1], [-190, -100, 1], [160, -70, -1]]) {
-      const i = nearestI(x, z), a = samples[i], b = samples[wrap(i + 7)], [ax0, az0] = P(i, sd * (SHOPS - 2.1)), [bx0, bz0] = P(i + 7, sd * (SHOPS - 2.1));
-      const m = strut(V(ax0, a.p.y, az0), V(bx0, b.p.y + 4.9, bz0), 1.5, 0.5, lam(0x5a6372)); worldGroup.add(m);
-      for (const j of [0, 1.5, 3]) { const [sx, sz] = P(i + j, sd * (SHOPS - 2.1)); solids.push({ x: sx, z: sz, r: 1, y: a.p.y }); } // (its foot is solid)
-      for (const off of [-0.75, 0.75]) { const [cx, cz] = P(i, sd * (SHOPS - 2.1 + off)), [dx, dz] = P(i + 7, sd * (SHOPS - 2.1 + off)); quad(glow, [cx, a.p.y + 0.2, cz], [dx, b.p.y + 5.1, dz], [dx, b.p.y + 6.0, dz], [cx, a.p.y + 1.1, cz], C(0xbfe3f5)); }
+    // An escalator up to the gallery, here and there. (Each was one bare slab sloping up between two sheets of glass:
+    // no steps, no landings, it stopped in the air beside the gallery's glass, and on a bend the slab lay twisted
+    // over on its side. The owner: "Escalator is slanted for no reason".) Now it is an escalator: a flat landing on
+    // the floor, steps going up at 30 degrees between glass balustrades with dark handrails, a flat landing at the
+    // top, and a piece of the gallery's floor that comes out to meet it. Each stands along the front of a shop that
+    // has no crowd barrier, so nobody is standing where it goes. It is all flat faces with none lying over another:
+    // the glass and the gallery's floor in the mall's glowing sheet, the rest in a sheet of its own (`steel`. Not the
+    // mall's lit one: that is drawn a touch nearer than it is, which let a step seen edge on show through the
+    // escalator's side). Solid (two walls, its sides) as far up as a car couldn't pass under it, and no nearer the
+    // road than the old one's foot was.
+    {
+      const TAN = Math.tan(Math.PI / 6), HALF = 0.65, IN = 0.45, FOOT = 1, HEAD = 0.8, LAND = 1.7, DEEP = 1, PLINTH = 0.12, THICK = 0.4;
+      const TREAD = C(0x2b303b), FRONT = C(0xaab0ba), CLAD = C(0xd9dde3), HAND = C(0x1d2230), steel = { pos: [], col: [] };
+      for (const [x, z, sd] of [[100, -110, -1], [-40, -100, 1], [-190, -100, 1], [160, -70, -1]]) {
+        // the shop it stands outside: every other one has a barrier with people behind it, and then it's the one before
+        let n = Math.floor((nearestI(x, z) - i0 + (sd > 0 ? 0 : 4)) / SHOP); if (n % 2 === (sd > 0 ? 0 : 1)) n--;
+        const i = i0 + n * SHOP - (sd > 0 ? 0 : 4), a = samples[i], y0 = a.p.y + PAVE + PLINTH, rise = samples[wrap(i + SHOP)].p.y + 4.9 - y0, run = rise / TAN;
+        const K = [0, FOOT, FOOT + run, FOOT + run + HEAD], len = K[3] + LAND; // (where its slope starts and stops, and where its handrails end)
+        // It lies along the line from that shop's pillar to the next one, its middle at the middle of the shop.
+        // s: metres along it from its foot; x: across it, towards the shops; y: above its lower landing.
+        const [px, pz] = P(i, sd * (SHOPS - 2.4)), [qx, qz] = P(i + SHOP, sd * (SHOPS - 2.4)), d = Math.hypot(qx - px, qz - pz), ux = (qx - px) / d, uz = (qz - pz) / d;
+        const vs = (uz * a.left.x - ux * a.left.z) * sd > 0 ? 1 : -1, vx = uz * vs, vz = -ux * vs;
+        let ox = (px + qx - ux * len) / 2, oz = (pz + qz - uz * len) / 2;
+        // how far its centre line is from the middle of the road, s metres along
+        const latOf = (s) => {
+          const X = ox + ux * s, Z = oz + uz * s; let best = Infinity, lat = 0;
+          for (let j = i - 6; j <= i + SHOP + 6; j++) { const q = samples[wrap(j)], e = (X - q.p.x) ** 2 + (Z - q.p.z) ** 2; if (e < best) { best = e; lat = sd * ((X - q.p.x) * q.left.x + (Z - q.p.z) * q.left.z); } }
+          return lat;
+        };
+        // (round a bend the road comes nearer its middle or its ends: move it in until none of it is nearer than the old one's foot)
+        const inwards = Math.max(0, ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((t) => SHOPS - 3.05 + HALF - latOf((t * len) / 8))); ox += vx * inwards; oz += vz * inwards;
+        const pt = (s, x, y) => [ox + ux * s + vx * x, y0 + y, oz + uz * s + vz * x], steps = (s) => Math.min(rise, Math.max(0, (s - FOOT) * TAN)); // (steps: the height of the line the steps follow)
+        // a face along it at x, from h0 to h1 above the steps' line; one lying across it from x0 to x1; and one standing across it
+        const sideQ = (Q, s0, s1, x, h0, h1, c) => quad(Q, pt(s0, x, steps(s0) + h0), pt(s1, x, steps(s1) + h0), pt(s1, x, steps(s1) + h1), pt(s0, x, steps(s0) + h1), c);
+        const flat = (Q, s0, s1, x0, x1, h, c) => quad(Q, pt(s0, x0, steps(s0) + h), pt(s1, x0, steps(s1) + h), pt(s1, x1, steps(s1) + h), pt(s0, x1, steps(s0) + h), c);
+        const endQ = (Q, s, x0, x1, h0, h1, c) => quad(Q, pt(s, x0, steps(s) + h0), pt(s, x1, steps(s) + h0), pt(s, x1, steps(s) + h1), pt(s, x0, steps(s) + h1), c);
+        for (let k = 0; k < 3; k++) {
+          const s0 = K[k], s1 = K[k + 1];
+          if (k) flat(steel, s0, s1, -HALF, HALF, -DEEP, CLAD);                                    // its underside
+          for (const m of [-1, 1]) {
+            sideQ(steel, s0, s1, m * HALF, -DEEP, 0.22, CLAD);                                     // its side, down from beside the steps
+            flat(steel, s0, s1, m * IN, m * HALF, 0.22, CLAD); sideQ(steel, s0, s1, m * IN, -0.3, 0.22, CLAD); // the ledge the glass stands on, and its face beside the steps
+            sideQ(glow, k ? s0 : 0.14, k < 2 ? s1 : s1 - 0.14, m * 0.55, 0.22, 0.92, RAIL);      // the glass
+            for (const hx of [0.48, 0.62]) sideQ(steel, s0, s1, m * hx, 0.92, 1.02, HAND);         // the handrail, on top of the glass
+            for (const hy of [0.92, 1.02]) flat(steel, s0, s1, m * 0.48, m * 0.62, hy, HAND);
+          }
+        }
+        for (const m of [-1, 1]) for (const [s0, s1] of [[0, 0.14], [K[3] - 0.14, K[3]]]) { // each handrail turns down to the ledge at both ends
+          for (const hx of [0.48, 0.62]) sideQ(steel, s0, s1, m * hx, 0.22, 0.92, HAND);
+          endQ(steel, s0, m * 0.48, m * 0.62, 0.22, s0 ? 0.92 : 1.02, HAND); endQ(steel, s1, m * 0.48, m * 0.62, 0.22, s0 ? 1.02 : 0.92, HAND);
+          endQ(steel, s0 ? s1 : s0, m * IN, m * HALF, 0, 0.22, CLAD);
+        }
+        endQ(steel, 0, -HALF, HALF, -PLINTH - 0.2, 0, CLAD); endQ(steel, K[3], -HALF, HALF, -DEEP, -THICK, CLAD); // its two ends: the step up onto it, and the machine under the top
+        flat(steel, 0, K[1], -IN, IN, 0, TREAD); flat(steel, K[2], K[3], -IN, IN, 0, TREAD);       // the two flat landings
+        // the steps: each one's front is pale with a dark edge, so they show as stripes from a car coming up to it
+        for (let nS = Math.round(run / 0.42), go = run / nS, up = rise / nS, j = 0; j <= nS; j++) {
+          const s = FOOT + j * go, lo = Math.max(0, (j - 0.5) * up), hi = Math.min(rise, (j + 0.5) * up), mid = hi - lo < 0.15 ? lo : hi - 0.09;
+          if (mid > lo) quad(steel, pt(s, -IN, lo), pt(s, IN, lo), pt(s, IN, mid), pt(s, -IN, mid), FRONT);
+          quad(steel, pt(s, -IN, mid), pt(s, IN, mid), pt(s, IN, hi), pt(s, -IN, hi), TREAD);
+          if (j < nS) quad(steel, pt(s, -IN, hi), pt(s, IN, hi), pt(s + go, IN, hi), pt(s + go, -IN, hi), TREAD);
+        }
+        // where it arrives: the gallery's floor comes out to its top landing, with the gallery's glass round the edge
+        const g0 = SHOPS - 1.3 - latOf(K[3]), g1 = SHOPS - 1.3 - latOf(len); // (the gallery's edge, across from its top and from the end of the floor)
+        quad(glow, pt(K[3], -HALF, rise), pt(len, -HALF, rise), pt(len, g1, rise), pt(K[3], g0, rise), SLAB);
+        quad(glow, pt(K[3], -HALF, rise - THICK), pt(len, -HALF, rise - THICK), pt(len, g1 + 0.3, rise - THICK), pt(K[3], g0 + 0.3, rise - THICK), SLAB); // (its underside runs in under the gallery's)
+        sideQ(steel, K[3], len, -HALF, -THICK, 0, CLAD); endQ(steel, len, -HALF, g1 + 0.3, -THICK, 0, CLAD); endQ(steel, K[3], HALF, g0 + 0.3, -THICK, 0, CLAD);
+        sideQ(glow, K[3], len, -0.55, 0, 0.8, RAIL); endQ(glow, len, -0.55, g1, 0, 0.8, RAIL); endQ(glow, K[3], HALF, g0, 0, 0.8, RAIL);
+        // solid from its foot to where its underside is 2.4 m off the floor: past that a car goes under it
+        for (const m of [-HALF, HALF]) { const sE = FOOT + (2.4 + DEEP - PLINTH) / TAN, [wx0, , wz0] = pt(0, m, 0), [wx1, , wz1] = pt(sE, m, 0); walls.push({ ax: wx0, az: wz0, bx: wx1, bz: wz1, y: a.p.y }); }
+      }
+      const mesh = flatMesh(steel.pos, steel.col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
+      mesh.userData.dyn = true; worldGroup.add(mesh); // (kept as it is, like the mall's sheets: no shadow from it indoors)
     }
   }
 
@@ -4245,13 +4313,39 @@ function buildMall(track, rnd) {
         for (const lz of [-3.4, 3.4]) box(world, 0.7, 0.16, 1.5, 0xfff3c4, x, h + 7.05, lz, 0x8a7a40);
       }
     }
-    // race barrier down the outside of each carriageway, in lengths, with the crowd on the footpath behind it;
-    // and a crowd round the outside of the hairpin, behind its rail
+    // Race barrier down the outside of each carriageway with the crowd on the footpath behind it: one unbroken run
+    // each side, from the hairpin to where the two legs part. (It came in four lengths of 24 m with 12 m of nothing
+    // between one and the next, and the owner drove along it: "These should all be one long barrier", "why are
+    // there random holes".) The mall's side carries on west to the end of the hairpin's rail, where another 12 m
+    // stood open. The sponsors' paint is where it was, on what were the first and third lengths one side and the
+    // second and fourth the other. And a crowd round the outside of the hairpin, behind its rail.
     {
       const pillars = [-9, 9].flatMap((lx) => [[BRIDGE.x + lx, WIDE + 3, 1.3], [BRIDGE.x + lx, -WIDE - 3, 1.3]]);
-      for (let k = 0, x = MED.x0 + 16; x + 24 <= MED.x1 - 2; x += 36, k++) for (const out of [-1, 1]) {
-        raceFence(x, x + 24, out * (WIDE + 0.3), 0, out, (k + (out > 0 ? 0 : 1)) % 2 ? -1 : k + (out > 0 ? 1 : 3));
+      const X0 = MED.x0 + 16, X1 = MED.x1, ZB = WIDE + 0.3, was = []; // (was: what were the gaps)
+      // the end of the hairpin's rail (the trackside props are up already): the nearest end of any wall just west of the barrier's own
+      let rail = null;
+      for (const w of walls) for (const [ex, ez] of [[w.ax, w.az], [w.bx, w.bz]]) if (ex < X0 - 2 && ex > X0 - 30 && Math.abs(ez + ZB) < 4 && Math.abs(w.y ?? 0) < 1.5 && (!rail || ex > rail[0])) rail = [ex, ez];
+      for (const out of [-1, 1]) raceFence(X0, X1, out * ZB, 0, out);
+      if (rail) raceFenceTo(rail[0], rail[1], X0, -ZB, 0, -1);
+      for (let k = 0, x = X0; x + 24 <= MED.x1 - 2; x += 36, k++) for (const out of [-1, 1]) {
+        const ad = (k + (out > 0 ? 0 : 1)) % 2 ? -1 : k + (out > 0 ? 1 : 3), z = out * (ZB - 0.33);
+        if (ad >= 0) paintBarrier(ad, { x, y: 0, z }, { x: x + 24, y: 0, z }, 0.02, 0.98, x + 12, z - out * 10);
         crowd(x + 0.6, x + 23.4, out * (WIDE + 1.2), out * (WIDE + 5.4), 0.09, 14, out, pillars);
+        if (out > 0) was.push([x + 24, Math.min(x + 36, X1)]);
+      }
+      // People where the gaps were, behind the barrier like everyone else. (A set of their own with their own run
+      // of random numbers: nobody else in the centre moves. None in a pillar, a post or a braking board.)
+      {
+        const more = makePeople(140, mulberry32(6311)), rndG = mulberry32(6312), clear = (x, z) => !solids.some((c) => Math.abs(c.y ?? 0) < 1.5 && Math.hypot(c.x - x, c.z - z) < c.r + 0.7);
+        for (const out of [-1, 1]) for (const [g0, g1] of was) for (let j = 0, n = Math.round((g1 - g0) * 0.6); j < n; j++) {
+          const x = g0 + rndG() * (g1 - g0), z = out * (WIDE + 1.2 + rndG() * 4.2), rot = (out > 0 ? Math.PI : 0) + (rndG() - 0.5) * 0.7;
+          if (clear(x, z)) more.add(x, 0.09, z, rot);
+        }
+        if (rail) for (let j = 0; j < 9; j++) { // and behind the length that runs to the rail
+          const t = 0.08 + rndG() * 0.84, x = rail[0] + (X0 - rail[0]) * t, z = rail[1] + (-ZB - rail[1]) * t - 0.9 - rndG() * 3.6, rot = (rndG() - 0.5) * 0.7;
+          if (clear(x, z)) more.add(x, 0.09, z, rot);
+        }
+        more.finish();
       }
       const hx = street.xa + 15; // (the hairpin's centre)
       for (let k = 0; k < 46; k++) {
@@ -5004,13 +5098,14 @@ function buildRoseBay(track, rnd, randIn) {
   // more of them at Rose Bay, so they line the straights that had nothing beside them: the land side of the
   // start straight (run in to the pit wall at each end, which carries the fence past the garages), the outside
   // of Heartbreak Hill, both sides of the straight along the top and of the shops' street, and the shops' side
-  // of the hill down, run in to the tunnel's wall. Corners keep their rails, and a barrier that comes to one is
+  // of the hill down, run in to the tunnel's wall, and on from the tunnel's far end round the chicane to the start
+  // straight's. Corners keep their rails, and a barrier that comes to one is
   // run in to meet its end. The water and the lookout keep their view. Behind the
   // barriers on the grass the crowd stands on two stone steps, to see over the block (and be seen over it). ----
   {
     const STONE = C(0xcdb88a), COPE = C(0xb9a878), STEEL = C(0x8d93a0), TREAD = C(0xd9d2c0), RISER = C(0xbfb394);
     const TH = 0.5, FACE = hw + 2.7 - TH / 2, TOP = 1.0, RUN = 6, rndC = mulberry32(6102); // (its middle is on the harbour wall's line, hw + 2.7)
-    const fans = makePeople(900, rndC); // the crowd behind them: a set of its own with its own random numbers, so the rest of the bay stays where it was
+    const fans = makePeople(1100, rndC); // the crowd behind them: a set of its own with its own random numbers, so the rest of the bay stays where it was
     const pt = (i, sd, lat, h) => { const a = samples[wrap(i)]; return V(a.p.x + a.left.x * sd * lat, a.p.y + h, a.p.z + a.left.z * sd * lat); };
     const part = (i, f, sd, lat, h) => pt(i, sd, lat, h).lerp(pt(i + 1, sd, lat, h), f); // f of the way on from sample i to the next
     // a strip from sample i to sample i + m: one edge `a` metres out at height y0 (b at the far end), the other a1 out at y1 (b1 at the far end)
@@ -5020,6 +5115,11 @@ function buildRoseBay(track, rnd, randIn) {
       const c = [[-r, -r], [r, -r], [r, r], [-r, r]].map(([u, v]) => [x + a.th.x * u + a.left.x * v, z + a.th.z * u + a.left.z * v]);
       for (let k = 0; k < 4; k++) { const [ax, az] = c[k], [bx, bz] = c[(k + 1) % 4]; pushQuad(wires.pos, wires.col, V(ax, a.p.y + y0, az), V(bx, a.p.y + y0, bz), V(bx, a.p.y + 3.56, bz), V(ax, a.p.y + 3.56, az), STEEL); }
     };
+    // The land side from the tunnel's far end to the chicane gets a barrier of its own, below. What the trackside
+    // builder left there, a rail three posts long and one post standing by itself, comes away first: they'd be
+    // behind it, 2.5 m back, guarding nothing.
+    const CH = 992; // where the chicane comes out onto the start straight, and the barrier along its land side begins
+    for (const r of track.rails || []) if (r.outside === -1 && r.i > t1 && r.i < CH) { worldGroup.remove(...r.bits); if (r.wall) walls.splice(walls.indexOf(r.wall), 1); }
     // What already stands behind where a barrier goes, sample by sample and side by side (braking boards, light
     // poles, marshals' stands, the spectators' own fences, grandstands): the crowd's steps keep clear of it all.
     const taken = { 1: new Uint8Array(N), [-1]: new Uint8Array(N) }, stood = { 1: new Uint8Array(N), [-1]: new Uint8Array(N) }; // (stood: just the things with a foot on the ground there, which people on a footpath step round)
@@ -5081,7 +5181,10 @@ function buildRoseBay(track, rnd, randIn) {
       }
       if (crowd !== 'steps') return;
       // the crowd's steps, wherever there's room for a length of them: two, each 1.4 m deep and half a metre up
-      const S0 = lat + TH + 0.9, D = 1.4, room = (j) => j >= RUN && j <= n - RUN && !taken[sd][wrap(i0 + j)];
+      // (not round the inside of a tight bend, where the back of them would bunch up and the crowd stand on each other:
+      // nowhere the back of the steps is under two thirds as long as the road beside it)
+      const S0 = lat + TH + 0.9, D = 1.4, bunched = (j) => pt(i0 + j, sd, S0 + 2 * D, 0).distanceTo(pt(i0 + j + 1, sd, S0 + 2 * D, 0)) < 0.67 * pt(i0 + j, sd, 0, 0).distanceTo(pt(i0 + j + 1, sd, 0, 0));
+      const room = (j) => j >= RUN && j <= n - RUN && !taken[sd][wrap(i0 + j)] && !bunched(j);
       for (let j = 0; j < n;) {
         if (!room(j)) { j++; continue; }
         let e = j; while (e - j < 24 && room(e + 1)) e++;
@@ -5109,7 +5212,7 @@ function buildRoseBay(track, rnd, randIn) {
       barrier(ra ?? a, rb ?? b, sd, { ...o, ...(ra != null ? { from: RAIL - TH / 2 } : {}), ...(rb != null ? { to: RAIL - TH / 2 } : {}) });
     };
     // the start straight's land side: out of the chicane, in to the pit wall, the fence along the top of that, and on to the first corner
-    const pit = track.pitWall && track.pitWall.side === -1 ? track.pitWall : null, T1 = N + 113, CH = 992;
+    const pit = track.pitWall && track.pitWall.side === -1 ? track.pitWall : null, T1 = N + 113;
     if (pit) {
       const pi = pit.i < N / 2 ? pit.i + N : pit.i, half = Math.floor(pit.half / 1.5), PL = pit.lat - TH / 2;
       barrier(CH, pi - half, -1, { to: PL });
@@ -5128,6 +5231,10 @@ function buildRoseBay(track, rnd, randIn) {
     // tunnel (the owner: "there should be a fence on the inside here"). No banner on it: round the inside of a bend
     // this tight one would come out squashed. No crowd: there's no footpath there.
     barrier(768, 806, -1, { crowd: null, ads: false });
+    // And on the far side of the hotel: out of the tunnel's wall, round the chicane and up to the barrier that starts
+    // there, on the land side, which had nothing but grass beside it. (The owner sent a picture of the fence on the
+    // hill down: "put this wired fence in the other side" of the InterContinental.)
+    barrier(t1, CH, -1, { from: TUN - TH / 2 - 0.15 });
     fans.finish();
   }
 

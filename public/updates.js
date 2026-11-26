@@ -8,6 +8,24 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.77', date: '26 Nov 2026', title: 'Proper escalators at Westfield',
+    items: [
+      'The escalators in the mall are escalators now: steps going up between glass sides with handrails, a landing at the bottom, and a landing at the top where the gallery comes out to meet it. Each one was a bare sloping slab.',
+    ],
+  },
+  {
+    v: '3.76', date: '26 Nov 2026', title: 'One long barrier down Oxford Street',
+    items: [
+      'At Westfield the race barrier down each side of Oxford Street is one unbroken run, from the hairpin to where the two roads part. It came in lengths with gaps between them. The spectators who stood in the gaps are behind the barrier now.',
+    ],
+  },
+  {
+    v: '3.75', date: '26 Nov 2026', title: 'Rose Bay\'s fence carries on past the hotel',
+    items: [
+      'At Rose Bay the barrier with the wire fence now carries on out of the tunnel under The InterContinental, round the chicane and up to the start straight, with the crowd behind it. That side had only grass and a short rail.',
+    ],
+  },
+  {
     v: '3.74', date: '26 Nov 2026', title: 'No holes along Rose Bay\'s top straight',
     items: [
       'At Rose Bay the barrier along the outside of the top straight is one unbroken length. It had two wide openings onto the grass. The crowd stands on steps behind where they were.',
