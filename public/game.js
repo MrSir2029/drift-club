@@ -6793,10 +6793,10 @@ const CAR_CLASSES = { open: {
   downFront: 0.45,   // share of downforce on the front axle
   maxSteerLow: 0.45, // rad at standstill
   maxSteerHigh: 0.1, // rad at top speed
-  latGrip: 1.35,     // sideways grip on top of the surface's (1 for the others): corners much harder; braking and traction unchanged
+  latGrip: 1.39,     // sideways grip on top of the surface's (1 for the others): corners much harder; braking and traction unchanged. (1.35 until 3.80: players found the car understeered, "make the front end sharper", and the owner asked for a snappier front "but only by a little": 3% more bite at the front, the rear as it was)
   latGripRear: 1.5,  // a little more at the back, so the tail stays planted when you flick it left and right
   steerGain: 2.0,    // how much lock it asks for at speed (1.7 for the others)
-  steerRate: 12,     // how fast the wheels turn when you steer (7 for the others)
+  steerRate: 13.5,   // how fast the wheels turn when you steer (7 for the others; 12 until 3.80)
   yawDamp: 0.8,      // how much it resists rotating (1 for the others)
   gravity: 9.81,
 }, rally: {
