@@ -90,7 +90,8 @@
   request." So don't fold several merge requests into one entry, and don't
   give every small change in a merge request its own version number (3.17
   to 4.1 were split that finely; the entries before 3.17 are a day each).
-  Player-facing wording, and
+  It never opens by itself ("dont auto bring up whats new anymore"): the
+  button in the corner shows a dot instead. Player-facing wording, and
   say whose idea it was only by their in-game name. The top entry is also
   the game's version: the server tells tabs running an older one to refresh
   (the owner asked: "remind people to refresh the tab for new updates"), so

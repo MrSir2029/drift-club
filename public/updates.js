@@ -3,10 +3,16 @@
 // (The owner, 26 Nov 2026: don't fold several batches into one entry, and
 // don't give every small change its own version either. The entries from 3.17
 // to 4.1 were split one change each; the ones before 3.17 are a day each.)
-// Players see the list behind the "What's new" button on the home screen, it
-// opens by itself for anyone coming back after the top version changed, and
-// the button shows a dot until they've seen it.
+// Players see the list behind the "What's new" button on the home screen. The
+// button shows a dot until they've looked at the newest entry. It no longer
+// opens by itself (4.3: the owner asked).
 export const UPDATES = [
+  {
+    v: '4.3', date: '26 Nov 2026', title: 'What\'s new waits to be asked',
+    items: [
+      'This list no longer opens by itself after an update. The What\'s new button in the corner shows a dot when there is something you haven\'t read.',
+    ],
+  },
   {
     v: '4.2', date: '26 Nov 2026', title: 'Your best lap, kept',
     items: [
