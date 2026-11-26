@@ -2036,7 +2036,7 @@ function buildProps(track) {
       [60, 40, 20].forEach((back, k) => {
         const bi = wrap(i - back), b = samples[bi];
         if (Math.abs(turn[bi]) > 0.12 || !flat(bi)) return;
-        const p = at(b, outside * (street ? hw + 5.4 : hw + 4)); // behind the wall on a street circuit
+        const p = at(b, outside * (street ? hw + 5.4 : track.theme === 'mall' ? hw + 5.6 : hw + 4)); // behind the wall on a street circuit, and behind the race barrier at Westfield (where it stood on the barrier's own line)
         if (!isFree(track, p.x, p.z, 0.8, hw + 2.5)) return;
         const board = new THREE.Mesh(boardGeo, boardMats[k]);
         board.position.set(p.x, p.y + 1.7, p.z); board.rotation.y = heading(b); board.castShadow = true; worldGroup.add(board);
@@ -4247,13 +4247,39 @@ function buildMall(track, rnd) {
         for (const lz of [-3.4, 3.4]) box(world, 0.7, 0.16, 1.5, 0xfff3c4, x, h + 7.05, lz, 0x8a7a40);
       }
     }
-    // race barrier down the outside of each carriageway, in lengths, with the crowd on the footpath behind it;
-    // and a crowd round the outside of the hairpin, behind its rail
+    // Race barrier down the outside of each carriageway with the crowd on the footpath behind it: one unbroken run
+    // each side, from the hairpin to where the two legs part. (It came in four lengths of 24 m with 12 m of nothing
+    // between one and the next, and the owner drove along it: "These should all be one long barrier", "why are
+    // there random holes".) The mall's side carries on west to the end of the hairpin's rail, where another 12 m
+    // stood open. The sponsors' paint is where it was, on what were the first and third lengths one side and the
+    // second and fourth the other. And a crowd round the outside of the hairpin, behind its rail.
     {
       const pillars = [-9, 9].flatMap((lx) => [[BRIDGE.x + lx, WIDE + 3, 1.3], [BRIDGE.x + lx, -WIDE - 3, 1.3]]);
-      for (let k = 0, x = MED.x0 + 16; x + 24 <= MED.x1 - 2; x += 36, k++) for (const out of [-1, 1]) {
-        raceFence(x, x + 24, out * (WIDE + 0.3), 0, out, (k + (out > 0 ? 0 : 1)) % 2 ? -1 : k + (out > 0 ? 1 : 3));
+      const X0 = MED.x0 + 16, X1 = MED.x1, ZB = WIDE + 0.3, was = []; // (was: what were the gaps)
+      // the end of the hairpin's rail (the trackside props are up already): the nearest end of any wall just west of the barrier's own
+      let rail = null;
+      for (const w of walls) for (const [ex, ez] of [[w.ax, w.az], [w.bx, w.bz]]) if (ex < X0 - 2 && ex > X0 - 30 && Math.abs(ez + ZB) < 4 && Math.abs(w.y ?? 0) < 1.5 && (!rail || ex > rail[0])) rail = [ex, ez];
+      for (const out of [-1, 1]) raceFence(X0, X1, out * ZB, 0, out);
+      if (rail) raceFenceTo(rail[0], rail[1], X0, -ZB, 0, -1);
+      for (let k = 0, x = X0; x + 24 <= MED.x1 - 2; x += 36, k++) for (const out of [-1, 1]) {
+        const ad = (k + (out > 0 ? 0 : 1)) % 2 ? -1 : k + (out > 0 ? 1 : 3), z = out * (ZB - 0.33);
+        if (ad >= 0) paintBarrier(ad, { x, y: 0, z }, { x: x + 24, y: 0, z }, 0.02, 0.98, x + 12, z - out * 10);
         crowd(x + 0.6, x + 23.4, out * (WIDE + 1.2), out * (WIDE + 5.4), 0.09, 14, out, pillars);
+        if (out > 0) was.push([x + 24, Math.min(x + 36, X1)]);
+      }
+      // People where the gaps were, behind the barrier like everyone else. (A set of their own with their own run
+      // of random numbers: nobody else in the centre moves. None in a pillar, a post or a braking board.)
+      {
+        const more = makePeople(140, mulberry32(6311)), rndG = mulberry32(6312), clear = (x, z) => !solids.some((c) => Math.abs(c.y ?? 0) < 1.5 && Math.hypot(c.x - x, c.z - z) < c.r + 0.7);
+        for (const out of [-1, 1]) for (const [g0, g1] of was) for (let j = 0, n = Math.round((g1 - g0) * 0.6); j < n; j++) {
+          const x = g0 + rndG() * (g1 - g0), z = out * (WIDE + 1.2 + rndG() * 4.2), rot = (out > 0 ? Math.PI : 0) + (rndG() - 0.5) * 0.7;
+          if (clear(x, z)) more.add(x, 0.09, z, rot);
+        }
+        if (rail) for (let j = 0; j < 9; j++) { // and behind the length that runs to the rail
+          const t = 0.08 + rndG() * 0.84, x = rail[0] + (X0 - rail[0]) * t, z = rail[1] + (-ZB - rail[1]) * t - 0.9 - rndG() * 3.6, rot = (rndG() - 0.5) * 0.7;
+          if (clear(x, z)) more.add(x, 0.09, z, rot);
+        }
+        more.finish();
       }
       const hx = street.xa + 15; // (the hairpin's centre)
       for (let k = 0; k < 46; k++) {
