@@ -192,7 +192,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
   const onBoard = (key, ms) => { const at = key.indexOf('|'), list = boards.get(key.slice(0, at)) || []; return list.some((e) => e.n.toLowerCase() === key.slice(at + 1) && e.ms === ms); };
   // tick the laps on board k that have a path (g: 1), and forget the paths of laps that have left it
   function tidyPaths(k) {
-    for (const e of boards.get(k) || []) { const g = paths.get(pathKey(k, e.n)); if (g && g.ms === e.ms) e.g = 1; else delete e.g; }
+    for (const e of boards.get(k) || []) delete e.g; // (4.1: nobody can see anyone else's racing line or ghost any more, so no lap is ticked as having one. The owner: people leak the methods.)
     for (const [key, g] of paths) if (key.startsWith(k + '|') && !onBoard(key, g.ms)) { paths.delete(key); if (savePath) savePath(key, null); }
   }
   // ---------- the best time ever through each third of each track ----------
@@ -542,7 +542,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         if (typeof msg.k !== 'string' || typeof msg.n !== 'string' || now - (player.pathAt || 0) < 120) return;
         player.pathAt = now;
         const k = msg.k.slice(0, 8), n = msg.n.slice(0, 16), g = paths.get(pathKey(k, n));
-        send(player, { t: 'path', k, n, ms: g ? g.ms : 0, p: g ? g.p : null, ...(g && sign ? { s: pathSignature(k, n, g.ms, g.p) } : {}) });
+        void g; send(player, { t: 'path', k, n, ms: 0, p: null }); // (4.1: lines are no longer handed out)
         break;
       }
       case 'pathseed': {

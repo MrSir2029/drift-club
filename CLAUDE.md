@@ -122,6 +122,12 @@
   hills read as unfinished.
 - On night tracks the pit garages are lit from inside (the owner approved
   the lighting when shown it).
+- **Nobody sees anyone else's racing line or ghost** (4.1): the owner had
+  the leaderboard's racing lines and the record holder's ghost switched
+  off, because "people leak the methods". The server ticks no lap as
+  having a line and hands none out (`server/core.js`); the buttons and the
+  record ghost's switch hide themselves. Don't bring them back unasked.
+  Your own best lap's ghost in Polytrack stays.
 - **Race to 9LAT2 mode is gone** (3.73): the owner had it binned, "so we
   can patch the holes" it needed left in the barriers of the walled tracks.
   Don't bring it back, and don't leave an opening in a barrier or fence for
