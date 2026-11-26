@@ -62,8 +62,11 @@
     2"). The owner sent a picture of a grand prix
     barrier, yellow with the name along it: "can the barrier sponsors look
     somewhat like this?" Other walls still carry single banners.
-  - Signs are single sided (the owner asked): a billboard has one poster, on
-    the face turned to the road and the cars coming, and nothing on its back.
+  - No billboards (4.4): the owner had the sponsors' posters on boards beside
+    the tracks taken down ("please remove the signs with sponsors on side of
+    track"), and the ones on Sydney CBD's buildings with them. Don't put
+    them back. The sponsors on walls and barriers were left: he calls those
+    "barrier ads", and didn't ask for them to go.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
     not illuminated"): they take the scene's light, dim at night.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
