@@ -8,6 +8,13 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.5', date: '26 Nov 2026', title: 'Sponsors in rows of three',
+    items: [
+      'Sponsors are now in two places only: on the barriers and walls, and across the top of the gates over the track. Each gate carries one sponsor\'s name three times.',
+      'On the walls a sponsor\'s name now comes three times in a row with a longer plain stretch between rows, where single banners used to hang one by one. There is about the same amount of advertising as before.',
+    ],
+  },
+  {
     v: '4.4', date: '26 Nov 2026', title: 'The sponsors\' billboards come down',
     items: [
       'The billboards with sponsors\' posters beside the tracks are gone, on every track, and so are the ones on the buildings at Sydney CBD. The sponsors painted on walls and barriers are still there.',

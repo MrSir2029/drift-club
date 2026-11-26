@@ -1087,6 +1087,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   // checkpoint gates
   track.gateMats = [];
   const gatePostGeo = new THREE.BoxGeometry(0.9, 9, 0.9); // also sunk 4 m
+  const gateBoard = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
   for (let k = 1; k < cps.length; k++) {
     const s = samples[cps[k]];
     const mat = new THREE.MeshLambertMaterial({ color: 0xffa030, flatShading: true, emissive: 0x000000 });
@@ -1102,6 +1103,16 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
     bar.position.copy(s.p); bar.position.y += 5.2;
     bar.rotation.y = Math.atan2(s.th.x, s.th.z);
     worldGroup.add(bar);
+    // A sponsor's name three times across the top of the gate, facing the cars coming. (The owner, when the
+    // billboards came down: "just have them on the barriers and those big overhang things that go over the track",
+    // "ideally in rows of 3 or more".) A dark board stands on the bar behind them; the bar itself still glows.
+    {
+      const W = hw * 2 + 3.6, one = W / 3, h = one / (512 / 96), y0 = 5.5, ad = k - 1 + app.trackId;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(W + 0.3, h + 0.24, 0.24), gateBoard);
+      back.position.copy(s.p); back.position.y += y0 + h / 2; back.rotation.y = bar.rotation.y; worldGroup.add(back);
+      const at = (lat) => ({ x: s.p.x + s.left.x * lat - s.th.x * 0.14, y: s.p.y, z: s.p.z + s.left.z * lat - s.th.z * 0.14 });
+      for (let j = 0; j < 3; j++) addBanner(ad, at(W / 2 - j * one), at(W / 2 - (j + 1) * one), y0, y0 + h, 0, 1, s.p.x - s.th.x * 30, s.p.z - s.th.z * 30);
+    }
   }
 
   if (track.def.walls) buildStreetWalls(track);
@@ -2037,7 +2048,7 @@ function buildProps(track) {
       track.pitWall = { i: spot.i, side: spot.side, lat: hw + 6, half: 26, top: spot.y + 1.02 }; // (for a track whose own barriers join it: Rose Bay's)
       // sponsors' banners along the pit wall, under its red stripe: a proper barrier, and the place for them on a circuit
       // (not where street walls stand in front of it, as at Sydney CBD: those carry their own)
-      if (!track.def.walls) for (let k = 0; k < 6; k++) { const x = -20 + k * 8, a = toWorld(pit, x - 1.6, 0, 2.3), b = toWorld(pit, x + 1.6, 0, 2.3), t = toWorld(pit, x, 0, 30); addBanner(k, a, b, 0.07, 0.67, 0, 1, t.x, t.z); }
+      if (!track.def.walls) for (let k = 0; k < 6; k++) { const x = -20 + k * 8, a = toWorld(pit, x - 1.6, 0, 2.3), b = toWorld(pit, x + 1.6, 0, 2.3), t = toWorld(pit, x, 0, 30); addBanner(Math.floor(k / 3) + app.trackId, a, b, 0.07, 0.67, 0, 1, t.x, t.z); } // (a row of three of one sponsor, then three of another)
       for (let k = 0; k < 8; k++) for (let j = 0; j < 2; j++) {
         if (rnd() < 0.3) continue;
         const p = toWorld(pit, -22.4 + k * 6.4 + (rnd() - 0.5) * 3, 0, 0.2 + rnd() * 1.1);
@@ -2320,9 +2331,9 @@ function buildStreetWalls(track) {
     const whole = (g0) => [0, 1, 2].every((j) => { const u = P[(g0 + j) % N], v = P[(g0 + j + 1) % N]; if (!u || !v) return false; const t = samples[u.i].th, run = (v.p.x - u.p.x) * t.x + (v.p.z - u.p.z) * t.z; return run > 1.05 && run < 2.1; });
     for (const [a, b] of links) {
       const blk = Math.floor(a.i / 15), k = a.i % 15;
-      if (k >= 6 && k < 9 && blk * 15 + 9 <= N && (b.i - a.i + N) % N === 1 && whole(a.i - (k % 3))) { // a sponsor's banner now and then: one three samples long (4.5 m) every 22.5 m (and never one cut short where the lap's samples run out)
+      if (blk % 3 === (side > 0 ? 0 : 1) && k >= 3 && k < 12 && blk * 15 + 12 <= N && (b.i - a.i + N) % N === 1 && [3, 6, 9].every((g0) => whole(blk * 15 + g0))) { // (4.5: the name three times in a row, on one block in three. It was once on every block.) // a sponsor's banner now and then: one three samples long (4.5 m) every 22.5 m (and never one cut short where the lap's samples run out)
         const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.08, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.08 }), c = samples[a.i].p;
-        addBanner(blk + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
+        addBanner(Math.floor(blk / 3) + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
       }
       length(pos, col, side, a, b);
       track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2, mouth: inGap(side, a.i) || inGap(side, b.i) }); // (mouth: across a side street)
@@ -4252,9 +4263,9 @@ function buildMall(track, rnd) {
     // the way: dead ahead at the end of the start straight, and ahead and alongside at the top of the ramp up
     {
       const zs = samples[0].p.z, xe = strip[2] - 0.36, xw = strip[0] + 0.36, zn = strip[3] - 0.36;
-      for (let k = 0; k < 3; k++) { const z = zs + (k - 1) * 6; addBanner(k, { x: xe, y: DECK, z: z - 2.25 }, { x: xe, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xe - 20, z); }
-      for (let k = 0; k < 3; k++) { const x = rampW + (k - 1) * 6; addBanner(k + 3, { x: x - 2.25, y: DECK, z: zn }, { x: x + 2.25, y: DECK, z: zn }, 0.14, 0.98, 0, 1, x, zn - 20); }
-      for (let k = 0; k < 2; k++) { const z = strip[1] + 9 + k * 9; addBanner(k + 1, { x: xw, y: DECK, z: z - 2.25 }, { x: xw, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xw + 20, z); }
+      for (let k = 0; k < 3; k++) { const z = zs + (k - 1) * 6; addBanner(0, { x: xe, y: DECK, z: z - 2.25 }, { x: xe, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xe - 20, z); }
+      for (let k = 0; k < 3; k++) { const x = rampW + (k - 1) * 6; addBanner(3, { x: x - 2.25, y: DECK, z: zn }, { x: x + 2.25, y: DECK, z: zn }, 0.14, 0.98, 0, 1, x, zn - 20); }
+      for (let k = 0; k < 3; k++) { const z = strip[1] + 9 + k * 6; addBanner(1, { x: xw, y: DECK, z: z - 2.25 }, { x: xw, y: DECK, z: z + 2.25 }, 0.14, 0.98, 0, 1, xw + 20, z); }
     }
     // parked cars in marked bays, some under shade sails: on the main roof, and one row each side of the start
     // straight, back behind the crowd. (Their own run of random numbers, like the town's and the skyline's further
@@ -4342,10 +4353,10 @@ function buildMall(track, rnd) {
       const { x0, x1, half, h } = MED, cx = (x0 + x1) / 2;
       box(world, x1 - x0, h, 2 * half, 0xd4d7dc, cx, h / 2, 0); box(world, x1 - x0 - 0.5, 0.14, 2 * half - 0.5, 0x6f8f52, cx, h + 0.03, 0);
       solidRect(x0, -half, x1, half, 0);
-      for (let k = 0; k < 6; k++) for (const sd of [1, -1]) { // a banner every 22 m on each face, the two faces out of step
-        const x = x0 + 22 + k * 22 + (sd > 0 ? 0 : 11), z = sd * (half + 0.08);
+      for (let k = 0; k < 6; k++) for (const sd of [1, -1]) { // two rows of three on each face (the same six banners, which hung one every 22 m), the two faces out of step
+        const x = x0 + 30 + Math.floor(k / 3) * 66 + (sd > 0 ? 0 : 22) + ((k % 3) - 1) * 5.2, z = sd * (half + 0.08);
         if (x + 2.4 > x1) continue;
-        addBanner(k + (sd > 0 ? 0 : 2), { x: x - 2.25, y: 0, z }, { x: x + 2.25, y: 0, z }, 0.14, 0.98, 0, 1, x, sd * street.LN);
+        addBanner(Math.floor(k / 3) + (sd > 0 ? 0 : 2), { x: x - 2.25, y: 0, z }, { x: x + 2.25, y: 0, z }, 0.14, 0.98, 0, 1, x, sd * street.LN);
       }
       for (let x = x0 + 9, k = 0; x < x1 - 4; x += 7, k++) { // shrubs, with a gap under the bridge
         if (Math.abs(x - BRIDGE.x) < BRIDGE.half + 2) continue;
@@ -4922,10 +4933,11 @@ function buildRoseBay(track, rnd, randIn) {
         if (prev) {
           span(prev, q);
           const dx = q[0] - prev[0], dz = q[2] - prev[2], len = Math.hypot(dx, dz);
-          if (len > 5.4 && lengths++ % 3 === 1) { // a sponsor's banner on one length in three, on the road side
+          const nth = lengths++;
+          if (len > 5.4 && nth % 9 >= 3 && nth % 9 < 6) { // a sponsor's banner on three lengths in a row out of nine, on the road side (it was one in three, each a different sponsor)
             const ins = (len - 4.4) / 2 / len, nx = s.p.x - x, nz = s.p.z - z, nl = Math.hypot(nx, nz) || 1;
             const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.33, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.33 });
-            addBanner(lengths, on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
+            addBanner(Math.floor(nth / 9), on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
           }
         } else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
         if (last) { const e = end(i + 1, i, sd, q[1]); if (e) span(q, e); }
@@ -5155,9 +5167,9 @@ function buildRoseBay(track, rnd, randIn) {
     const bayClear = (i) => { const [ax, az] = P(i, LAT + 1.6), [bx, bz] = P(i + 3, LAT + 1.6), mx = (ax + bx) / 2, mz = (az + bz) / 2, y = samples[wrap(i + 1)].p.y + TOP - 1; return !solids.some((c) => c.r >= 1.2 && Math.abs(c.y - y) < 3 && Math.hypot(c.x - mx, c.z - mz) < c.r + 2.6); };
     for (let i = w0; i < w1; i++) {
       ribbon(i, 1, LAT, LAT + 0.02, -1.5, TOP, STONE); ribbon(i, 1, LAT + 0.7, LAT + 0.72, -1.5, TOP, STONE); ribbon(i, 1, LAT, LAT + 0.7, TOP, TOP, COPING);
-      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 3 === 1 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 13.5
+      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 9 >= 3 && Math.floor((i - w0) / 3) % 9 < 6 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 13.5
         const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, LAT + 0.82), [bx, bz] = P(i + 1, LAT + 0.82), [tx, tz] = P(i, LAT + 12), f = ((i - w0) % 3) / 3;
-        addBanner(Math.floor((i - w0) / 9), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
+        addBanner(Math.floor((i - w0) / 27), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
       }
       if ((i - w0) % 3 === 0) { // solid from either level
         const y = samples[wrap(i)].p.y, [ax, az] = P(i, LAT + 0.35), [bx, bz] = P(Math.min(i + 3, w1), LAT + 0.35);
