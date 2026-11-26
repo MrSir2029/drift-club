@@ -1775,7 +1775,9 @@ function addBanner(k, p, q, y0, y1, fp, fq, tx, tz, twice, plain) {
 // and asked for the barriers' sponsors to "look somewhat like this": until 3.68 a sponsored barrier was bare
 // concrete with one banner 4.5 m long on it.) (tx, tz): a point on the road side, as for addBanner.
 function paintBarrier(k, p, q, y0, y1, tx, tz) {
-  const len = Math.hypot(q.x - p.x, q.z - p.z), wide = Math.min((y1 - y0) * (512 / 96), len), n = Math.max(1, Math.round(len / 8.6)), pad = Math.max(0, (len - n * wide) / (2 * n));
+  // (the name three times on a length, spread along it: the owner asked for "groups of 3 not 2". It was once every
+  // 8.6 m, which came to two on the shorter lengths and four on the longest. Fewer only where three won't fit.)
+  const len = Math.hypot(q.x - p.x, q.z - p.z), wide = Math.min((y1 - y0) * (512 / 96), len), n = Math.max(1, Math.min(3, Math.floor(len / (wide * 1.04)))), pad = Math.max(0, (len - n * wide) / (2 * n));
   const at = (d) => ({ x: p.x + ((q.x - p.x) * d) / len, y: p.y + ((q.y - p.y) * d) / len, z: p.z + ((q.z - p.z) * d) / len });
   for (let j = 0, d = 0; j < n; j++) {
     if (pad > 0.01) addBanner(k, at(d), at(d + pad), y0, y1, 0, 1, tx, tz, false, true);
@@ -5214,9 +5216,10 @@ function buildRoseBay(track, rnd, randIn) {
       for (const j of [0, n]) { const q = pt(i0 + j, sd, o(j) + mid, 0); box(worldGroup, 0.66, 1.9, 0.66, 0xcdb88a, q.x, q.y + 0.35, q.z); } // a pier at each end, like the harbour wall's
       // a sponsor's banner every 80 m or so, on the road side (not where it runs in at an end, nor behind a gate's post).
       // (It was every 40 m: with the signs "way too intrusive", half of them went.)
-      // a sponsor's stretch every 80 m: 15 m of the barrier in its colours with its name on it twice (until 3.68,
-      // one banner 4.5 m long). PAINT: for each of the stretch's ten samples, which third of the name it carries, or -1 for plain paint
-      const PAINT = [-1, 0, 1, 2, -1, -1, 0, 1, 2, -1];
+      // a sponsor's stretch every 80 m: 22 m of the barrier in its colours with its name on it three times (twice,
+      // on 15 m, until the owner asked for "groups of 3 not 2"; and until 3.68, one banner 4.5 m long). PAINT: for
+      // each of the stretch's samples, which third of the name it carries, or -1 for plain paint
+      const PAINT = [-1, 0, 1, 2, -1, -1, 0, 1, 2, -1, -1, 0, 1, 2, -1];
       for (let j = 12; ads && j + PAINT.length <= n - 8; j += 54) {
         if (track.cps.some((c) => Math.abs(((i0 + j + PAINT.length / 2 - c) % N + N + N / 2) % N - N / 2) < 9)) continue;
         PAINT.forEach((third, k) => { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, Math.max(third, 0) / 3, (Math.max(third, 0) + 1) / 3, a.p.x, a.p.z, false, third < 0); });
