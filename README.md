@@ -169,11 +169,16 @@ can ask for one (`path` message): the leaderboard shows a **line** button on
 those laps, which draws the track from above with the lap on it, red where
 it's slow through to green where it's fast; and in Polytrack mode, for a
 player who has switched the record holder's ghost on (it is off by default,
-3.51), the fastest lap on the track's board that has a path (the record
-itself, once it has been set since 3.34) drives round with them as a gold
-see-through car with its driver's name over it, and as a gold dot on the
-minimap. A message says whose lap it is when it joins. Its switch is in
-Settings and in the Polytrack pause menu, which also says whose ghost it is.
+3.51), the record, the lap at the top of the track's board, drives round
+with them as a gold see-through car with its driver's name over it, and as
+a gold dot on the minimap. A message says whose lap it is when it joins. Its
+switch is in Settings and in the Polytrack pause menu, which also says whose
+ghost it is. The ghost is only on offer once the record of every track has
+its path (`recGhostReady`): until then the switches are hidden and nothing
+is chased. (Before 3.65 it chased the fastest lap that had a path, which on
+most tracks was not the record; the owner asked for it to wait.) A lap's
+path is only sent in Polytrack mode, so a record set in an ordinary race
+has none.
 Your own best-lap ghost gives way wherever the two are in the same place
 (3.49: drawn through each other they flickered). With Upstash
 the paths are kept in a hash beside the leaderboard (`drift-club:boards:paths`,
@@ -394,7 +399,9 @@ only, in plain lettering: eight shops and four places to eat, each several
 times over, in an order that never puts two the same next door or facing
 each other (`turn`). There were made-up names among them until 3.64, when
 the owner asked for those to go and the real ones to be repeated. (Rose
-Bay's signs are still a mix of made-up names and real ones.) There are no
+Bay's shops went the same way in 3.67: four real names, each shop's
+different from its neighbours'. The plain FOOD COURT and JUICE BAR signs
+came down then too.) There are no
 walls along the road: the car park roof is open to drive on,
 out to the low wall round its edge (parked cars, lamps and the lifts are
 solid), the ramps have railings because they're bridges, the shopfronts are

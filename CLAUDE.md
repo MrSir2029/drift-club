@@ -16,10 +16,12 @@
   exceptions, all at the owner's request:
   - Shop signs at Rose Bay and Westfield, and the hotel over Rose Bay's tunnel
     (The InterContinental): real local names in plain lettering, never logos.
-    At Westfield every shop has a real name, the same ones repeated: the
-    owner had the made-up ones taken out ("remove all the stores in
-    Westfield with names you made up and just add duplicates of the other
-    real ones"). Don't add made-up shop names there.
+    Every shop at Westfield and at Rose Bay has a real name, the same ones
+    repeated: the owner had the made-up ones taken out ("remove all the
+    stores in Westfield with names you made up and just add duplicates of
+    the other real ones", then the same for Rose Bay), and Westfield's plain
+    FOOD COURT and JUICE BAR signs with them. Don't add made-up shop names
+    or put those signs back.
   - The Maccas on Sydney CBD, just past the start (`buildMaccas` in
     `game.js`): the golden arches, drawn in code like the sponsors' boards
     (never a picture file), "Macca's" in plain lettering, and Jago serving at
@@ -99,8 +101,9 @@
   at the owner's request ("Remove them pls"): don't put them back.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
-  That panel is 520px wide, with the game's version small beside the DRIFT
-  CLUB name and not on the What's new button (the owner: "Make this wider
+  That panel is 520px wide, with the game's version beside the DRIFT CLUB
+  name (26px: the owner asked for it bigger than it first was) and not on
+  the What's new button (the owner: "Make this wider
   and put the version next to the name, remove it from the what's new").
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
@@ -112,7 +115,10 @@
   Screen again"). The record
   ghost's switch sits near the top of Settings and in the Polytrack pause
   menu ("too hard to find" where it was, low down in Settings). The record
-  ghost is off by default (the owner asked).
+  ghost is off by default (the owner asked), and not on offer at all until
+  the lap at the top of every track's board has its racing line ("don't
+  offer the fastest lap option until every track's genuine fastest lap has
+  the data"). Lines are saved with laps set in Polytrack mode only.
 - **Nothing a few centimetres in front of something else on far-off
   scenery** (window panes on a wall, a band round a tower): from a few
   hundred metres the two flicker, and the test renderer doesn't show it

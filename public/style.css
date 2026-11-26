@@ -45,7 +45,7 @@ body {
 .logo span:first-of-type { color: var(--orange); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
 .logo span:last-of-type { color: var(--ink); }
 /* the game's version, small beside its name (it used to be on the What's new button) */
-.logo .ver { font-size: 16px; font-weight: 800; letter-spacing: .02em; line-height: 1; color: var(--muted); margin-left: 2px; }
+.logo .ver { font-size: 26px; font-weight: 800; letter-spacing: 0; line-height: 1; color: var(--muted); margin-left: 4px; } /* (16px until 3.66: the owner asked for it bigger) */
 .tag { margin: 0 0 20px; font-weight: 600; color: var(--muted); }
 
 .field { display: block; margin-bottom: 14px; }
