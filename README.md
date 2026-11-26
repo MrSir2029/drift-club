@@ -509,16 +509,16 @@ Bay's two sandstone walls), with a plain stretch about as long between rows.
 From 4.8 each track also has two sponsor bridges (`buildSponsorBridges`): a
 steel gantry over the road with one name three times across it, as over the
 straights at a grand prix. They go up after everything else, where the road
-runs straight or nearly, at least 55 m from the start line and every gate,
-a third of a lap from each other, and clear of the track's `blocks`, of
+runs straight or nearly, at least 170 m from the start line and 55 m from
+every gate, a third of a lap from each other (a fifth where that leaves one), and clear of the track's `blocks`, of
 anything that has claimed the ground, and of the circuit's other parts; they
 claim no ground themselves, so nothing else moves for them, and their legs
 aren't solid. A track can name its own spots instead, as `sponsorBridges:
 [[x, z], …]` in `tracks.js` (the nearest point of the lap to each):
-Westfield does, for Oxford Street, where the rules find no room. Every other
-checkpoint gate carries a name three times across its top as well (every
-gate did from 4.5 to 4.8): of the two ways of taking every other gate, the
-one that keeps the names further from the bridges. By day the signs
+Westfield does, for Oxford Street, where the rules find no room. The checkpoint
+gates carry no sponsor (they did from 4.5 to 4.9, and the owner asked why),
+and from 4.10 a bridge stands at least 170 m from the start line and never
+under a cable strung over the road (Thredbo's chairlift). By day the signs
 are lit and shadowed by the scene like the
 walls they hang on (3.50; lit from inside they looked stuck on), and at night
 they glow. Nothing is a picture: the boards are drawn in the browser, in

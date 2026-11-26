@@ -8,6 +8,13 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.10', date: '27 Nov 2026', title: 'Sponsors off the checkpoints',
+    items: [
+      'The checkpoint gates carry no sponsor any more: every gate is plain again. Over the track, the sponsors are on their own bridges only.',
+      'The sponsor bridges now stand well away from the start line, 170 m or more. The first one at Queens Park GP was just past it.',
+    ],
+  },
+  {
     v: '4.9', date: '27 Nov 2026', title: 'Fewer sponsors over the gates',
     items: [
       'Only every other checkpoint gate carries a sponsor\'s name now. The gates between them are plain again.',
