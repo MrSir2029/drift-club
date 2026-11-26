@@ -497,11 +497,15 @@ round the roof where the cars drive straight at it (the end of the start
 straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
 are left bare. On the race barriers a sponsor isn't a banner but paint
 (`paintBarrier`, 3.68): the barrier's face in the sponsor's colours, with
-the name three times along it and plain paint between, as on the barriers at
-a grand prix (the owner sent a picture of one and asked for the barriers'
-sponsors to look like it; then, in 3.79, for "groups of 3 not 2": the name
-came twice on the shorter lengths). At Westfield that is the whole of every
-other length; at Rose Bay, 22 m with the name three times, every 80 m. By day the signs
+the name all the way along it and a little plain paint between, as on the
+barriers at a grand prix (the owner sent a picture of one and asked for the
+barriers' sponsors to look like it; then, in 3.79, for "groups of 3 not 2";
+then, in 4.7, for "long rows": a length now carries the name as many times
+as fit). At Westfield that is the whole of every other length on the roof
+and 54 m in every 96 m down Oxford Street; at Rose Bay, up to 44 m with the
+name six times, every 80 m. The banners on the other walls come six of one
+name in a row (Sydney CBD's walls, the pit wall, Westfield's median, Rose
+Bay's two sandstone walls), with a plain stretch about as long between rows. By day the signs
 are lit and shadowed by the scene like the
 walls they hang on (3.50; lit from inside they looked stuck on), and at night
 they glow. Nothing is a picture: the boards are drawn in the browser, in
