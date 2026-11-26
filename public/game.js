@@ -1317,6 +1317,33 @@ function unpackPath(p) {
     return out;
   } catch { return null; }
 }
+// Your own best lap on each track, kept in this browser: its time and how it was driven (packed as the leaderboard's
+// paths are). Polytrack mode starts with it: the best time on the HUD and the ghost you race are your best ever on
+// that track in that car, not just the best of this session. (The owner: "allow players to start off polytrack mode
+// with their own best times for that track all time not just in that session". Other players' lines and the record
+// holder's ghost were switched off in 4.1, so this is the ghost there is.) A new layout of a track starts it again.
+const ownBestKey = () => `dc-best-${app.trackId}.${TRACKS[app.trackId]?.v || 1}-${app.carClass}`;
+function loadOwnBest() {
+  try {
+    const o = JSON.parse(localStorage.getItem(ownBestKey()) || 'null'), pts = o && o.ms > 0 && typeof o.p === 'string' ? unpackPath(o.p) : null;
+    if (!pts) return null;
+    // each point's place along the lap and the road's height there (the ghost and the gap to it need both): the
+    // nearest sample, looking only a little way on from the last point's, so a road that crosses itself is no trouble
+    const S = app.track.samples, N = app.track.N;
+    let at = 0;
+    pts.forEach((q, k) => {
+      const from = k ? at : 0, to = k ? Math.min(N - 1, at + 90) : Math.floor(N * 0.2);
+      let best = Infinity;
+      for (let i = from; i <= to; i++) { const d = (S[i].p.x - q.x) ** 2 + (S[i].p.z - q.z) ** 2; if (d < best) { best = d; at = i; } }
+      q.i = at; q.y = S[at].p.y;
+    });
+    return { ms: o.ms, lap: pts };
+  } catch { return null; }
+}
+function saveOwnBest(ms, rec) {
+  const p = packPath(rec);
+  if (p) try { localStorage.setItem(ownBestKey(), JSON.stringify({ ms: Math.round(ms), p })); } catch {}
+}
 // The record holder's ghost: in Polytrack mode the lap at the top of the track's leaderboard drives round with
 // you, a see-through gold car with its driver's name and time over it, setting off as you cross the line. The
 // server keeps how each leaderboard lap was driven (laps set since 3.34) and sends it when asked.
@@ -7261,14 +7288,15 @@ function stepLocal(car, dt, canDrive) {
           car.lapStart = nowP;
           if (!app.bestLap || lapTime < app.bestLap) app.bestLap = lapTime;
           app.myLaps.push(lapTime);
-          if (lapTime === app.bestLap) app.ghostLap = app.rec;
+          const lapRec = app.rec, bestEver = app.mode === 'quali' && (!app.allBest || lapTime < app.allBest);
+          if (bestEver) { app.allBest = lapTime; app.ghostLap = lapRec; saveOwnBest(lapTime, lapRec); } // (your best ever here: the ghost from now on, and kept for next time)
           app.rec = []; app.recFrom = nowP; app.dI = 0;
           car.lap++;
-          const path = app.mode === 'quali' && lapTime === app.bestLap ? packPath(app.ghostLap) : null; // how it was driven, with your best lap: the leaderboard keeps it if the lap gets on
+          const path = app.mode === 'quali' && lapTime === app.bestLap ? packPath(lapRec) : null; // how it was driven, with your best lap: the leaderboard keeps it if the lap gets on
           send({ t: 'lap', time: Math.round(lapTime), sec: lapSec, ...(path ? { path } : {}) }); // for the leaderboard (and the best laps and sectors, in Polytrack mode)
           if (path) app.sentPath = { k: String(app.trackId), ms: Math.round(lapTime), p: path }; // (kept, with the server's signature, if it gets onto the board: 'pathkept')
           notePersonalBest(lapTime);
-          if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${lapTime === app.bestLap ? '  ★ best' : ''}`, 2500);
+          if (app.mode === 'quali') raceToast(`Lap  ${fmtTime(lapTime)}${bestEver ? '  ★ your best ever' : lapTime === app.bestLap ? '  ★ best today' : ''}`, 2500);
           else if (car.lap > app.laps) finishRace();
           else raceToast(`Lap ${car.lap - 1}  ${fmtTime(lapTime)}${lapTime === app.bestLap && car.lap > 2 ? '  ★ best' : ''}`, 2200);
         }
@@ -7656,6 +7684,8 @@ function beginRace(msg) {
   for (const p of app.room.players) if (p.id !== app.myId) ensureRemote(p);
   app.phase = 'countdown';
   app.bestLap = 0;
+  app.allBest = 0;
+  if (app.mode === 'quali') { const o = loadOwnBest(); if (o) { app.allBest = o.ms; app.ghostLap = o.lap; } } // (your best ever on this track: see loadOwnBest)
   app.litCount = -1;
   $('#lights').querySelectorAll('span').forEach(s => s.classList.remove('on'));
   $('#countdown').classList.add('hidden');
@@ -8516,7 +8546,8 @@ function updateHud(now) {
       setTimeout(() => { el.classList.add('hidden'); lights.classList.add('hidden'); }, 900);
     }
   }
-  setText('#hud-best', app.bestLap ? fmtTime(app.bestLap) : '--');
+  const hudBest = app.mode === 'quali' ? app.allBest || app.bestLap : app.bestLap; // (in Polytrack mode, your best ever on this track)
+  setText('#hud-best', hudBest ? fmtTime(hudBest) : '--');
   if (app.mode === 'quali') renderSectors(performance.now());
   const gd = app.mode === 'quali' ? app.ghostDelta : null;
   setText('#hud-delta', gd == null ? '' : (gd >= 0 ? '+' : '\u2212') + Math.abs(gd).toFixed(2));

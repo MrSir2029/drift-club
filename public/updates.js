@@ -1,12 +1,19 @@
-// What's new: one entry per version, newest first. Every change gets its own
-// version and its own entry, saying what that version changed: the owner
-// asked for this on 25 Nov 2026 ("break up the new versions properly for
-// every individual change"). The entries before 3.17 are a day each, from
-// when a day's changes were folded into one. Players see the list behind the
-// "What's new" button on the home screen, it opens by itself for anyone coming
-// back after the top version changed, and the button shows a dot until they've
-// seen it.
+// What's new: one entry per version, newest first. One version per merge
+// request: what ships together is one entry, with its changes as the items.
+// (The owner, 26 Nov 2026: don't fold several batches into one entry, and
+// don't give every small change its own version either. The entries from 3.17
+// to 4.1 were split one change each; the ones before 3.17 are a day each.)
+// Players see the list behind the "What's new" button on the home screen, it
+// opens by itself for anyone coming back after the top version changed, and
+// the button shows a dot until they've seen it.
 export const UPDATES = [
+  {
+    v: '4.2', date: '26 Nov 2026', title: 'Your best lap, kept',
+    items: [
+      'Polytrack mode now starts with your own best lap on that track: your best ever time is on the screen, and the ghost you race is that lap. It is kept between visits, on this device, for each track and car. Beat it and the new lap takes over.',
+      'The version number is back in the corner of the home screen, on the What\'s new button.',
+    ],
+  },
   {
     v: '4.1', date: '26 Nov 2026', title: 'Racing lines are private again',
     items: [

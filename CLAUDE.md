@@ -82,8 +82,15 @@
     InterContinental, round the chicane to the start straight's ("put this
     wired fence in the other side").
 - **What's new** (`public/updates.js`): one entry per version, newest first.
-  Every change gets its own version and its own entry (the owner asked for
-  this; the entries before 3.17 are a day each). Player-facing wording, and
+  **One version per merge request.** Everything that ships together in one
+  merge request is one version with one entry, its changes as the entry's
+  items. The owner, 26 Nov 2026: "when I said 1 update per version I meant
+  don't condense all changes from multiple batches into one, not to
+  decompress every patch into one, just put things together by merge
+  request." So don't fold several merge requests into one entry, and don't
+  give every small change in a merge request its own version number (3.17
+  to 4.1 were split that finely; the entries before 3.17 are a day each).
+  Player-facing wording, and
   say whose idea it was only by their in-game name. The top entry is also
   the game's version: the server tells tabs running an older one to refresh
   (the owner asked: "remind people to refresh the tab for new updates"), so
@@ -127,7 +134,10 @@
   off, because "people leak the methods". The server ticks no lap as
   having a line and hands none out (`server/core.js`); the buttons and the
   record ghost's switch hide themselves. Don't bring them back unasked.
-  Your own best lap's ghost in Polytrack stays.
+  Your own best lap's ghost in Polytrack stays, and from 4.2 it is your
+  best ever on that track, kept in the browser (`loadOwnBest` in `game.js`:
+  "start off polytrack mode with their own best times for that track all
+  time not just in that session").
 - **Race to 9LAT2 mode is gone** (3.73): the owner had it binned, "so we
   can patch the holes" it needed left in the barriers of the walled tracks.
   Don't bring it back, and don't leave an opening in a barrier or fence for
@@ -153,10 +163,10 @@
   at the owner's request ("Remove them pls"): don't put them back.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
-  That panel is 520px wide, with the game's version beside the DRIFT CLUB
-  name (26px: the owner asked for it bigger than it first was) and not on
-  the What's new button (the owner: "Make this wider
-  and put the version next to the name, remove it from the what's new").
+  That panel is 520px wide. The game's version is on the What's new button
+  in the corner of the home screen: it was moved beside the DRIFT CLUB name
+  in 3.60 at the owner's request, and he asked for it back ("put the version
+  number back in the corner").
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
   opens on the Championship from the home screen, and on the picked track's
