@@ -48,6 +48,12 @@
   - By day the signs take the scene's light and shadow (they were lit from
     inside, and the owner found them "way too intrusive and out of place");
     at night they still glow. Rose Bay's race barriers have one every 80 m.
+  - On a race barrier (Westfield's concrete ones, Rose Bay's sandstone ones)
+    a sponsor is painted along the barrier, not hung on it as a banner: the
+    face in the sponsor's colours with the name repeated and plain paint
+    between (`paintBarrier`). The owner sent a picture of a grand prix
+    barrier, yellow with the name along it: "can the barrier sponsors look
+    somewhat like this?" Other walls still carry single banners.
   - Signs are single sided (the owner asked): a billboard has one poster, on
     the face turned to the road and the cars coming, and nothing on its back.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2

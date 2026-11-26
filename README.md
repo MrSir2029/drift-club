@@ -437,7 +437,13 @@ wall, the stone wall behind its shops and the blocks of its race barriers
 Oxford Street's median, every other length of race barrier, and the wall
 round the roof where the cars drive straight at it (the end of the start
 straight and the top of the ramp up). Rails on posts, fences and the railings of bridges and ramps
-are left bare. By day the signs are lit and shadowed by the scene like the
+are left bare. On the race barriers a sponsor isn't a banner but paint
+(`paintBarrier`, 3.68): the barrier's face in the sponsor's colours, with
+the name every 8 m or so and plain paint between, as on the barriers at a
+grand prix (the owner sent a picture of one and asked for the barriers'
+sponsors to look like it). At Westfield that is the whole of every other
+length; at Rose Bay, 15 m with the name twice, every 80 m. By day the signs
+are lit and shadowed by the scene like the
 walls they hang on (3.50; lit from inside they looked stuck on), and at night
 they glow. Nothing is a picture: the boards are drawn in the browser, in
 open-licence typefaces from `public/vendor/fonts`, onto two sheets that every
