@@ -286,8 +286,7 @@ drive off it). Pinto Speedway (the fourth; Mount Panorama until 3.55) is raced a
 with fireworks overhead, searchlights sweeping the sky and glowing studs
 along the track edges. On a night track the pit garages beside the grid are
 lit from inside, all but a couple, with a strip of lamps under the roof
-(3.69: unlit, the pit building was a black slab 52 m long, which the owner
-took for a random wall at Sydney CBD's start). Noosa Heads (the fifth) is an island: along the seafront, up a clifftop
+(3.69: unlit, the pit building was a black slab 52 m long). Noosa Heads (the fifth) is an island: along the seafront, up a clifftop
 headland to a hairpin round the lighthouse, back down and over the start
 straight on a bridge, then through the palms past the village. Sand, palms,
 beach huts and umbrellas, and boats out at sea. The bay by the start straight
@@ -303,7 +302,17 @@ flyover that crosses above it, and a chicane; office blocks with lit windows,
 neon signs, lit billboards for the trackside sponsors and a skyline, crowds behind the
 walls, and traffic going round the blocks out past the edge of the map. A few
 side streets, always on the outside of the
-circuit, lead out into the city and to 9LAT2. Its only landmarks are 9LAT2,
+circuit, lead out into the city and to 9LAT2. Each opening in the wall has its
+street (`buildSideStreets` in `game.js`, 3.71): asphalt from the track's kerb
+out as far as the ground stays level and clear, a line down each side, dashes
+down the middle, a line across where it meets the track, and two lamps with
+their pools of light. It leaves at an angle where a bank is in the way: the
+first one, just past the bridge, runs along the foot of the flyover's bank.
+(Before, nothing was drawn in an opening and no lamp reached it. A driver's
+eyes are about as high as the wall's top, so the dark ground behind filled
+just the band a wall would, and the owner took the first one for a "random
+black wall".) They are built last, so nothing else in the city moves for
+them. Its only landmarks are 9LAT2,
 the fairground and the radio mast.
 Rose Bay (the seventh) is Sydney's own Monaco, by day (`buildRoseBay` in
 `game.js`): a street circuit along a harbour quay, up Heartbreak Hill,

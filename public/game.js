@@ -1084,6 +1084,7 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   buildScenery(track);
   if (track.sea) buildSea(track);
   if (look.night) buildNight(track);
+  buildSideStreets(track, !!look.night);
   buildHelicopter(track);
   // the sponsors' posters and banners, every one in the world: a mesh for each kind
   for (const [kind, Q] of Object.entries(sponsorQuads)) {
@@ -2269,6 +2270,122 @@ function buildStreetWalls(track) {
   const mesh = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
   mesh.castShadow = mesh.receiveShadow = true;
   worldGroup.add(mesh);
+}
+
+// The mouth of each side street (track.gaps). The street walls open there and a street leads off into the city, but
+// nothing used to be drawn in it and no lamp reached it. At night, from the driver's seat (eyes about as high as the
+// wall's top), the dark ground behind the opening filled just the band a wall would, and read as a length of wall
+// painted black: "Random black wall in cbd start", said the owner, of the one past the bridge at Sydney CBD. So each
+// opening gets its street: asphalt from the track's kerb out as far as the ground stays level and clear, a line down
+// each side, dashes down the middle and a line across where it meets the track, and at night a lamp or two with
+// their pools of light. (Built last, when everything else has its place, so nothing else in the world moves for it.)
+function buildSideStreets(track, night) {
+  const gaps = track.gaps || [];
+  if (!gaps.length) return;
+  const { samples, N, hw } = track;
+  const HALF = 6, EDGE = hw + 1.6, V0 = hw + 3.1, DEEP = 44, LIFT = 0.06, R = 13; // (V0: where the verge's skirt has dipped under the ground)
+  const tar = new THREE.Color(0x4f5764), white = new THREE.Color(0xe9e6dc);
+  const pos = [], col = [], lpos = [], lcol = [], ppos = [], puv = [], lamps = [];
+  // flat on the ground, facing up whichever way round its corners come
+  const flat = (P, C, a, b, c, d, color) => ((b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z) > 0 ? pushQuad(P, C, a, b, c, d, color) : pushQuad(P, C, a, d, c, b, color));
+  const blocked = (x, z, y, v) => {
+    if ((TERRAIN.wet && wetAt(x, z)) || (v > hw + 6 && roadGap(track, x, z) < hw + 4)) return true; // (another stretch of the circuit: the one the street leaves is further off than that by then)
+    for (const o of occupied) if (o.r >= 2.5 && (o.x - x) ** 2 + (o.z - z) ** 2 < (o.r + 0.6) ** 2) return true;
+    for (const w of track.walls) { // a building, or anything else solid
+      if (Math.abs((w.y ?? 0) - y) > 3) continue;
+      const ex = w.bx - w.ax, ez = w.bz - w.az, t = clamp(((x - w.ax) * ex + (z - w.az) * ez) / (ex * ex + ez * ez || 1), 0, 1), dx = x - w.ax - ex * t, dz = z - w.az - ez * t;
+      if (dx * dx + dz * dz < 1.3) return true;
+    }
+    return false;
+  };
+  for (const g of gaps) {
+    const c = (g.a + g.b) >> 1, s = samples[c], ox = s.left.x * g.side, oz = s.left.z * g.side, tx = s.th.x, tz = s.th.z, NU = HALF * 2;
+    // u metres along the track from the middle of the opening, v out from the centre line; the street leans `lean`
+    // metres along the track for each metre it goes out
+    let lean = 0;
+    const at = (u, v) => { const w = u + Math.max(0, v - V0) * lean; return [s.p.x + tx * w + ox * v, s.p.z + tz * w + oz * v]; };
+    const raw = (u, v) => { const [x, z] = at(u, v); return terrainHeight(x, z); };
+    // How far out it can run at its full width: until the ground stops being level (a bank), or something stands
+    // there. Straight out if that gets it anywhere; if not, leaning one way or the other, whichever goes furthest
+    // (the first opening at Sydney CBD has the flyover's bank on one side, and its street runs along the foot of it).
+    const run = () => {
+      let far = DEEP;
+      for (let i = 0; i < NU && far; i++) for (let j = 0; j < far; j++) {
+        const hs = [raw(i - HALF, V0 + j), raw(i + 1 - HALF, V0 + j), raw(i - HALF, V0 + j + 1), raw(i + 1 - HALF, V0 + j + 1)], [x, z] = at(i + 0.5 - HALF, V0 + j + 0.5);
+        if (Math.max(...hs) - Math.min(...hs) > 0.22 || blocked(x, z, hs[0], V0 + j + 0.5)) { far = j; break; }
+      }
+      return far;
+    };
+    let far = 0;
+    for (const l of [0, 0.4, -0.4, 0.75, -0.75]) { lean = l; const f = run() - Math.abs(l) * 8; if (f > far + 0.5) far = f, g.lean = l; if (far >= 30) break; }
+    if (far < 6) continue; // no room for a street here
+    lean = g.lean; far = run();
+    // the highest ground within half a metre: where the ground bends, the paint keeps clear of it
+    const top = (u, v) => { let h = -Infinity; for (const du of [-0.5, 0, 0.5]) for (const dv of [-0.5, 0, 0.5]) h = Math.max(h, raw(u + du, v + dv)); return h + LIFT; };
+    const H = [];
+    for (let i = 0; i <= NU; i++) { H.push([]); for (let j = 0; j <= DEEP; j++) H[i].push(j <= far ? top(i - HALF, V0 + j) : 0); }
+    const reach = new Array(NU).fill(far);
+    const P = (i, j, lift = 0) => { const [x, z] = at(i - HALF, V0 + j); return V(x, H[i][j] + lift, z); };
+    // the road's own height beside the opening, and the strip from its kerb down to the street
+    const roadY = (u) => { const f = c + u / 1.5, i = Math.floor(f), a = samples[((i % N) + N) % N].p.y, b = samples[(((i + 1) % N) + N) % N].p.y; return a + (b - a) * (f - i); };
+    const K = (i, lift = 0) => { const [x, z] = at(i - HALF, EDGE); return V(x, roadY(i - HALF) + 0.04 + lift, z); };
+    const cells = []; // every piece of the street, for the lamps' pools
+    for (let i = 0; i < NU; i++) {
+      if (!reach[i]) continue;
+      cells.push([K(i), P(i, 0), P(i + 1, 0), K(i + 1)]);
+      for (let j = 0; j < reach[i]; j++) cells.push([P(i, j), P(i, j + 1), P(i + 1, j + 1), P(i + 1, j)]);
+    }
+    for (const q of cells) flat(pos, col, ...q, tar);
+    // the lines: a height anywhere on the street, a touch over the asphalt
+    const surf = (u, v) => { const fu = clamp(u + HALF, 0, NU - 1e-6), fv = clamp(v - V0, 0, DEEP - 1e-6), i = Math.floor(fu), j = Math.floor(fv), a = fu - i, b = fv - j; return (H[i][j] * (1 - a) + H[i + 1][j] * a) * (1 - b) + (H[i][j + 1] * (1 - a) + H[i + 1][j + 1] * a) * b + 0.035; };
+    const Lp = (u, v) => { const [x, z] = at(u, v); return V(x, surf(u, v), z); };
+    const line = (u0, u1, v0, v1) => { for (let v = v0; v < v1 - 1e-6; v += 1) { const w = Math.min(v + 1, v1); flat(lpos, lcol, Lp(u0, v), Lp(u0, w), Lp(u1, w), Lp(u1, v), white); } };
+    const lane = (u) => reach[clamp(Math.floor(u + HALF), 0, NU - 1)];
+    for (const e of [-1, 1]) { const far = Math.min(lane(e * 5.3 - 0.1), lane(e * 5.3 + 0.1)); if (far > 2) line(e * 5.3 - 0.09, e * 5.3 + 0.09, V0 + 1.8, V0 + far); }
+    const mid = Math.min(reach[HALF - 1], reach[HALF]);
+    for (let j = 3; j + 2 <= mid; j += 4) line(-0.1, 0.1, V0 + j, V0 + j + 2);
+    for (let i = 0; i < NU; i++) if (reach[i] > 2 && i >= 1 && i < NU - 1) line(i - HALF, i + 1 - HALF, V0 + 1, V0 + 1.4); // (where the street meets the track)
+    if (!night) continue;
+    // a lamp at the kerb a little way in, and another further up on the other side, each with its pool of light
+    const spots = [];
+    for (const [e, v] of [[-1, hw + 7.5], [1, hw + 7.5]]) {
+      const u = e * (HALF + 0.7), [x, z] = at(u, v), edge = reach[e < 0 ? 0 : NU - 1];
+      if (edge < v - V0 + 1 || !isFree(track, x, z, 0.8, hw + 3) || track.solids.some((o) => Math.hypot(o.x - x, o.z - z) < 6)) continue;
+      spots.push([e, v]);
+      const far = reach[e < 0 ? NU - 1 : 0], v2 = v + 15, [x2, z2] = at(-u, v2);
+      if (far >= v2 - V0 + 1 && isFree(track, x2, z2, 0.8, hw + 3) && !track.solids.some((o) => Math.hypot(o.x - x2, o.z - z2) < 6)) spots.push([-e, v2]);
+      break;
+    }
+    for (const [e, v] of spots) {
+      const u = e * (HALF + 0.7), [x, z] = at(u, v), y = terrainHeight(x, z), [ax, az] = at(u - e * 3.2, v);
+      track.solids.push({ x, z, r: 0.35, y });
+      lamps.push({ x, z, y, tip: V(ax, y + 9.6, az), rot: Math.atan2(-tz, tx) });
+      for (const q of cells) {
+        const mx = (q[0].x + q[2].x) / 2, mz = (q[0].z + q[2].z) / 2;
+        if ((mx - ax) ** 2 + (mz - az) ** 2 > (R + 1) ** 2) continue;
+        for (const k of [0, 1, 2, 0, 2, 3]) { const p = q[k], dx = p.x - ax, dz = p.z - az; ppos.push(p.x, p.y + 0.05, p.z); puv.push(0.5 + (dx * tx + dz * tz) / (2 * R), 0.5 + (dx * ox + dz * oz) / (2 * R)); }
+      }
+    }
+  }
+  if (!pos.length) return;
+  const street = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })); // (each drawn a shade nearer than what it lies on, so the ground never wins the pixel from far off)
+  const lines = flatMesh(lpos, lcol, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
+  for (const m of [street, lines]) { m.receiveShadow = true; m.userData.dyn = true; worldGroup.add(m); }
+  if (!lamps.length) return;
+  const steel = new THREE.MeshLambertMaterial({ color: 0x8d93a0, flatShading: true });
+  const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 0.35, 0.8), new THREE.MeshBasicMaterial({ color: 0xfff2c4 }), lamps.length), M = new THREE.Matrix4();
+  heads.userData.dyn = true; heads.frustumCulled = false;
+  lamps.forEach((l, k) => {
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.3, 11, 0.3), steel); mast.position.set(l.x, l.y + 4.5, l.z); mast.castShadow = true; worldGroup.add(mast);
+    worldGroup.add(strut(V(l.x, l.y + 9.6, l.z), l.tip, 0.2, 0.2, steel));
+    M.makeRotationY(l.rot); M.setPosition(l.tip.x, l.tip.y - 0.25, l.tip.z); heads.setMatrixAt(k, M);
+  });
+  worldGroup.add(heads);
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.Float32BufferAttribute(ppos, 3));
+  pg.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2));
+  const pools = new THREE.Mesh(pg, lightMat(glowTexture(128, 128, 64, 64, 64), 0xffd9a0, 0.6));
+  pools.userData.dyn = true; pools.renderOrder = 1; worldGroup.add(pools);
 }
 
 // The sea round Noosa Heads: water out to the horizon, see-through enough that

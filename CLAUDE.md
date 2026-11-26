@@ -102,9 +102,14 @@
   across the water, and at Rose Bay "some buildings in it like what we did
   with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare
   hills read as unfinished.
-- On night tracks the pit garages are lit from inside (the owner took the
-  unlit pit building at Sydney CBD for a "random black wall", and approved
+- On night tracks the pit garages are lit from inside (the owner approved
   the lighting when shown it).
+- The openings in Sydney CBD's street walls are side streets, paved, lined
+  and lit (`buildSideStreets` in `game.js`). Unlit, an opening read from the
+  driver's seat as a length of wall painted black: the owner's "random black
+  wall in cbd start", "right after the bridge to the left", was the first
+  one (not the pit building and not the flyover, both of which were tried
+  first). Don't wall the openings up: Race to 9LAT2 leaves the track by them.
 - No CINEMA neon sign at Sydney CBD: the owner had it taken down ("just
   remove cinema": a lit window behind it, its blind half down, showed
   through the sign as a white line). Its place in the list of words stays
