@@ -6,7 +6,7 @@
 const MAX_PLAYERS = 20;
 const TOTAL_LAPS = 3; // default; the host can pick 1 to MAX_LAPS
 const MAX_LAPS = 10;
-const TRACK_COUNT = 10;
+const TRACK_COUNT = 8;
 const RESULTS_GRACE_MS = 45000; // after the first finisher, wait this long for the rest
 const COUNTDOWN_MS = 4000; // the start lights
 const BROADCAST_HZ = 30;
@@ -23,10 +23,10 @@ const BOARD_SEASON = 1;
 // top speed the whole way round (with 10% in hand for cutting the corners).
 // Lengths in metres, one per track in tracks.js; top speeds in m/s, as in
 // CAR_CLASSES in game.js.
-const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1423, 1429, 1575, 1776, 2110, 1446];
+const TRACK_LENGTH = [1510, 1867, 1715, 1488, 1423, 1429, 1575, 1776];
 // Each track's layout, as 'v' in tracks.js. A new layout starts its board again:
 // the layout goes into each time's signature, so old copies don't come back.
-const TRACK_VERSION = [1, 1, 1, 1, 2, 2, 1, 2, 1, 1];
+const TRACK_VERSION = [1, 1, 1, 1, 2, 2, 1, 2];
 // A saved leaderboard (the file in the repo, the copy kept in Upstash) says which layouts its times were set on,
 // as 'lay'. One saved before that was written into them (25 Nov 2026) was on these:
 const LAYOUTS_UNMARKED = [1, 1, 1, 1, 2, 2, 1, 1];
