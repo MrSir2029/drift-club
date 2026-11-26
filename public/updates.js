@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.68', date: '26 Nov 2026', title: 'Painted barriers',
+    items: [
+      'The sponsors on the race barriers at Westfield and Rose Bay are painted along the barrier now, as they are at a grand prix: the barrier in the sponsor\'s colours with the name repeated along it. Before, each was one small banner on bare concrete.',
+    ],
+  },
+  {
     v: '3.67', date: '26 Nov 2026', title: 'The last made-up signs come down',
     items: [
       'Rose Bay\'s shops have real names only now, like Westfield\'s. And Westfield\'s Food Court and Juice Bar signs are gone.',

@@ -1631,16 +1631,18 @@ function nmWords(c, cx, cy, xh) {
   c.fill(); c.restore();
 }
 
-// each draws itself into a rectangle of a canvas, as a poster (about 10 : 3) or a banner (about 10.7 : 1, the name twice)
+// each draws itself into a rectangle of a canvas, as a poster (about 10 : 3) or a banner (about 10.7 : 1, the name twice).
+// `gap`: how far across its banner there's a column with no lettering on it, just the banner's own colours (and
+// any stripe that runs its whole length): a barrier painted in a sponsor's colours is that column between the names.
 const SPONSOR_ART = [
-  { name: '9 Meter', // a pun on Nine Mile, in its own lettering and colours: aqua on deep blue, and nothing else
+  { name: '9 Meter', gap: 0.495, // a pun on Nine Mile, in its own lettering and colours: aqua on deep blue, and nothing else
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#272d9f'; c.fillRect(x, y, w, h);
       c.fillStyle = '#54edd9';
       if (banner) { for (const f of [0.25, 0.75]) nmWords(c, x + w * f, y + h / 2, Math.min(h * 0.44, (w * 0.4) / NM_WIDE)); }
       else nmWords(c, x + w / 2, y + h / 2, Math.min(h * 0.36, (w * 0.72) / NM_WIDE));
     } },
-  { name: 'PWD', // a pun on PwC: lower-case serif letters and a stack of warm blocks
+  { name: 'PWD', gap: 0.495, // a pun on PwC: lower-case serif letters and a stack of warm blocks
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#ffffff'; c.fillRect(x, y, w, h);
       const mark = (cx, cy, s) => { // the letters, baseline at cy, with the blocks up and to the right of them
@@ -1652,7 +1654,7 @@ const SPONSOR_ART = [
       };
       if (banner) { mark(x + w * 0.25, y + h * 0.7, h * 0.74); mark(x + w * 0.75, y + h * 0.7, h * 0.74); } else mark(x + w / 2, y + h * 0.71, h * 0.7);
     } },
-  { name: 'Glory Dates', // a pun on Glory Days: a soft old-fashioned serif, a rising sun
+  { name: 'Glory Dates', gap: 0.495, // a pun on Glory Days: a soft old-fashioned serif, a rising sun
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#f7ead3'; c.fillRect(x, y, w, h);
       const sun = (cx, cy, r) => {
@@ -1664,7 +1666,7 @@ const SPONSOR_ART = [
       if (banner) { for (const f of [0, 0.5]) { sun(x + w * (f + 0.065), y + h * 0.86, h * 0.34); word(x + w * (f + 0.3), w * 0.36, h * 0.74); } }
       else { sun(x + w * 0.165, y + h * 0.8, h * 0.3); c.fillStyle = '#c4502b'; c.fillRect(x + w * 0.065, y + h * 0.8, w * 0.2, h * 0.02); word(x + w * 0.64, w * 0.66, h * 0.56); }
     } },
-  { name: 'Tenth Floor Chambers', // themselves: a barristers' chambers, so a quiet serif in gold on navy
+  { name: 'Tenth Floor Chambers', gap: 0.469, // themselves: a barristers' chambers, so a quiet serif in gold on navy
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#101d3a'; c.fillRect(x, y, w, h);
       const GOLD = '#d9b86c', IVORY = '#f4efe2';
@@ -1683,7 +1685,7 @@ const SPONSOR_ART = [
         s = fitSize(c, 'cormorant', 'CHAMBERS', w * 0.5, h * 0.2, 0.42); c.font = sponsorFace('cormorant', s); c.fillStyle = GOLD; spaced(c, 'CHAMBERS', x + w * 0.63, y + h * 0.69, s, 0.42);
       }
     } },
-  { name: 'Frangos', // themselves: Portuguese charcoal chicken, so red, with the flag's green and gold
+  { name: 'Frangos', gap: 0.497, // themselves: Portuguese charcoal chicken, so red, with the flag's green and gold
     draw(c, x, y, w, h, banner) {
       c.fillStyle = '#d42a1e'; c.fillRect(x, y, w, h);
       c.fillStyle = '#0a7a3c'; c.fillRect(x, y + h * 0.9, w, h * 0.1); c.fillStyle = '#ffd200'; c.fillRect(x, y + h * 0.865, w, h * 0.035);
@@ -1759,13 +1761,28 @@ function addPoster(q, k) {
 // A piece of a banner hung along a barrier, from p to q ({x, y, z} at its foot), y0 to y1 above them, facing the
 // point (tx, tz) on the road side so it reads the right way round from there. fp and fq say how far along the
 // whole banner p and q are (0 to 1, in the order the pieces come), so a banner can follow a bend in several
-// pieces. One name fills it unless `twice`.
-function addBanner(k, p, q, y0, y1, fp, fq, tx, tz, twice) {
+// pieces. One name fills it unless `twice`; `plain`: no name at all, just the banner's own colours.
+function addBanner(k, p, q, y0, y1, fp, fq, tx, tz, twice, plain) {
   const facesP = (tx - p.x) * -(q.z - p.z) + (tz - p.z) * (q.x - p.x) > 0; // is p on the left, seen from the road?
-  const [L, R, fL, fR] = facesP ? [p, q, fp, fq] : [q, p, 1 - fq, 1 - fp], span = twice ? 1 : 0.5;
-  const [, y, , h] = bannerCell(k % SPONSOR_ART.length), u0 = 0.002 + fL * (span - 0.004), u1 = 0.002 + fR * (span - 0.004), v1 = 1 - (y + 0.5) / BANNER_SHEET[1], v0 = 1 - (y + h - 0.5) / BANNER_SHEET[1];
+  const [L, R, fL, fR] = facesP ? [p, q, fp, fq] : [q, p, 1 - fq, 1 - fp], span = twice ? 1 : 0.5, gap = SPONSOR_ART[k % SPONSOR_ART.length].gap;
+  const [, y, , h] = bannerCell(k % SPONSOR_ART.length), u0 = plain ? gap : 0.002 + fL * (span - 0.004), u1 = plain ? gap : 0.002 + fR * (span - 0.004), v1 = 1 - (y + 0.5) / BANNER_SHEET[1], v0 = 1 - (y + h - 0.5) / BANNER_SHEET[1];
   const c = [[L.x, L.y + y0, L.z, u0, v0], [R.x, R.y + y0, R.z, u1, v0], [R.x, R.y + y1, R.z, u1, v1], [L.x, L.y + y1, L.z, u0, v1]], Q = sponsorQuads.banner;
   for (const j of [0, 1, 2, 0, 2, 3]) { Q.pos.push(c[j][0], c[j][1], c[j][2]); Q.uv.push(c[j][3], c[j][4]); }
+}
+// A length of barrier painted in a sponsor's colours, as the barriers of a grand prix circuit are: its whole face
+// from p to q ({x, y, z} at its foot), y0 to y1 above them, in the banner's own colours, with the name on it every
+// 8 m or so and plain paint between. (The owner sent a picture of one, yellow with the tyre maker's name along it,
+// and asked for the barriers' sponsors to "look somewhat like this": until 3.68 a sponsored barrier was bare
+// concrete with one banner 4.5 m long on it.) (tx, tz): a point on the road side, as for addBanner.
+function paintBarrier(k, p, q, y0, y1, tx, tz) {
+  const len = Math.hypot(q.x - p.x, q.z - p.z), wide = Math.min((y1 - y0) * (512 / 96), len), n = Math.max(1, Math.round(len / 8.6)), pad = Math.max(0, (len - n * wide) / (2 * n));
+  const at = (d) => ({ x: p.x + ((q.x - p.x) * d) / len, y: p.y + ((q.y - p.y) * d) / len, z: p.z + ((q.z - p.z) * d) / len });
+  for (let j = 0, d = 0; j < n; j++) {
+    if (pad > 0.01) addBanner(k, at(d), at(d + pad), y0, y1, 0, 1, tx, tz, false, true);
+    addBanner(k, at(d + pad), at(d + pad + wide), y0, y1, 0, 1, tx, tz);
+    if (pad > 0.01) addBanner(k, at(d + pad + wide), at(d + 2 * pad + wide), y0, y1, 0, 1, tx, tz, false, true);
+    d += 2 * pad + wide;
+  }
 }
 
 // Trackside: grid boxes, barriers, braking boards, marshal posts, billboards,
@@ -3707,7 +3724,7 @@ function buildMall(track, rnd) {
     box(world, len, 0.08, 0.08, STEEL, mx, y + 3.5, z + out * 0.15).castShadow = false;
     for (const h of [1.5, 2.0, 2.5, 3.0]) box(world, len, 0.03, 0.03, STEEL, mx, y + h, z + out * 0.15).castShadow = false;
     walls.push({ ax: x0, az: z, bx: x1, bz: z, y });
-    if (k >= 0) addBanner(k, { x: mx - 2.25, y, z: z - out * 0.33 }, { x: mx + 2.25, y, z: z - out * 0.33 }, 0.14, 0.98, 0, 1, mx, z - out * 10);
+    if (k >= 0) paintBarrier(k, { x: x0, y, z: z - out * 0.33 }, { x: x1, y, z: z - out * 0.33 }, 0.02, 0.98, mx, z - out * 10); // (the whole length in the sponsor's colours)
   };
   // The same barrier between any two points, for the lengths that don't lie along x. From a to b; `out` is +1 for
   // the crowd on the side (-dz, dx) of that way (for a length running towards +z, that's the -x side), -1 for the
@@ -3719,7 +3736,7 @@ function buildMall(track, rnd) {
     box(g, len, 0.08, 0.08, STEEL, 0, 3.5, out * 0.15).castShadow = false;
     for (const h of [1.5, 2.0, 2.5, 3.0]) box(g, len, 0.03, 0.03, STEEL, 0, h, out * 0.15).castShadow = false;
     walls.push({ ax, az, bx, bz, y });
-    if (k >= 0) { const [px, pz] = W(g, -2.25, -out * 0.33), [qx, qz] = W(g, 2.25, -out * 0.33), [tx, tz] = W(g, 0, -out * 10); addBanner(k, { x: px, y, z: pz }, { x: qx, y, z: qz }, 0.14, 0.98, 0, 1, tx, tz); }
+    if (k >= 0) { const [px, pz] = W(g, -len / 2, -out * 0.33), [qx, qz] = W(g, len / 2, -out * 0.33), [tx, tz] = W(g, 0, -out * 10); paintBarrier(k, { x: px, y, z: pz }, { x: qx, y, z: qz }, 0.02, 0.98, tx, tz); }
   };
   // n people standing in the rectangle, facing the way `out` points from (towards -out: the track)
   const crowd = (x0, x1, z0, z1, y, n, out, avoid = []) => {
@@ -4903,9 +4920,12 @@ function buildRoseBay(track, rnd, randIn) {
       for (const j of [0, n]) { const q = pt(i0 + j, sd, o(j) + mid, 0); box(worldGroup, 0.66, 1.9, 0.66, 0xcdb88a, q.x, q.y + 0.35, q.z); } // a pier at each end, like the harbour wall's
       // a sponsor's banner every 80 m or so, on the road side (not where it runs in at an end, nor behind a gate's post).
       // (It was every 40 m: with the signs "way too intrusive", half of them went.)
-      for (let j = 12; ads && j + 3 <= n - 8; j += 54) {
-        if (track.cps.some((c) => Math.abs(((i0 + j + 1 - c) % N + N + N / 2) % N - N / 2) < 5)) continue;
-        for (let k = 0; k < 3; k++) { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, k / 3, (k + 1) / 3, a.p.x, a.p.z); }
+      // a sponsor's stretch every 80 m: 15 m of the barrier in its colours with its name on it twice (until 3.68,
+      // one banner 4.5 m long). PAINT: for each of the stretch's ten samples, which third of the name it carries, or -1 for plain paint
+      const PAINT = [-1, 0, 1, 2, -1, -1, 0, 1, 2, -1];
+      for (let j = 12; ads && j + PAINT.length <= n - 8; j += 54) {
+        if (track.cps.some((c) => Math.abs(((i0 + j + PAINT.length / 2 - c) % N + N + N / 2) % N - N / 2) < 9)) continue;
+        PAINT.forEach((third, k) => { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, Math.max(third, 0) / 3, (Math.max(third, 0) + 1) / 3, a.p.x, a.p.z, false, third < 0); });
         nb++;
       }
       if (crowd === 'path') { // people along the footpath behind it
