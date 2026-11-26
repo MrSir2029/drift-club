@@ -11,6 +11,13 @@
   sessions), run `npm i --no-save https-proxy-agent` first. If the game is
   asleep and doesn't answer, ship anyway: players' browsers hand their copies
   back.
+- The car colours are liveries in famous F1 teams' colours (`TEAM` in
+  `game.js`; the owner: "have every livery look like famous f1 team"): the
+  paint and where it goes only. No team's name, badge or sponsor goes on a
+  car. Keep the colours' numbers (players' saved choices).
+- The open seater's front end was sharpened once, a little (3.80: front
+  grip 1.35 to 1.39, steering rate 12 to 13.5; the owner: "the snappier
+  front but only by a little"). Any more makes the records fall: ask first.
 - The secret livery (colour 12) and its code stay out of What's new and the
   README. Cars only carry made-up sponsor names, never real brands. Three
   exceptions, all at the owner's request:
