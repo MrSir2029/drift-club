@@ -180,7 +180,10 @@
   at the owner's request ("Remove them pls"): don't put them back.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
-  That panel is 520px wide. The game's version is on the What's new button
+  That panel is 420px wide ("doesn't need to be so wide now that the
+  version has moved"). Each colour swatch has a black border and the picked
+  one an orange border with a dark ring (he found the old dark-and-pale
+  ring "ugly"). The game's version is on the What's new button
   in the corner of the home screen: it was moved beside the DRIFT CLUB name
   in 3.60 at the owner's request, and he asked for it back ("put the version
   number back in the corner").
