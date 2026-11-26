@@ -143,7 +143,7 @@ up as you drive, purple for the best ever on that track, green for the best
 this session, yellow slower. The best-ever sectors are kept like the
 leaderboard (signed, in the snapshot, handed back by browsers), and only come
 from laps that count for it. A race's results show the order, the gaps, and every lap you set.
-After a race (or a Race to 9LAT2) there's a podium ceremony just past the
+After a race there's a podium ceremony just past the
 finish line before the results: cinema bars and a drumroll, third and second
 crash down onto their steps, then the winner lands on the top step with a
 flash and a fanfare, a confetti cannon and fireworks while the
@@ -302,22 +302,24 @@ flyover that crosses above it, and a chicane; office blocks with lit windows,
 neon signs, lit billboards for the trackside sponsors and a skyline, crowds behind the
 walls, and traffic going round the blocks out past the edge of the map. A few
 side streets, always on the outside of the
-circuit, lead out into the city and to 9LAT2. Each opening in the wall has its
+circuit, lead off into the city, each one closed off by the wall for the
+race. Each has its
 street (`buildSideStreets` in `game.js`, 3.71): asphalt from the track's kerb
 out as far as the ground stays level and clear, a line down each side, dashes
 down the middle, a line across where it meets the track, and two lamps with
 their pools of light. It leaves at an angle where a bank is in the way: the
 first one, just past the bridge, runs along the foot of the flyover's bank.
-(Before, nothing was drawn in an opening and no lamp reached it. A driver's
-eyes are about as high as the wall's top, so the dark ground behind filled
-just the band a wall would, and the owner took the first one for a "random
-black wall".) They are built last, so nothing else in the city moves for
-them. From 3.72 the barrier has no holes in a race or in Polytrack ("a piece
-of wall is missing, just add it back", said the owner): each side street has
-a gate, the same wall carried across its mouth, and the gates come away only
-for Race to 9LAT2, which has no other way off the circuit (`setGates` in
-`game.js`, called when a race starts; a gate's walls are in `track.walls`
-with `gate` set, and `off` when it is open). The wall also carries on under
+They are built last, so nothing else in the city moves for them.
+The side streets were openings in the wall at first, the way off the circuit
+for Race to 9LAT2. Nothing was drawn in an opening and no lamp reached it, and
+a driver's eyes are about as high as the wall's top, so the dark ground behind
+filled just the band a wall would: the owner took the first one for a "random
+black wall", and once he saw what it was, for a hole ("a piece of wall is
+missing, just add it back"). In 3.72 they became gates, shut for everything
+but that mode; in 3.73 the mode was taken out (see Secrets) and the wall
+simply runs across them, banners and all (`buildStreetWalls`; those lengths
+are in `track.walls` with `mouth` set, so the street behind is still laid).
+The wall also carries on under
 the flyover, on both sides: it used to stop short of the bridge and take up
 again past it, because the road overhead counted as road too near the wall
 (`levelGap` counts only road on the wall's own level). And where a run of
@@ -526,10 +528,15 @@ changes.
 
 There's no button for these. The host opens the secrets panel by typing a
 code on the keyboard while in the lobby (typing it again hides it); the code
-is `SECRET_CODE` at the top of `public/game.js`. Inside: **Race to 9LAT2**
-(no laps or gates, first car to reach the 9LAT2 building wins; follow the
-arrow and the beam of light) and **Toyota Camry**, a car class where
-everyone drives the same family saloon.
+is `SECRET_CODE` at the top of `public/game.js`. Inside: **Toyota Camry**, a
+car class where everyone drives the same family saloon. (Until 3.73 there
+was also **Race to 9LAT2**: no laps or gates, first car to reach the 9LAT2
+building wins. It needed ways off the circuit left open in the barriers of
+the walled tracks, the owner took those for holes, and he had the mode
+binned so they could be closed: "let's bin the 9LAT2 mode so we can patch
+the holes". The building is still there. The server knows two modes, race
+and Polytrack; a tab on an older version that asks for the third gets a
+race.)
 
 The rally car is hidden the same way: the host types `RALLY` in the lobby
 (`RALLY_CODE` in `public/game.js`) and a Cars row appears with the open seater

@@ -2192,9 +2192,9 @@ function insideLoop(track, x, z) {
 
 // A street circuit (Sydney CBD): concrete walls down both sides of the road,
 // just past the kerbs, with a sponsor's banner on them now and then. Side
-// streets break them now and then, always on the outside of the circuit, so
-// there's a way out to the rest of the city (and 9LAT2) but no short cut
-// across the middle. track.gaps keeps the buildings out of those streets.
+// streets meet them now and then, always on the outside of the circuit:
+// track.gaps keeps the buildings out of those streets, and the wall runs
+// across their mouths (they were ways off the circuit once: see below).
 // (Rose Bay and Westfield had walls like these all the way round at first.
 // They don't now: like the older tracks they have rails on the outside of
 // corners, and a barrier only where a car would otherwise end up somewhere
@@ -2986,8 +2986,7 @@ function buildLandmarks(track) {
     });
   }
 
-  // ---- 9LAT2: a brick classroom block with its name on the roof. In the
-  // "Race to 9LAT2" mode the pad outside its door is the finish. ----
+  // ---- 9LAT2: a brick classroom block with its name on the roof ----
   if (S.lat9) {
     const st = S.lat9, lim = track.limit;
     const g = start(st, Math.atan2(lim.x - st.x, lim.z - st.z)); // front door faces the middle of the map

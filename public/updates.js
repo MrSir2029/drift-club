@@ -8,6 +8,13 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.73', date: '26 Nov 2026', title: 'Race to 9LAT2 is gone',
+    items: [
+      'Race to 9LAT2 mode has been taken out. It needed gaps left in the barriers for cars to leave the circuit by, and those gaps are being closed. The 9LAT2 building is still out there.',
+      'At Sydney CBD the wall now runs across the two side streets for good, sponsors\' banners and all.',
+    ],
+  },
+  {
     v: '3.72', date: '26 Nov 2026', title: 'No more holes in Sydney CBD\'s barriers',
     items: [
       'The barriers at Sydney CBD have no holes in them now. The wall carries on under the bridge on both sides of the start straight, where it used to stop and start again, and it runs across the two side streets. Up on the flyover it turns in to meet the railing.',
