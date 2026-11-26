@@ -1966,7 +1966,12 @@ function buildProps(track) {
       const building = new THREE.Mesh(new THREE.BoxGeometry(52, 5, 9), lam(0xe9e4d8)); building.position.set(0, 2.5, -6); building.castShadow = true; pit.add(building);
       const base = new THREE.Mesh(new THREE.BoxGeometry(54, 6, 14.4), concrete); base.position.set(0, -3.02, -4.4); pit.add(base);
       const roofP = new THREE.Mesh(new THREE.BoxGeometry(54, 0.5, 11), lam(0x1d2230)); roofP.position.set(0, 5.25, -6); pit.add(roofP);
-      for (let k = 0; k < 8; k++) { const door = new THREE.Mesh(new THREE.BoxGeometry(4.6, 3.4, 0.2), lam(k % 2 ? 0x3b4250 : 0x5a6372)); door.position.set(-22.4 + k * 6.4, 1.7, -1.45); pit.add(door); }
+      // By night the garages are open and lit from inside, all but a couple, with a strip of lamps under the roof.
+      // (Unlit, the whole building was a black slab 52 m long beside the grid: the owner, at Sydney CBD, "random
+      // black wall in cbd start".)
+      const night = !!track.look?.night, glow = (c, e) => new THREE.MeshLambertMaterial({ color: c, emissive: e, flatShading: true }), garage = night ? glow(0x6a5a3a, 0xd9b062) : null;
+      for (let k = 0; k < 8; k++) { const door = new THREE.Mesh(new THREE.BoxGeometry(4.6, 3.4, 0.2), night && k % 3 !== 1 ? garage : lam(k % 2 ? 0x3b4250 : 0x5a6372)); door.position.set(-22.4 + k * 6.4, 1.7, -1.45); pit.add(door); }
+      if (night) { const lamps = new THREE.Mesh(new THREE.BoxGeometry(51, 0.16, 0.3), glow(0x6a6a5a, 0xfff0cc)); lamps.position.set(0, 4.62, -1.3); pit.add(lamps); }
       const pw = new THREE.Mesh(new THREE.BoxGeometry(52, 1, 0.4), lam(0xf6f2e8)); pw.position.set(0, 0.5, 2); pit.add(pw);
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(52.1, 0.32, 0.44), lam(0xe6453a)); stripe.position.set(0, 0.86, 2); pit.add(stripe); // top 2 cm above the wall's
       put(pit, spot, hw + 8);

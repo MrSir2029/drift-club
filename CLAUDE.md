@@ -102,6 +102,9 @@
   across the water, and at Rose Bay "some buildings in it like what we did
   with opera house but more" (its suburbs: `suburbs` in `tracks.js`). Bare
   hills read as unfinished.
+- On night tracks the pit garages are lit from inside (the owner took the
+  unlit pit building at Sydney CBD for a "random black wall", and approved
+  the lighting when shown it).
 - The fourth track is Pinto Speedway (the owner's name for it; it was Mount
   Panorama Circuit). The signs with Mount Panorama's corner names came down
   at the owner's request ("Remove them pls"): don't put them back.
