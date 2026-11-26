@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.70', date: '26 Nov 2026', title: 'The CINEMA sign comes down',
+    items: [
+      'Sydney CBD\'s pink CINEMA neon signs are gone. The one past the start had a white line across it: a lit window behind the sign, with its blind half down.',
+    ],
+  },
+  {
     v: '3.69', date: '26 Nov 2026', title: 'The pits light up at night',
     items: [
       'On the night tracks, Sydney CBD and Pinto Speedway, the pit garages beside the grid are lit from inside, with a strip of lamps under the roof. Unlit, the pit building was a long black wall next to the start.',

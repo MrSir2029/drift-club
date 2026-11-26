@@ -5811,7 +5811,9 @@ function buildCity(track, rnd) {
   });
 
   // ---- neon signs: one texture holds every word, all the signs are one mesh ----
-  const WORDS = ['NOODLES', 'HOTEL', 'ARCADE', 'PIZZA', 'OPEN 24/7', 'KARAOKE', 'DRIFT CLUB', '9MILE', 'SUSHI', 'DINER', 'CAFE', 'BAR', 'CINEMA', 'TACOS', 'RAMEN', 'BURGERS'];
+  // (No CINEMA: the owner had that sign taken down, "just remove cinema". Its place in the list stays, empty, so that
+  // every other sign keeps the word it had; a building that drew it has no sign.)
+  const WORDS = ['NOODLES', 'HOTEL', 'ARCADE', 'PIZZA', 'OPEN 24/7', 'KARAOKE', 'DRIFT CLUB', '9MILE', 'SUSHI', 'DINER', 'CAFE', 'BAR', '', 'TACOS', 'RAMEN', 'BURGERS'];
   const NEON = ['#ff3d9a', '#3df2ff', '#ffe43d', '#7dff5a', '#ff8a3d', '#c77dff'];
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 512;
   const ctx = cv.getContext('2d');
@@ -5826,6 +5828,7 @@ function buildCity(track, rnd) {
   const sp = [], suv = [];
   signs.forEach((g, k) => {
     const word = Math.floor(rnd() * WORDS.length), u0 = (word % 2) * 0.5, v1 = 1 - Math.floor(word / 2) / 8, v0 = v1 - 1 / 8;
+    if (!WORDS[word]) return;
     const r = V(g.n.z, 0, -g.n.x).multiplyScalar(g.w / 2), up = V(0, g.w / 8, 0); // across the wall (reading left to right from the road), and up
     const c = [g.c.clone().sub(r).sub(up), g.c.clone().add(r).sub(up), g.c.clone().add(r).add(up), g.c.clone().sub(r).add(up)];
     const t = [[u0, v0], [u0 + 0.5, v0], [u0 + 0.5, v1], [u0, v1]];
