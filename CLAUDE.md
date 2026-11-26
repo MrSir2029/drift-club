@@ -48,13 +48,17 @@
     round the roof, the sides of the Oxford Street median and the concrete
     blocks of the race barriers), one every 20 m or so. One every 9 m was far too many ("we don't
     need THIS many"), one every 60 m too few ("not that little"), and one
-    every 30 m nearly right ("you can have a bit more"). Never on a rail on
+    every 30 m nearly right ("you can have a bit more"). (That was for single
+    banners; for the rows that replaced them see 4.7 and 4.11 below.) The
+    median's sides and the crossing's barriers carry none now. Never on a rail on
     posts (the owner calls those fences), a fence, or the railings of a
     bridge or ramp, and only where a driver can see the whole banner (not
     behind parked cars or another wall).
   - By day the signs take the scene's light and shadow (they were lit from
-    inside, and the owner found them "way too intrusive and out of place");
-    at night they still glow. Rose Bay's race barriers have one every 80 m.
+    inside, and the owner found them "way too intrusive and out of place").
+    At night they are not lit from inside either (4.11: "why are they
+    illuminated in cbd"): they take the street lamps' light like the walls.
+    Don't make them glow again.
   - On a race barrier (Westfield's concrete ones, Rose Bay's sandstone ones)
     a sponsor is painted along the barrier, not hung on it as a banner: the
     face in the sponsor's colours with the name all the way along it and a
@@ -77,6 +81,13 @@
     one name six times or more along a stretch (six on the walls, nine down
     Oxford Street's barriers), then a plain stretch about as long. Don't go
     back to threes or singles, and don't cover a barrier end to end.
+  - But the rows stay well apart (4.11: "don't have so many sponsors close
+    together"): a row of six on one side of the road every 135 to 160 m,
+    the two sides out of step, so a driver passes one row at a time. At
+    Westfield each of Oxford Street's barriers has one row (at the hairpin
+    end, away from the bridges), the median and the crossing have none, and
+    the roof's barriers carry one on every fourth length. A sponsor bridge
+    stands 40 m or more from any row where the track allows.
   - Sponsor bridges (4.8): "you can have some that hang over the track like
     irl". Two a lap on every track (`buildSponsorBridges` in `game.js`): a
     steel gantry with one name three times across, facing the cars coming,
