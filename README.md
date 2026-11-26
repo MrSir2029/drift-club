@@ -360,8 +360,10 @@ nothing else is in the way, or on the footpath in front of the shops; it is a
 set of people of its own with its own random numbers, so the rest of the bay
 stays put. Where a barrier comes to a corner's rail it is run in to meet the
 rail's end (`railAt` finds it), so there is no way between the two (3.48).
-The outside of the top straight has two 12 m ways through: Race to 9LAT2
-leaves the road there. Then there are the barriers a car needs so as
+The outside of the top straight is one unbroken length (3.74): it was in
+three, with two 12 m ways through for Race to 9LAT2 to leave the road by,
+until that mode went and the owner asked for them closed ("please fix these
+two big ones"). Then there are the barriers a car needs so as
 not to end up somewhere it can't be: a low sandstone wall along the harbour side
 of the quay (the promenade is paving over ground that slopes into the sea, so
 a car on it would sink through), the tunnel's own walls, and a stone wall along the

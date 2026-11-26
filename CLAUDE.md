@@ -67,8 +67,10 @@
     corner after the shops' street has the barrier: "there should be a fence
     on the inside here"), and a barrier that comes to a rail runs in to meet
     its end, with no way between them ("gap between fence and barrier
-    here"); the harbour and the lookout keep their view, and the two ways through on the outside of the
-    top straight stay open (Race to 9LAT2 leaves the road there).
+    here"); the harbour and the lookout keep their view. The outside of the
+    top straight is one unbroken barrier: it had two ways through for Race
+    to 9LAT2, and the owner took them for holes ("please fix these two big
+    ones").
 - **What's new** (`public/updates.js`): one entry per version, newest first.
   Every change gets its own version and its own entry (the owner asked for
   this; the entries before 3.17 are a day each). Player-facing wording, and
