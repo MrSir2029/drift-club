@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.63', date: '26 Nov 2026', title: 'No fairground at Westfield',
+    items: [
+      'The fairground behind Westfield\'s car park is gone: a big wheel and a circus tent looked out of place at a shopping centre. There\'s a small park there now.',
+    ],
+  },
+  {
     v: '3.62', date: '26 Nov 2026', title: 'Barriers at Westfield\'s street crossing',
     items: [
       'At Westfield, the stretch where you leave the shops, cross Oxford Street and head up the ramp to the roof used to have nothing either side. Now race barriers run down both sides, with a crowd behind them, and a wall carries on up each edge of the ramp.',

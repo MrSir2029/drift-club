@@ -567,6 +567,10 @@ function buildTerrain(track) {
   // (there used to be a castle: its spot is still picked, so everything picked
   // after it stays where it was, but nothing is built there now)
   delete sites.castle;
+  // (and the shopping centre had the fairground, behind its car park, where the owner found it out of place. Its
+  // spot is still picked and still kept clear, so the mast and the town round about stay where they were: it's a
+  // park now, which buildMall plants)
+  if (track.theme === 'mall' && sites.fair) { sites.park = sites.fair; delete sites.fair; }
   // Everyone picks the same spots (the 9LAT2 building has to be in the same
   // place for every player), but the ground is only shaped for what this
   // player will build: the expanded map is a per-player setting.
@@ -4191,6 +4195,26 @@ function buildMall(track, rnd) {
       for (let f = 0; f < Math.min(tower ? 9 : 3, Math.floor(h / 3.4)) && nb < 900; f++) { M.makeScale(w + 0.3, 1.3, dp + 0.3); M.setPosition(x, y + 2.1 + f * (tower ? h / 9.5 : 3.4), z); bands.setMatrixAt(nb++, M); }
       claim(x, z, Math.max(w, dp) * 0.75);
       if (inside) solidRect(x - w / 2, z - dp / 2, x + w / 2, z + dp / 2, y);
+    }
+    // The park behind the car park. A fairground stood here until 3.63: big wheel, carousel and big top, which the
+    // owner found out of place at a shopping centre. Now a lawn with two paths across it, trees round it and in
+    // it, a lamp where the paths meet and a bench on each. (Its own trees and random numbers: the town's stay as
+    // they were. The lawn and the paths are laid edge to edge, never one over another: two that close flicker.)
+    if (track.sites?.park) {
+      const { x: px, z: pz } = track.sites.park, R = 24, PW = 1.4, rndK = mulberry32(3310), GRASS = C(0x6aa85e), PATHC = C(0xd9d2c0), y0 = terrainHeight(px, pz);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) decal(Math.min(px + sx * PW, px + sx * R), Math.min(pz + sz * PW, pz + sz * R), Math.max(px + sx * PW, px + sx * R), Math.max(pz + sz * PW, pz + sz * R), GRASS, 0.06);
+      decal(px - R, pz - PW, px + R, pz + PW, PATHC, 0.06); decal(px - PW, pz - R, px + PW, pz - PW, PATHC, 0.06); decal(px - PW, pz + PW, px + PW, pz + R, PATHC, 0.06);
+      const parkTrees = new THREE.InstancedMesh(treeGeo, mergedMat(THREE.FrontSide, 0), 22);
+      let np = 0;
+      const plant = (x, z, sc) => { const y = terrainHeight(x, z); M.makeRotationY(rndK() * 6.28); M.scale(V(sc, sc, sc)); M.setPosition(x, y - 0.2, z); parkTrees.setMatrixAt(np++, M); solids.push({ x, z, r: 0.5 * sc, y }); };
+      for (let k = 0; k < 14; k++) { const a = (k + 0.5) * (6.2832 / 14) + (rndK() - 0.5) * 0.18, d = R - 2.5 - rndK() * 2.5; plant(px + Math.cos(a) * d, pz + Math.sin(a) * d, 1 + rndK() * 0.45); } // round the edge
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) plant(px + sx * (8 + rndK() * 5), pz + sz * (8 + rndK() * 5), 0.9 + rndK() * 0.4); // one in each quarter of the lawn
+      parkTrees.count = np; parkTrees.castShadow = true; worldGroup.add(parkTrees);
+      box(world, 0.22, 5.2, 0.22, 0x8d93a0, px, y0 + 2.6, pz); box(world, 1.5, 0.2, 1.5, 0xd9dde3, px, y0 + 5.3, pz); solids.push({ x: px, z: pz, r: 0.4, y: y0 });
+      for (const [bx, bz, ry] of [[9, PW + 1, 0], [-9, -PW - 1, 0], [PW + 1, -9, Math.PI / 2], [-PW - 1, 9, Math.PI / 2]]) {
+        const g = at(px + bx, pz + bz, ry, terrainHeight(px + bx, pz + bz));
+        box(g, 2.6, 0.2, 0.7, 0x7a4a2a, 0, 0.55, 0).castShadow = false; box(g, 2.2, 0.5, 0.2, 0x5a6372, 0, 0.25, 0).castShadow = false;
+      }
     }
     blocks.count = n; bands.count = nb; trees.count = nt; blocks.castShadow = trees.castShadow = true; worldGroup.add(blocks, bands, trees);
   }

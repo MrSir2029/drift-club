@@ -386,7 +386,10 @@ walkway overhead, the 333 at its stop with traffic held up behind it, and
 blocks of shops and flats all round. The
 median and the bridge are in the track's `blocks`, after the car park and the
 mall, so nothing else is put on them. Oxford Street is the way out to the
-streets and to 9LAT2. As at Rose
+streets and to 9LAT2. The town's fairground isn't built here (the owner found
+it out of place at a shopping centre): its spot behind the car park is
+still picked and kept clear, so the mast and the streets stay where they
+were, and `buildMall` plants a park on it. As at Rose
 Bay, the signs are a mix of made-up names and real ones in plain lettering,
 and there are no walls along the road: the car park roof is open to drive on,
 out to the low wall round its edge (parked cars, lamps and the lifts are
