@@ -8,6 +8,13 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.72', date: '26 Nov 2026', title: 'No more holes in Sydney CBD\'s barriers',
+    items: [
+      'The barriers at Sydney CBD have no holes in them now. The wall carries on under the bridge on both sides of the start straight, where it used to stop and start again, and it runs across the two side streets. Up on the flyover it turns in to meet the railing.',
+      'In Race to 9LAT2 the wall across the two side streets comes away: they are the way off the circuit.',
+    ],
+  },
+  {
     v: '3.71', date: '26 Nov 2026', title: 'Side streets at Sydney CBD',
     items: [
       'The two openings in Sydney CBD\'s walls are proper side streets now: asphalt with lines, and street lamps lighting them. Nothing was drawn in them before and no lamp reached them, so from the driver\'s seat the first one, on the left just past the bridge, looked like a stretch of wall painted black.',

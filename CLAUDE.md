@@ -104,12 +104,18 @@
   hills read as unfinished.
 - On night tracks the pit garages are lit from inside (the owner approved
   the lighting when shown it).
-- The openings in Sydney CBD's street walls are side streets, paved, lined
-  and lit (`buildSideStreets` in `game.js`). Unlit, an opening read from the
-  driver's seat as a length of wall painted black: the owner's "random black
-  wall in cbd start", "right after the bridge to the left", was the first
-  one (not the pit building and not the flyover, both of which were tried
-  first). Don't wall the openings up: Race to 9LAT2 leaves the track by them.
+- Sydney CBD's barriers have no holes in them in a race or in Polytrack.
+  The owner's "random black wall in cbd start", "right after the bridge to
+  the left", was the opening for a side street (not the pit building and not
+  the flyover, both of which were tried first), and once he saw what it was:
+  "See these random holes at start of track in the barriers at cbd. Fix
+  that! A piece of wall is missing just add it back right!" So the wall
+  carries on under the bridge, and each side street has a gate, the same
+  wall across its mouth (`setGates` in `game.js`). The gates come away only
+  for Race to 9LAT2, which has no other way off the circuit: don't leave
+  them open in any other mode, and don't shut them in that one. The streets
+  behind are paved, lined and lit (`buildSideStreets`), so an open one never
+  reads as a wall painted black again.
 - No CINEMA neon sign at Sydney CBD: the owner had it taken down ("just
   remove cinema": a lit window behind it, its blind half down, showed
   through the sign as a white line). Its place in the list of words stays
