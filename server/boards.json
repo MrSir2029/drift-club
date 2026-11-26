@@ -247,6 +247,13 @@
         "s": "2KyT2RkrpxGx"
       },
       {
+        "n": "JacksonP",
+        "ms": 35067,
+        "c": "open",
+        "num": 69,
+        "s": "D0B7_lX8g9uT"
+      },
+      {
         "n": "rocco",
         "ms": 35173,
         "c": "open",
@@ -273,11 +280,6 @@
         "s": "qJFg06abqamW"
       },
       {
-        "n": "JacksonP",
-        "ms": 39104,
-        "c": "open"
-      },
-      {
         "n": "BigLouis",
         "ms": 40035,
         "c": "open",
@@ -285,6 +287,13 @@
       }
     ],
     "4": [
+      {
+        "n": "TheBearKing",
+        "ms": 29465,
+        "c": "open",
+        "num": 72,
+        "s": "RLxQ1eDFcTl0"
+      },
       {
         "n": "speewandker",
         "ms": 29851,
@@ -312,13 +321,6 @@
         "c": "open",
         "num": 1,
         "s": "OSy_4YFdc4PF"
-      },
-      {
-        "n": "TheBearKing",
-        "ms": 31048,
-        "c": "open",
-        "num": 72,
-        "s": "WD9GfuudGZPi"
       },
       {
         "n": "Luca",
@@ -522,11 +524,25 @@
         "s": "GfxPG5UinSdB"
       },
       {
+        "n": "LucaRacer",
+        "ms": 46201,
+        "c": "open",
+        "num": 5,
+        "s": "vOkMKR9Ej2uQ"
+      },
+      {
         "n": "Luca",
         "ms": 46284,
         "c": "open",
         "num": 1,
         "s": "s6jVqpSpBQfZ"
+      },
+      {
+        "n": "HarryR",
+        "ms": 46334,
+        "c": "open",
+        "num": 1,
+        "s": "Kiaqc4uRN-em"
       },
       {
         "n": "BigLouis",
@@ -555,20 +571,6 @@
         "c": "open",
         "num": 0,
         "s": "RcZjU2INRxzH"
-      },
-      {
-        "n": "dew",
-        "ms": 49668,
-        "c": "open",
-        "num": 47,
-        "s": "VIo462EJvsK1"
-      },
-      {
-        "n": "zac",
-        "ms": 49670,
-        "c": "open",
-        "num": 15,
-        "s": "yADKzh7cj8sa"
       }
     ]
   },
@@ -648,9 +650,9 @@
         "s": "9XR2XCRpqF2s"
       },
       {
-        "n": "speewandker",
-        "ms": 10230,
-        "s": "Rr6j03l56ifG"
+        "n": "TheBearKing",
+        "ms": 9933,
+        "s": "sD9gMRX9cEJw"
       },
       {
         "n": "speewandker",
@@ -699,9 +701,9 @@
         "s": "OajAozfUckpe"
       },
       {
-        "n": "Luca",
-        "ms": 14950,
-        "s": "zvlhfiDyWT4o"
+        "n": "LucaRacer",
+        "ms": 14815,
+        "s": "CVcN682LdlKn"
       },
       {
         "n": "TheBearKing",
