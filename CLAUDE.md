@@ -57,8 +57,7 @@
   - Signs are single sided (the owner asked): a billboard has one poster, on
     the face turned to the road and the cars coming, and nothing on its back.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
-    not illuminated"): they take the scene's light, dim at night. The finish
-    pad and the beam of light in Race to 9LAT2 mode are still there.
+    not illuminated"): they take the scene's light, dim at night.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
     welcome there where a barrier is needed, in place of a rail on posts.
     Its straights have Westfield's race barrier in that sandstone, with the
@@ -104,18 +103,22 @@
   hills read as unfinished.
 - On night tracks the pit garages are lit from inside (the owner approved
   the lighting when shown it).
-- Sydney CBD's barriers have no holes in them in a race or in Polytrack.
-  The owner's "random black wall in cbd start", "right after the bridge to
-  the left", was the opening for a side street (not the pit building and not
-  the flyover, both of which were tried first), and once he saw what it was:
-  "See these random holes at start of track in the barriers at cbd. Fix
-  that! A piece of wall is missing just add it back right!" So the wall
-  carries on under the bridge, and each side street has a gate, the same
-  wall across its mouth (`setGates` in `game.js`). The gates come away only
-  for Race to 9LAT2, which has no other way off the circuit: don't leave
-  them open in any other mode, and don't shut them in that one. The streets
-  behind are paved, lined and lit (`buildSideStreets`), so an open one never
-  reads as a wall painted black again.
+- **Race to 9LAT2 mode is gone** (3.73): the owner had it binned, "so we
+  can patch the holes" it needed left in the barriers of the walled tracks.
+  Don't bring it back, and don't leave an opening in a barrier or fence for
+  it. The 9LAT2 building stays. But don't seal a track all the way round
+  either: "dont shut every way off, just the random ones that look ugly like
+  those I mentioned" (a barrier or fence that stops and starts for no
+  visible reason). The older tracks stay open country.
+- Sydney CBD's barriers have no holes in them. The owner's "random black
+  wall in cbd start", "right after the bridge to the left", was the opening
+  for a side street (not the pit building and not the flyover, both of which
+  were tried first), and once he saw what it was: "See these random holes at
+  start of track in the barriers at cbd. Fix that! A piece of wall is
+  missing just add it back right!" So the wall carries on under the bridge
+  and across the mouth of each side street (`buildStreetWalls` in
+  `game.js`). The streets behind are still paved, lined and lit
+  (`buildSideStreets`), as closed-off city streets.
 - No CINEMA neon sign at Sydney CBD: the owner had it taken down ("just
   remove cinema": a lit window behind it, its blind half down, showed
   through the sign as a white line). Its place in the list of words stays

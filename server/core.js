@@ -328,7 +328,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       laps: TOTAL_LAPS,
       phase: 'lobby', // lobby | countdown | racing | results
       players: new Map(), startAt: 0,
-      mode: 'race',   // race | quali | dash
+      mode: 'race',   // race | quali
       grid: null,     // player ids in qualifying order, used for the next race start
       gridTimes: null,
       dirty: new Set(), // players with positions waiting to go out
@@ -375,7 +375,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     for (const p of room.players.values()) { p.q.length = 0; p.lastT = 0; }
   }
   function startRace(room, mode) {
-    room.mode = mode === 'quali' || mode === 'dash' ? mode : 'race'; // dash = first to the 9LAT2 building
+    room.mode = mode === 'quali' ? 'quali' : 'race'; // (there was a third, a dash to the 9LAT2 building: a tab still running that version gets a race)
     room.phase = 'countdown';
     room.results = [];
     resetPositions(room);
@@ -486,7 +486,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       case 'lap': {
         // a lap in Polytrack mode or in a race; either way it
         // can go on the leaderboard
-        if (!room || room.phase !== 'racing' || (room.mode !== 'quali' && room.mode !== 'race')) return;
+        if (!room || room.phase !== 'racing') return;
         const time = +msg.time, now = Date.now();
         if (!(time > 5000 && time < 3600000) || player.finished) return;
         // For the leaderboard, the lap has to match this server's own clock:

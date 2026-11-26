@@ -938,7 +938,6 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   track.walls = [];  // solid line segments
   track.solids = []; // solid circles: trees, posts, rocks, towers
   track.lake = null;
-  track.goal = null;
   buildTerrain(track);
   for (const st of Object.values(track.sites)) claim(st.x, st.z, st.r + 3);
 
@@ -1206,7 +1205,7 @@ function collideWalls(car) {
   };
   for (off of [2.1, 0, -1.9]) {
     for (const w of walls) {
-      if (w.off || Math.abs(w.y - car.pos.y) > 3) continue; // (off: a side street's gate, taken away for Race to 9LAT2)
+      if (Math.abs(w.y - car.pos.y) > 3) continue;
       const px = car.pos.x + fx * off, pz = car.pos.z + fz * off;
       const ex = w.bx - w.ax, ez = w.bz - w.az;
       const t = clamp(((px - w.ax) * ex + (pz - w.az) * ez) / (ex * ex + ez * ez || 1), 0, 1);
@@ -2193,9 +2192,9 @@ function insideLoop(track, x, z) {
 
 // A street circuit (Sydney CBD): concrete walls down both sides of the road,
 // just past the kerbs, with a sponsor's banner on them now and then. Side
-// streets break them now and then, always on the outside of the circuit, so
-// there's a way out to the rest of the city (and 9LAT2) but no short cut
-// across the middle. track.gaps keeps the buildings out of those streets.
+// streets meet them now and then, always on the outside of the circuit:
+// track.gaps keeps the buildings out of those streets, and the wall runs
+// across their mouths (they were ways off the circuit once: see below).
 // (Rose Bay and Westfield had walls like these all the way round at first.
 // They don't now: like the older tracks they have rails on the outside of
 // corners, and a barrier only where a car would otherwise end up somewhere
@@ -2223,7 +2222,7 @@ function buildStreetWalls(track) {
   }
   const inGap = (side, i) => gaps.some(g => g.side === side && i >= g.a && i <= g.b);
   const concrete = new THREE.Color(0xd4d7dc), topC = new THREE.Color(0xb9bdc5), backC = new THREE.Color(0x8f949e);
-  const pos = [], col = [], gpos = [], gcol = [], gateWalls = [], rails = track.walls.slice(); // (rails: what's solid already, the railings of the bridge decks)
+  const pos = [], col = [], rails = track.walls.slice(); // (rails: what's solid already, the railings of the bridge decks)
   // how near the road comes to a spot, counting only road on the spot's own level: a flyover overhead is no reason
   // to leave the wall out. (It used to count, and the wall stopped short of the bridge over Sydney CBD's start
   // straight and took up again past it, on both sides: "random holes at start of track in the barriers", said the
@@ -2242,9 +2241,9 @@ function buildStreetWalls(track) {
     // the wall's road-side face, IN metres out; where the inside of a tight
     // bend folds that line back on itself the points come too near the road
     // and are dropped, and the wall cuts straight across instead
-    const point = (i, gap, gate) => {
+    const point = (i, gap, open) => {
       const s = samples[i], p = V(s.p.x + s.left.x * side * IN, s.p.y, s.p.z + s.left.z * side * IN);
-      if ((!gate && inGap(side, i)) || track.vergeDrop[i] > VERGE_MAX_DROP || gap(p.x, p.z, p.y) < IN - 0.35) return null; // (a bridge deck has railings instead)
+      if ((open && inGap(side, i)) || track.vergeDrop[i] > VERGE_MAX_DROP || gap(p.x, p.z, p.y) < IN - 0.35) return null; // (a bridge deck has railings instead)
       return { p, o: V(s.left.x * side * THICK, 0, s.left.z * side * THICK), i, g: terrainHeight(p.x, p.z) };
     };
     // join each point to the next one; across a run of dropped points (but
@@ -2262,9 +2261,13 @@ function buildStreetWalls(track) {
       }
       return { links, hasIn, hasOut };
     };
-    // (the crowds go where the wall always was: none under a bridge, and nobody moves for the lengths added there)
-    const was = join(samples.map((s, i) => point(i, (x, z) => roadGap(track, x, z))), (x, z) => roadGap(track, x, z));
+    // (the crowds go where the wall always was: none under a bridge or in the mouth of a side street, and nobody
+    // moves for the lengths added there)
+    const was = join(samples.map((s, i) => point(i, (x, z) => roadGap(track, x, z), true)), (x, z) => roadGap(track, x, z));
     track.wallAt[side] = was.hasIn.map((v, i) => v | was.hasOut[i]);
+    // The wall itself runs across the side streets too. They were openings at first, the way off the circuit for
+    // Race to 9LAT2; the owner took them for holes ("a piece of wall is missing, just add it back"), they became
+    // gates that opened for that mode alone, and then he binned the mode so they could stay shut.
     const P = samples.map((s, i) => point(i, levelGap)), { links, hasIn, hasOut } = join(P, levelGap);
     // is the wall whole and near its proper length for the three samples from g0? (on the inside of a tight bend it
     // bunches up, on the outside it stretches: a banner there would come out squashed, cut short or pulled wide)
@@ -2276,7 +2279,7 @@ function buildStreetWalls(track) {
         addBanner(blk + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (k % 3) / 3, (k % 3 + 1) / 3, c.x, c.z);
       }
       length(pos, col, side, a, b);
-      track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2 });
+      track.walls.push({ ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2, mouth: inGap(side, a.i) || inGap(side, b.i) }); // (mouth: across a side street)
     }
     // close off the ends of each run of wall (drawn both sides, so either way round is fine)
     for (let i = 0; i < N; i++) if (P[i] && hasIn[i] !== hasOut[i]) { const q = P[i], b0 = q.p, b1 = q.p.clone().add(q.o); pushQuad(pos, col, lo(b0, q.g), lo(b1, q.g), hi(b1), hi(b0), backC); }
@@ -2294,40 +2297,10 @@ function buildStreetWalls(track) {
       length(pos, col, side * dir, { p: q.p, o, g }, { p: V(end[0], q.p.y, end[1]), o, g });
       track.walls.push({ ax: q.p.x, az: q.p.z, bx: end[0], bz: end[1], y: q.p.y });
     }
-    // and a gate across each side street: the same wall, from one end of the opening to the other, that can be
-    // taken away (setGates)
-    for (const g of gaps) {
-      if (g.side !== side) continue;
-      const G = []; for (let i = g.a - 1; i <= g.b + 1; i++) G.push(P[((i % N) + N) % N] || point(((i % N) + N) % N, levelGap, true));
-      for (let k = 0; k + 1 < G.length; k++) {
-        const a = G[k], b = G[k + 1];
-        if (!a || !b) continue;
-        length(gpos, gcol, side, a, b);
-        const w = { ax: a.p.x, az: a.p.z, bx: b.p.x, bz: b.p.z, y: (a.p.y + b.p.y) / 2, gate: true };
-        track.walls.push(w); gateWalls.push(w);
-      }
-    }
   }
-  const wallMat = () => new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
-  const mesh = flatMesh(pos, col, wallMat());
+  const mesh = flatMesh(pos, col, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide }));
   mesh.castShadow = mesh.receiveShadow = true;
   worldGroup.add(mesh);
-  // The gates stand shut for a race and for Polytrack: the barrier has no holes in it. Race to 9LAT2 leaves the
-  // circuit by the side streets, so for that they come away.
-  track.gates = null;
-  if (gateWalls.length) {
-    const gm = flatMesh(gpos, gcol, wallMat());
-    gm.castShadow = gm.receiveShadow = true; gm.userData.dyn = true; // (kept out of the merged scenery: it comes and goes)
-    worldGroup.add(gm);
-    track.gates = { mesh: gm, walls: gateWalls };
-  }
-}
-// shut the side streets' gates, or take them away
-function setGates(open) {
-  const G = app.track?.gates;
-  if (!G) return;
-  G.mesh.visible = !open;
-  for (const w of G.walls) w.off = open;
 }
 
 // The mouth of each side street (track.gaps). The street walls open there and a street leads off into the city, but
@@ -2350,7 +2323,7 @@ function buildSideStreets(track, night) {
     if ((TERRAIN.wet && wetAt(x, z)) || (v > hw + 6 && roadGap(track, x, z) < hw + 4)) return true; // (another stretch of the circuit: the one the street leaves is further off than that by then)
     for (const o of occupied) if (o.r >= 2.5 && (o.x - x) ** 2 + (o.z - z) ** 2 < (o.r + 0.6) ** 2) return true;
     for (const w of track.walls) { // a building, or anything else solid
-      if (w.gate || Math.abs((w.y ?? 0) - y) > 3) continue; // (not the street's own gate)
+      if (w.mouth || Math.abs((w.y ?? 0) - y) > 3) continue; // (not the wall across the street's own mouth)
       const ex = w.bx - w.ax, ez = w.bz - w.az, t = clamp(((x - w.ax) * ex + (z - w.az) * ez) / (ex * ex + ez * ez || 1), 0, 1), dx = x - w.ax - ex * t, dz = z - w.az - ez * t;
       if (dx * dx + dz * dz < 1.3) return true;
     }
@@ -3013,8 +2986,7 @@ function buildLandmarks(track) {
     });
   }
 
-  // ---- 9LAT2: a brick classroom block with its name on the roof. In the
-  // "Race to 9LAT2" mode the pad outside its door is the finish. ----
+  // ---- 9LAT2: a brick classroom block with its name on the roof ----
   if (S.lat9) {
     const st = S.lat9, lim = track.limit;
     const g = start(st, Math.atan2(lim.x - st.x, lim.z - st.z)); // front door faces the middle of the map
@@ -3038,13 +3010,8 @@ function buildLandmarks(track) {
     for (const x of [-4.4, 4.4]) box(g, 0.25, 2.2, 0.25, 0x3b4250, x, 8.3, 0);
     for (const x of [-7, 7]) { box(g, 2.6, 0.2, 0.7, 0x7a4a2a, x, 0.55, 8); box(g, 2.2, 0.5, 0.2, 0x5a6372, x, 0.25, 8); }
     rect(g, 0, 0, 20, 11);
-    const [gx, gz] = g.userData.w(0, 13);
-    track.goal = { x: gx, z: gz, y: st.y, r: 5.5 };
-    // finish pad and a beam of light you can steer by, shown only in that mode
-    const fx = new THREE.Group(); fx.position.set(0, 0, 13); g.add(fx); fx.userData.dyn = true;
-    const pad = new THREE.Mesh(new THREE.RingGeometry(3.6, 5.5, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd23f })); pad.position.y = 0.12; fx.add(pad);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 160, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, fog: false })); beam.position.y = 80; fx.add(beam);
-    anim.push((t) => { fx.visible = app.mode === 'dash' && inRace(); beam.material.opacity = 0.26 + Math.sin(t * 3) * 0.08; });
+    // (Race to 9LAT2 finished on a pad in front of the door, under a beam of light. The mode is gone: the owner binned
+    // it so that the gaps left in the barriers for it could be closed. The building stays, a landmark like the rest.)
   }
 
   // ---- fairground: big wheel, carousel, big top, stalls ----
@@ -7073,10 +7040,7 @@ function stepLocal(car, dt, canDrive) {
   car.offTrackTimer = onTrack ? 0 : car.offTrackTimer + dt;
 
   // ---- checkpoints & laps ----
-  const goal = app.track.goal;
-  if (app.mode === 'dash') {
-    if (goal && app.phase === 'racing' && !app.finished && (car.pos.x - goal.x) ** 2 + (car.pos.z - goal.z) ** 2 < goal.r * goal.r) finishRace();
-  } else if (loc && app.phase === 'racing' && !app.finished) {
+  if (loc && app.phase === 'racing' && !app.finished) {
     const N = app.track.N;
     const d = (car.idx - car.lastIdx + N) % N;
     // A gate counts when you go through it: between its posts, or just
@@ -7467,7 +7431,7 @@ function handle(msg) {
       else if (msg.place === 1) raceToast(`${msg.name} set a new track record: ${fmtTime(msg.time)}`, 3000);
       break;
     }
-    case 'results': showResults(msg.results, !!msg.quali, msg.mode === 'dash'); break;
+    case 'results': showResults(msg.results, !!msg.quali); break;
   }
 }
 
@@ -7480,7 +7444,7 @@ function beginRace(msg) {
   app.laps = msg.laps;
   app.finished = false;
   app.spectate = !!msg.spectate;
-  app.mode = msg.mode === 'quali' ? 'quali' : msg.mode === 'dash' && app.track?.goal !== undefined ? 'dash' : 'race';
+  app.mode = msg.mode === 'quali' ? 'quali' : 'race';
   app.myPlace = 0;
   app.bests = new Map();
   app.myLaps = [];
@@ -7489,7 +7453,6 @@ function beginRace(msg) {
   app.joinedRaceAt = performance.now();
   $('#hud-time-label').textContent = app.mode === 'quali' ? 'Lap time' : 'Time';
   if (worldStale(msg.trackId, msg.car)) buildWorld(msg.trackId, msg.car || 'open');
-  setGates(app.mode === 'dash'); // (the side streets' gates: shut, but for Race to 9LAT2)
   setCarClass(msg.car);
   clearCars();
   // A new race: everyone in the room is in it. (Only someone joining part-way
@@ -7511,11 +7474,6 @@ function beginRace(msg) {
   showScreen('race');
   $('#results').classList.add('hidden');
   $('#hud-laps').textContent = app.mode === 'quali' ? '∞' : app.laps;
-  const dash = app.mode === 'dash';
-  $('#hud-lap-label').textContent = dash ? 'To go' : 'Lap';
-  $('#hud-laps').parentElement.style.display = dash ? 'none' : '';
-  $('#dash-nav').classList.toggle('hidden', !dash);
-  if (dash) raceToast('Race to 9LAT2 — follow the arrow, first one there wins', 4000);
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
   if (app.mode === 'quali') raceToast(`Polytrack mode: rolling start, your lap starts at the line!${app.bind.restart.length ? ` ${keyOf('restart')} restarts your run.` : ''}`, 4000);
   $('#sectors').classList.toggle('hidden', app.mode !== 'quali');
@@ -7673,11 +7631,11 @@ function raceStartPerf() {
   return performance.now() - (Date.now() - app.startAt);
 }
 
-function showResults(results, quali, dash) {
+function showResults(results, quali) {
   app.phase = 'results';
   app.finished = true;
   if (quali) app.finishTime = 0;
-  $('#results-title').textContent = quali ? 'Polytrack mode — best laps' : dash ? 'Race to 9LAT2 — results' : 'Race results';
+  $('#results-title').textContent = quali ? 'Polytrack mode — best laps' : 'Race results';
   $('#btn-endq').classList.add('hidden');
   const list = $('#results-list');
   list.innerHTML = '';
@@ -7701,7 +7659,7 @@ function showResults(results, quali, dash) {
   resultsButtons();
   // after a race: the top three on the podium first, then the results
   const podiumTop = quali ? [] : results.filter(r => r.time != null).slice(0, 3);
-  if (podiumTop.length) startPodium(podiumTop, dash, () => $('#results').classList.remove('hidden'));
+  if (podiumTop.length) startPodium(podiumTop, () => $('#results').classList.remove('hidden'));
   else $('#results').classList.remove('hidden');
 }
 
@@ -7738,7 +7696,7 @@ function podiumDrumroll(dur) {
   const stop = () => { if (stopped) return; stopped = true; try { g.gain.cancelScheduledValues(c.currentTime); g.gain.setTargetAtTime(0, c.currentTime, 0.03); src.stop(c.currentTime + 0.2); lfo.stop(c.currentTime + 0.2); } catch {} };
   return { stop };
 }
-function startPodium(top, dash, done) {
+function startPodium(top, done) {
   endPodium(false);
   const T = app.track, step = T.length / T.N, s = T.samples[Math.round(20 / step) % T.N];
   const head = Math.atan2(s.th.x, s.th.z);
@@ -7796,7 +7754,7 @@ function startPodium(top, dash, done) {
   window.addEventListener('keydown', skip, true);
   window.addEventListener('pointerdown', skip, true);
   const dur = (winAt + 6.5) * 1000;
-  podium = { g, head, x: s.p.x, y: s.p.y, z: s.p.z, t0: performance.now(), done, skip, cars, blocks, beats, keys, winAt, dash, top,
+  podium = { g, head, x: s.p.x, y: s.p.y, z: s.p.z, t0: performance.now(), done, skip, cars, blocks, beats, keys, winAt, top,
     cg, P, V, ph, n, confetti, fireworks, night, shake: 0, drum: podiumDrumroll(winAt), timer: setTimeout(() => endPodium(true), dur) };
 }
 function podiumTitle(text) {
@@ -7818,7 +7776,7 @@ function podiumLand(b) {
   setTimeout(() => beep(1047, 1.3, 0.13), 320);
   p.shake = 1;
   const fl = $('#podium-flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
-  podiumTitle(r.id === app.myId ? (p.dash ? 'You got to 9LAT2 first!' : 'You win!') : `${r.name} ${p.dash ? 'got to 9LAT2 first!' : 'wins!'}`);
+  podiumTitle(r.id === app.myId ? 'You win!' : `${r.name} wins!`);
   // the confetti cannon goes off
   const { P, V, n } = p;
   for (let i = 0; i < n; i++) {
@@ -7957,7 +7915,6 @@ function goHome() {
   $('#results').classList.add('hidden');
   $('#lights').classList.add('hidden');
   $('#countdown').classList.add('hidden');
-  $('#dash-nav').classList.add('hidden');
   $('#gate-nav').classList.add('hidden');
   app.phase = 'home';
   app.room = null;
@@ -8155,7 +8112,6 @@ function wireUI() {
   }));
   $('#btn-start').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'race' }); });
   $('#btn-quali').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'quali' }); });
-  $('#btn-dash').addEventListener('click', () => { initAudio(); send({ t: 'start', mode: 'dash' }); });
   // what's new: it opens by itself when someone comes back after an update,
   // once per update, with what's new since they last looked marked New.
   // Someone here for the first time starts up to date.
@@ -8322,15 +8278,6 @@ function standingsOrder() {
     const c = app.cars.get(p.id);
     entries.push({ id: p.id, name: p.name, color: p.color, finished: !!c?.finished, place: c?.place || 0, lap: c?.lap || 1, key: c ? raceKey(c.lap, c.cp, Math.round(c.pr * N) % N) : -N, me: false });
   }
-  if (app.mode === 'dash' && app.track.goal) {
-    // order by how far each car still has to go
-    const g = app.track.goal;
-    for (const e of entries) {
-      const c = e.me ? null : app.cars.get(e.id);
-      e.togo = e.me ? Math.hypot(app.local.pos.x - g.x, app.local.pos.z - g.z) : c?.shown ? Math.hypot(c.sx - g.x, c.sz - g.z) : 99999;
-      e.key = -e.togo;
-    }
-  }
   if (app.mode === 'quali') {
     for (const e of entries) { e.best = e.me ? (app.bestLap || null) : (app.bests?.get(e.id) ?? null); e.finished = false; }
     return entries.sort((a, b) => (a.best ?? Infinity) - (b.best ?? Infinity));
@@ -8387,21 +8334,15 @@ function updateHud(now) {
     const t = app.mode === 'quali' ? (car.armed || !car.lapStart ? 0 : Math.max(0, now - car.lapStart)) : app.finished && !app.spectate ? app.finishTime : Math.max(0, now - raceStartPerf());
     setText('#hud-time', fmtTime(t));
   }
-  const goal = app.mode === 'dash' ? app.track.goal : null;
-  if (goal) {
-    const dx = goal.x - car.pos.x, dz = goal.z - car.pos.z, d = Math.round(Math.hypot(dx, dz));
-    setText('#hud-lap', d + 'm');
-    setText('#dash-dist', d + ' m');
-    $('#dash-arrow').style.transform = `rotate(${(-(Math.atan2(dx, dz) - car.h)).toFixed(2)}rad)`; // points where 9LAT2 is, relative to the nose
-  } else setText('#hud-lap', app.mode === 'quali' ? car.lap : Math.min(car.lap, app.laps));
-  const missed = !!car.missedGate && app.phase === 'racing' && !app.finished && app.mode !== 'dash';
+  setText('#hud-lap', app.mode === 'quali' ? car.lap : Math.min(car.lap, app.laps));
+  const missed = !!car.missedGate && app.phase === 'racing' && !app.finished;
   $('#gate-nav').classList.toggle('hidden', !missed);
   if (missed) {
     const g = app.track.samples[app.track.cps[car.nextCp]].p, dx = g.x - car.pos.x, dz = g.z - car.pos.z;
     $('#gate-arrow').style.transform = `rotate(${(-(Math.atan2(dx, dz) - car.h)).toFixed(2)}rad)`; // points at the gate you missed
     setText('#gate-dist', Math.round(Math.hypot(dx, dz)) + ' m');
   }
-  $('#respawn-tip').classList.toggle('hidden', car.onTrack || missed || app.phase === 'countdown' || app.mode === 'dash');
+  $('#respawn-tip').classList.toggle('hidden', car.onTrack || missed || app.phase === 'countdown');
 
   if (++hudTick % 6 === 0) {
     const order = standingsOrder();
@@ -8414,7 +8355,7 @@ function updateHud(now) {
     // a big room: the top eight, then you
     const shown = order.map((e, i) => [e, i]).filter(([e, i]) => order.length <= 10 || i < 8 || e.me);
     const html = shown.map(([e, i]) =>
-      `<div class="standing${e.me ? ' me' : ''}${e.finished ? ' done' : ''}"><span class="n">${i + 1}</span><span class="dot" style="background:${COLOR_CSS[e.color]}"></span><span>${esc(e.name)}</span><span class="lap">${app.mode === 'quali' ? (e.best ? fmtTime(e.best) : '--') : e.finished ? 'FIN' : app.mode === 'dash' ? (e.togo < 99999 ? Math.round(e.togo) + 'm' : '--') : 'L' + Math.min(e.lap, app.laps)}</span></div>`
+      `<div class="standing${e.me ? ' me' : ''}${e.finished ? ' done' : ''}"><span class="n">${i + 1}</span><span class="dot" style="background:${COLOR_CSS[e.color]}"></span><span>${esc(e.name)}</span><span class="lap">${app.mode === 'quali' ? (e.best ? fmtTime(e.best) : '--') : e.finished ? 'FIN' : 'L' + Math.min(e.lap, app.laps)}</span></div>`
     ).join('');
     if (html !== st._html) { st._html = html; st.innerHTML = html; }
   }
@@ -8449,13 +8390,8 @@ function drawMinimap() {
     mmCtx.beginPath(); mmCtx.arc(x * sc + ox, z * sc + oz, r, 0, Math.PI * 2);
     mmCtx.fillStyle = css; mmCtx.fill(); mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2; mmCtx.stroke();
   };
-  if (app.mode === 'dash' && app.track.goal && inRace()) {
-    const g = app.track.goal, x = clamp(g.x * sc + ox, 8, mm.width - 8), y = clamp(g.z * sc + oz, 8, mm.height - 8);
-    mmCtx.fillStyle = '#ffd23f'; mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2;
-    mmCtx.fillRect(x - 6, y - 6, 12, 12); mmCtx.strokeRect(x - 6, y - 6, 12, 12);
-  }
   // your next gate: an orange bar across the track
-  if (app.local && app.mode !== 'dash' && app.phase === 'racing' && !app.finished) {
+  if (app.local && app.phase === 'racing' && !app.finished) {
     const s = app.track.samples[app.track.cps[app.local.nextCp]], hw = app.track.hw + 5;
     mmCtx.beginPath();
     mmCtx.moveTo((s.p.x + s.left.x * hw) * sc + ox, (s.p.z + s.left.z * hw) * sc + oz);
