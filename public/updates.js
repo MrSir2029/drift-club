@@ -8,6 +8,13 @@
 // the button shows a dot until they've seen it.
 export const UPDATES = [
   {
+    v: '4.2', date: '26 Nov 2026', title: 'Your best lap, kept',
+    items: [
+      'Polytrack mode now starts with your own best lap on that track: your best ever time is on the screen, and the ghost you race is that lap. It is kept between visits, on this device, for each track and car. Beat it and the new lap takes over.',
+      'The version number is back in the corner of the home screen, on the What\'s new button.',
+    ],
+  },
+  {
     v: '4.1', date: '26 Nov 2026', title: 'Racing lines are private again',
     items: [
       'You can no longer see other players\' racing lines on the leaderboard, or race the record holder\'s ghost. People were leaking each other\'s methods. In Polytrack mode you still race the ghost of your own best lap.',

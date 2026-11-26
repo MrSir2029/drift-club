@@ -134,7 +134,10 @@
   off, because "people leak the methods". The server ticks no lap as
   having a line and hands none out (`server/core.js`); the buttons and the
   record ghost's switch hide themselves. Don't bring them back unasked.
-  Your own best lap's ghost in Polytrack stays.
+  Your own best lap's ghost in Polytrack stays, and from 4.2 it is your
+  best ever on that track, kept in the browser (`loadOwnBest` in `game.js`:
+  "start off polytrack mode with their own best times for that track all
+  time not just in that session").
 - **Race to 9LAT2 mode is gone** (3.73): the owner had it binned, "so we
   can patch the holes" it needed left in the barriers of the walled tracks.
   Don't bring it back, and don't leave an opening in a barrier or fence for
@@ -160,10 +163,10 @@
   at the owner's request ("Remove them pls"): don't put them back.
 - The home screen opens on Rose Bay (`HOME_TRACK` in `game.js`): the owner
   asked for it behind the name and car colour panel.
-  That panel is 520px wide, with the game's version beside the DRIFT CLUB
-  name (26px: the owner asked for it bigger than it first was) and not on
-  the What's new button (the owner: "Make this wider
-  and put the version next to the name, remove it from the what's new").
+  That panel is 520px wide. The game's version is on the What's new button
+  in the corner of the home screen: it was moved beside the DRIFT CLUB name
+  in 3.60 at the owner's request, and he asked for it back ("put the version
+  number back in the corner").
 - The owner wants panels plain: no small print or hint paragraphs ("a lot
   of the grey text at the bottom and top is irrelevant"). The leaderboard
   opens on the Championship from the home screen, and on the picked track's
