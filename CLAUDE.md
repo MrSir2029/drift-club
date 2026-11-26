@@ -82,8 +82,15 @@
     InterContinental, round the chicane to the start straight's ("put this
     wired fence in the other side").
 - **What's new** (`public/updates.js`): one entry per version, newest first.
-  Every change gets its own version and its own entry (the owner asked for
-  this; the entries before 3.17 are a day each). Player-facing wording, and
+  **One version per merge request.** Everything that ships together in one
+  merge request is one version with one entry, its changes as the entry's
+  items. The owner, 26 Nov 2026: "when I said 1 update per version I meant
+  don't condense all changes from multiple batches into one, not to
+  decompress every patch into one, just put things together by merge
+  request." So don't fold several merge requests into one entry, and don't
+  give every small change in a merge request its own version number (3.17
+  to 4.1 were split that finely; the entries before 3.17 are a day each).
+  Player-facing wording, and
   say whose idea it was only by their in-game name. The top entry is also
   the game's version: the server tells tabs running an older one to refresh
   (the owner asked: "remind people to refresh the tab for new updates"), so
