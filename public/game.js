@@ -5117,9 +5117,10 @@ function buildRoseBay(track, rnd, randIn) {
       barrier(pi + half, T1, -1, { from: PL });
     } else barrier(CH, T1, -1);
     run(153, 288, 1);                                       // up Heartbreak Hill, from the end of the harbour wall to the rail round the corner at the top
-    // along the top: the inside whole, the outside in three lengths with two ways through (Race to 9LAT2 leaves the road here, and there's the fairground beyond)
+    // along the top, both sides whole. (The outside was in three lengths, with two ways through 12 m wide for Race
+    // to 9LAT2 to leave the road by. That mode is gone, and the owner took them for holes: "please fix these two big ones".)
     barrier(322, 476, -1);
-    run(309, 388, 1); barrier(396, 446, 1); run(454, 487, 1); // (from that corner's rail, and on to the first hairpin's)
+    run(309, 487, 1); // (from that corner's rail, and on to the first hairpin's)
     // the shops' street, both footpaths, and the shops' side of the hill down, in to the tunnel's wall
     run(609, 768, -1, { crowd: 'path', deep: FRONT - 2.6 }); run(622, 771, 1, { crowd: 'path', deep: FRONT - 2.6 }); // (from the second hairpin's rail; to the rail round the corner at the far end)
     barrier(806, t0, -1, { to: TUN - TH / 2 - 0.15, crowd: 'path', deep: hw + 6.4 }); // (15 cm in from the wall's own line, so its wires don't lie in the face of the portal's post)

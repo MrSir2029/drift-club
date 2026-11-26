@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.74', date: '26 Nov 2026', title: 'No holes along Rose Bay\'s top straight',
+    items: [
+      'At Rose Bay the barrier along the outside of the top straight is one unbroken length. It had two wide openings onto the grass. The crowd stands on steps behind where they were.',
+    ],
+  },
+  {
     v: '3.73', date: '26 Nov 2026', title: 'Race to 9LAT2 is gone',
     items: [
       'Race to 9LAT2 mode has been taken out. It needed gaps left in the barriers for cars to leave the circuit by, and those gaps are being closed. The 9LAT2 building is still out there.',
