@@ -8,6 +8,13 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.7', date: '27 Nov 2026', title: 'Sponsors in long rows',
+    items: [
+      'The sponsors on the barriers and walls now come in long rows: one name six times or more along a stretch, as on the barriers at a grand prix, where it used to come three times. The gates over the track keep their three.',
+      'The sponsors\' boards beside the tracks stay gone: the only advertising is on the barriers, the walls and the gates.',
+    ],
+  },
+  {
     v: '4.6', date: '26 Nov 2026', title: 'A tidier home screen',
     items: [
       'The home panel is narrower again, now that the version number is back in the corner.',

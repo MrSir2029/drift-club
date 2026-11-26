@@ -57,20 +57,23 @@
     at night they still glow. Rose Bay's race barriers have one every 80 m.
   - On a race barrier (Westfield's concrete ones, Rose Bay's sandstone ones)
     a sponsor is painted along the barrier, not hung on it as a banner: the
-    face in the sponsor's colours with the name three times and plain paint
-    between (`paintBarrier`; "the barrier adds should be in groups of 3 not
-    2"). The owner sent a picture of a grand prix
-    barrier, yellow with the name along it: "can the barrier sponsors look
-    somewhat like this?" Other walls still carry single banners.
+    face in the sponsor's colours with the name all the way along it and a
+    little plain paint between (`paintBarrier`). The owner sent a picture of
+    a grand prix barrier, yellow with the name along it: "can the barrier
+    sponsors look somewhat like this?"; then "the barrier adds should be in
+    groups of 3 not 2"; then, in 4.7, "long rows" (below).
   - No billboards (4.4): the owner had the sponsors' posters on boards beside
     the tracks taken down ("please remove the signs with sponsors on side of
     track"), and the ones on Sydney CBD's buildings with them. Don't put
     them back. Sponsors go in two places only: "just have them on the
     barriers and those big overhang things that go over the track", "ideally
     in rows of 3 or more". So each checkpoint gate carries one sponsor's name
-    three times across its top (4.5), and every wall or barrier ad is the
-    same name three times in a row, with a longer plain stretch between rows
-    (about as much advertising as before, not more). No single banners.
+    three times across its top (4.5), and no wall or barrier carries a
+    single banner. From 4.7 the rows are long ("keep all the advertisements
+    on barriers but have them in long rows, you can add more if you need"):
+    one name six times or more along a stretch (six on the walls, nine down
+    Oxford Street's barriers), then a plain stretch about as long. Don't go
+    back to threes or singles, and don't cover a barrier end to end.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
     not illuminated"): they take the scene's light, dim at night.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is
