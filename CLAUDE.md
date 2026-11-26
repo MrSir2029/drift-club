@@ -50,8 +50,9 @@
     at night they still glow. Rose Bay's race barriers have one every 80 m.
   - On a race barrier (Westfield's concrete ones, Rose Bay's sandstone ones)
     a sponsor is painted along the barrier, not hung on it as a banner: the
-    face in the sponsor's colours with the name repeated and plain paint
-    between (`paintBarrier`). The owner sent a picture of a grand prix
+    face in the sponsor's colours with the name three times and plain paint
+    between (`paintBarrier`; "the barrier adds should be in groups of 3 not
+    2"). The owner sent a picture of a grand prix
     barrier, yellow with the name along it: "can the barrier sponsors look
     somewhat like this?" Other walls still carry single banners.
   - Signs are single sided (the owner asked): a billboard has one poster, on
@@ -101,7 +102,10 @@
   at Westfield ("seems out of place"): a park stands on its spot. Parked cars stay back from
   the road and must look like cars (the owner called the boxy ones "buns").
   The escalators are proper ones, with steps, balustrades and landings: a
-  bare sloping slab read as "slanted for no reason".
+  bare sloping slab read as "slanted for no reason". Both car park ramps
+  have a concrete parapet down each edge from their own rails to the foot,
+  joined to what stands there ("Fence here": a car ran off the side of the
+  east ramp).
 - No tyre stacks on corners: the owner had them taken out on every track
   ("the little black pole things on all the corners"). The rails and their
   posts stay.

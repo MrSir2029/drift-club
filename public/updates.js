@@ -8,6 +8,18 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.79', date: '26 Nov 2026', title: 'Sponsors on the barriers in threes',
+    items: [
+      'On the painted race barriers at Rose Bay and Westfield each sponsor\'s name now comes three times in a row. It came twice on most of them.',
+    ],
+  },
+  {
+    v: '3.78', date: '26 Nov 2026', title: 'A wall down Westfield\'s car park ramp',
+    items: [
+      'At Westfield the ramp down from the car park roof has a concrete wall down both edges to the bottom. On one side it meets the rail round the corner, and on the other it carries on round the corner to the race barrier along Oxford Street. A car could run off the side of the ramp there.',
+    ],
+  },
+  {
     v: '3.77', date: '26 Nov 2026', title: 'Proper escalators at Westfield',
     items: [
       'The escalators in the mall are escalators now: steps going up between glass sides with handrails, a landing at the bottom, and a landing at the top where the gallery comes out to meet it. Each one was a bare sloping slab.',
