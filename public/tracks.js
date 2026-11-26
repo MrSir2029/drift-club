@@ -149,6 +149,9 @@ export const TRACKS = [
     streets: [[-700, -20, 700, 20], [-330, 215, -50, 420]],
     // the car park's flat roof, as [x0, z0, x1, z1, height]: cars up there drive on it
     roofs: [[-176, 50, 146, 160, 9.7], [-205, 160, 175, 215, 9.7]],
+    // a sponsor's bridge over each carriageway of Oxford Street, side by side so the two read as one across the
+    // whole street, as [x, z] (the nearest point of the lap to each): the usual rules find no room at Westfield
+    sponsorBridges: [[99, 13], [99, -13]],
     points: [
       [-60, 10, 190], [-20, 10, 190], [60, 10, 190], [118, 10, 190], [138, 10, 190], [146.4, 10, 188.3], [153.6, 10, 183.6], [158.3, 10, 176.4],
       [160, 10, 168], [160, 10, 160], [160, 9.3, 150], [160, 5, 100], [160, 0.7, 50], [160, 0, 40],

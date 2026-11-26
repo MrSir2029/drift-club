@@ -74,6 +74,12 @@
     one name six times or more along a stretch (six on the walls, nine down
     Oxford Street's barriers), then a plain stretch about as long. Don't go
     back to threes or singles, and don't cover a barrier end to end.
+  - Sponsor bridges (4.8): "you can have some that hang over the track like
+    irl". Two a lap on every track (`buildSponsorBridges` in `game.js`): a
+    steel gantry with one name three times across, facing the cars coming,
+    away from the start line and the gates. Its legs aren't solid (like the
+    gates'). Westfield's two are side by side over Oxford Street
+    (`sponsorBridges` in `tracks.js`). Two is "some": ask before adding more.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
     not illuminated"): they take the scene's light, dim at night.
   - The owner likes the sandstone walls at Rose Bay: a wall in that style is

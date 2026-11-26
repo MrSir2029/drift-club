@@ -505,7 +505,17 @@ as fit). At Westfield that is the whole of every other length on the roof
 and 54 m in every 96 m down Oxford Street; at Rose Bay, up to 44 m with the
 name six times, every 80 m. The banners on the other walls come six of one
 name in a row (Sydney CBD's walls, the pit wall, Westfield's median, Rose
-Bay's two sandstone walls), with a plain stretch about as long between rows. By day the signs
+Bay's two sandstone walls), with a plain stretch about as long between rows.
+From 4.8 each track also has two sponsor bridges (`buildSponsorBridges`): a
+steel gantry over the road with one name three times across it, as over the
+straights at a grand prix. They go up after everything else, where the road
+runs straight or nearly, at least 55 m from the start line and every gate,
+a third of a lap from each other, and clear of the track's `blocks`, of
+anything that has claimed the ground, and of the circuit's other parts; they
+claim no ground themselves, so nothing else moves for them, and their legs
+aren't solid. A track can name its own spots instead, as `sponsorBridges:
+[[x, z], …]` in `tracks.js` (the nearest point of the lap to each):
+Westfield does, for Oxford Street, where the rules find no room. By day the signs
 are lit and shadowed by the scene like the
 walls they hang on (3.50; lit from inside they looked stuck on), and at night
 they glow. Nothing is a picture: the boards are drawn in the browser, in
