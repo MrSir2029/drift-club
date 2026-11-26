@@ -211,7 +211,7 @@ you get without picking one, isn't in it. It's all worked out in the browser
 from the boards everyone already has (`overallStandings` in `game.js`), so the
 server doesn't know about it.
 
-**The cars' colours** are liveries (3.81; the owner: "have every livery look
+**The cars' colours** are liveries (4.0; the owner: "have every livery look
 like famous f1 team"). Each of the eleven a player can pick is painted in a
 famous Formula 1 team's colours (`TEAM` in `game.js`, beside the paint
 itself in `paintLivery`): red with black and white (Ferrari), papaya into

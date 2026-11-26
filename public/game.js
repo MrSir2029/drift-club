@@ -11,7 +11,7 @@ const VISITED_BEFORE = (() => { try { return localStorage.getItem('dc-defaults')
 // constants
 // ---------------------------------------------------------------------------
 // Each is the main colour of a livery in a famous Formula 1 team's colours (TEAM, below): red, papaya, yellow, bright
-// green, silver, blue, navy, pink, white, black, (brown: not offered), sky blue. Until 3.81 they were plain colours,
+// green, silver, blue, navy, pink, white, black, (brown: not offered), sky blue. Until 4.0 they were plain colours,
 // with teal where the silver is and purple where the navy is.
 const CAR_COLORS = [0xe10600, 0xff8000, 0xffd200, 0x3fd94a, 0xb8c0c8, 0x1463d8, 0x1b2757, 0xff87bc, 0xf5f5f0, 0x15181f, 0x8b5a2b, 0x7cc7f2, 0x13806a, 0xf0b02e]; // the last two: the secret racing green livery (LIVERY_HASH), and the Drift King's gold (KING)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
