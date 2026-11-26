@@ -16,6 +16,10 @@
   exceptions, all at the owner's request:
   - Shop signs at Rose Bay and Westfield, and the hotel over Rose Bay's tunnel
     (The InterContinental): real local names in plain lettering, never logos.
+    At Westfield every shop has a real name, the same ones repeated: the
+    owner had the made-up ones taken out ("remove all the stores in
+    Westfield with names you made up and just add duplicates of the other
+    real ones"). Don't add made-up shop names there.
   - The Maccas on Sydney CBD, just past the start (`buildMaccas` in
     `game.js`): the golden arches, drawn in code like the sponsors' boards
     (never a picture file), "Macca's" in plain lettering, and Jago serving at
