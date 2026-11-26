@@ -8,6 +8,14 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.8', date: '27 Nov 2026', title: 'Sponsor bridges over the track',
+    items: [
+      'Every track now has two sponsor bridges over the road, as at a grand prix: a steel gantry with one sponsor\'s name three times across it, facing you as you come up to it.',
+      'At Westfield the two stand side by side over Oxford Street, one over each carriageway.',
+      'You can drive through a bridge\'s legs, as with the checkpoint gates.',
+    ],
+  },
+  {
     v: '4.7', date: '27 Nov 2026', title: 'Sponsors in long rows',
     items: [
       'The sponsors on the barriers and walls now come in long rows: one name six times or more along a stretch, as on the barriers at a grand prix, where it used to come three times. The gates over the track keep their three.',
