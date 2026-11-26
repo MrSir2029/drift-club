@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '3.71', date: '26 Nov 2026', title: 'Side streets at Sydney CBD',
+    items: [
+      'The two openings in Sydney CBD\'s walls are proper side streets now: asphalt with lines, and street lamps lighting them. Nothing was drawn in them before and no lamp reached them, so from the driver\'s seat the first one, on the left just past the bridge, looked like a stretch of wall painted black.',
+    ],
+  },
+  {
     v: '3.70', date: '26 Nov 2026', title: 'The CINEMA sign comes down',
     items: [
       'Sydney CBD\'s pink CINEMA neon signs are gone. The one past the start had a white line across it: a lit window behind the sign, with its blind half down.',
