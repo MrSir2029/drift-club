@@ -501,11 +501,15 @@ the name all the way along it and a little plain paint between, as on the
 barriers at a grand prix (the owner sent a picture of one and asked for the
 barriers' sponsors to look like it; then, in 3.79, for "groups of 3 not 2";
 then, in 4.7, for "long rows": a length now carries the name as many times
-as fit). At Westfield that is the whole of every other length on the roof
-and 54 m in every 96 m down Oxford Street; at Rose Bay, up to 44 m with the
-name six times, every 80 m. The banners on the other walls come six of one
-name in a row (Sydney CBD's walls, the pit wall, Westfield's median, Rose
-Bay's two sandstone walls), with a plain stretch about as long between rows.
+as fit). The banners on the other walls come six of one name in a row
+(Sydney CBD's walls, the pit wall, Rose Bay's two sandstone walls). From
+4.11 the rows are far apart ("don't have so many sponsors close together"):
+on Sydney CBD's walls a row in every 135 m on a side, the two sides out of
+step; on Rose Bay's barriers up to 44 m in every 160 m on a side, the sides
+out of step round the lap, and six lengths or bays in every 24 on its two
+walls; at Westfield one 30 m row on each of Oxford Street's barriers (at
+the hairpin end), every fourth length on the roof, and none on the median
+or the crossing.
 From 4.8 each track also has two sponsor bridges (`buildSponsorBridges`): a
 steel gantry over the road with one name three times across it, as over the
 straights at a grand prix. They go up after everything else, where the road
@@ -518,10 +522,12 @@ aren't solid. A track can name its own spots instead, as `sponsorBridges:
 Westfield does, for Oxford Street, where the rules find no room. The checkpoint
 gates carry no sponsor (they did from 4.5 to 4.9, and the owner asked why),
 and from 4.10 a bridge stands at least 170 m from the start line and never
-under a cable strung over the road (Thredbo's chairlift). By day the signs
+under a cable strung over the road (Thredbo's chairlift). From 4.11 it also
+stands as far from the rows on the walls and barriers as the track allows
+(40 m if it can be had, then 25, then 12). By day the signs
 are lit and shadowed by the scene like the
-walls they hang on (3.50; lit from inside they looked stuck on), and at night
-they glow. Nothing is a picture: the boards are drawn in the browser, in
+walls they hang on (3.50; lit from inside they looked stuck on), by night as
+well (4.11: they glowed at night until the owner asked why). Nothing is a picture: the boards are drawn in the browser, in
 open-licence typefaces from `public/vendor/fonts`, onto two sheets that every
 poster and banner in the world shares (each sponsor's artwork kept apart on
 its sheet, and drawn a touch nearer than it is, so nothing flickers from far

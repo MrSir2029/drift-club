@@ -8,6 +8,15 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.11', date: '27 Nov 2026', title: 'Sponsors spread out',
+    items: [
+      'The sponsors\' rows on the walls and barriers are about half as many and much further apart, with the two sides of the road out of step, so you no longer pass several at once.',
+      'At Westfield the banners on the sides of Oxford Street\'s median and on the crossing\'s barriers are gone, and each barrier down Oxford Street carries one row.',
+      'The sponsor bridges keep clear of the rows on the barriers too.',
+      'At night the sponsors\' signs are no longer lit from inside: on Sydney CBD and Pinto Speedway they take the street lamps\' light like the walls they are on.',
+    ],
+  },
+  {
     v: '4.10', date: '27 Nov 2026', title: 'Sponsors off the checkpoints',
     items: [
       'The checkpoint gates carry no sponsor any more: every gate is plain again. Over the track, the sponsors are on their own bridges only.',

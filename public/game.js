@@ -1773,12 +1773,14 @@ function sponsorMat(kind, night) {
   if (!m) {
     // By day they take the light and the shadows of the place like the wall or the board they're on. They used to
     // be lit from inside whichever way they faced, and a sign glowing on a wall in the shade looked stuck on
-    // ("the sign sponsors feel way too intrusive and out of place"). At night they are still lit from inside,
-    // as a city's signs are. (Either way they're drawn as if a touch nearer than they are: from far off, the
+    // ("the sign sponsors feel way too intrusive and out of place"). At night they were still lit from inside,
+    // as a city's signs are, until the owner asked "why are they illuminated in cbd": now they take the night's
+    // light too, like the walls they are on, and are read by the street lamps.
+    // (Either way they're drawn as if a touch nearer than they are: from far off, the
     // frame or wall a hand's width behind one can't be told from it by depth, and the two flickered through
     // each other.)
     const common = { map: sponsorSheets?.[kind] ?? null, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 };
-    m = night ? new THREE.MeshBasicMaterial({ ...common, color: kind === 'poster' ? 0xc4c4c4 : 0x9c9c9c }) : new THREE.MeshLambertMaterial({ ...common, color: SPONSOR_TONE });
+    m = new THREE.MeshLambertMaterial({ ...common, color: SPONSOR_TONE });
     m.userData.keep = true; m.userData.kind = kind; // shared by every track: never disposed with one
     sponsorMats.set(key, m);
   }
@@ -1876,7 +1878,11 @@ function buildSponsorBridges(track) {
   for (let i = 0; i < N; i += 2) { const back = straight(i, -1), on = straight(i, 1); if (back >= n(28) && on >= n(8) && free(i)) spots.push([Math.min(back, n(90)) + Math.min(on, n(40)), i]); }
   spots.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
   const picked = (track.def.sponsorBridges || []).map(([x, z]) => { let best = 0, bd = Infinity; samples.forEach((q, i) => { const d = Math.hypot(q.p.x - x, q.p.z - z); if (d < bd) { bd = d; best = i; } }); return best; });
-  for (const far of [N / 3, N / 5]) for (const [, i] of spots) { if (picked.length < 2 && picked.every((j) => apart(i, j) > far)) picked.push(i); } // (a third of a lap apart; a fifth, where that leaves only one)
+  // (a third of a lap apart, or a fifth where that leaves only one; and as far from the sponsors painted and hung
+  // on the walls and barriers as the track allows, 40 m if it can be had: "don't have so many sponsors close together")
+  const B = sponsorQuads.banner.pos, room = (i) => { const q = samples[i].p; let best = Infinity; for (let k = 0; k < B.length; k += 18) best = Math.min(best, Math.hypot(B[k] - q.x, B[k + 2] - q.z)); return best; };
+  const clear = new Map(spots.map(([, i]) => [i, room(i)]));
+  for (const least of [40, 25, 12, 0]) for (const far of [N / 3, N / 5]) for (const [, i] of spots) { if (picked.length < 2 && clear.get(i) >= least && picked.every((j) => apart(i, j) > far)) picked.push(i); }
   track.sponsorBridges = picked.sort((a, b) => a - b);
   const steel = new THREE.MeshLambertMaterial({ color: 0x8d93a0, flatShading: true }), dark = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
   picked.forEach((i, k) => {
@@ -2373,10 +2379,11 @@ function buildStreetWalls(track) {
     // bunches up, on the outside it stretches: a banner there would come out squashed, cut short or pulled wide)
     const whole = (g0) => [0, 1, 2].every((j) => { const u = P[(g0 + j) % N], v = P[(g0 + j + 1) % N]; if (!u || !v) return false; const t = samples[u.i].th, run = (v.p.x - u.p.x) * t.x + (v.p.z - u.p.z) * t.z; return run > 1.05 && run < 2.1; });
     for (const [a, b] of links) {
-      // A long row: the name six times, 27 m of wall, in every 67 m; the two sides out of step. (The owner: "keep all the
-      // advertisements on barriers but have them in long rows", "you can add more". It was three in a row, and before
-      // that one banner at a time.) A name is left out where the wall bends too much to carry it whole.
-      { const shifted = a.i + (side > 0 ? 0 : 22), row = Math.floor(shifted / 45), kk = (shifted % 45) - 3, g0 = a.i - (((kk % 3) + 3) % 3);
+      // A long row: the name six times, 27 m of wall, in every 135 m; the two sides out of step, so a row comes up on
+      // one side or the other every 67 m. (The owner: "keep all the advertisements on barriers but have them in long
+      // rows"; then, with a row every 67 m on each side, "don't have so many sponsors close together". It was three
+      // in a row, and before that one banner at a time.) A name is left out where the wall bends too much to carry it.
+      { const shifted = a.i + (side > 0 ? 0 : 45), row = Math.floor(shifted / 90), kk = (shifted % 90) - 3, g0 = a.i - (((kk % 3) + 3) % 3);
         if (kk >= 0 && kk < 18 && g0 >= 0 && g0 + 3 <= N && (b.i - a.i + N) % N === 1 && whole(g0)) {
           const on = (q) => ({ x: q.p.x - (q.o.x / THICK) * 0.08, y: q.p.y, z: q.p.z - (q.o.z / THICK) * 0.08 }), c = samples[a.i].p;
           addBanner(row + (side > 0 ? 0 : 2), on(a), on(b), 0.14, 0.98, (kk % 3) / 3, (kk % 3 + 1) / 3, c.x, c.z);
@@ -4336,7 +4343,7 @@ function buildMall(track, rnd) {
       const zr = samples[0].p.z, FENCE = hw + 3.9, xl = samples[0].p.x, sx0 = xl + 15, sx1 = xl + 39; // (sx0 to sx1: the grandstands)
       for (const out of [-1, 1]) {
         const z = zr + out * FENCE, x0 = out > 0 ? rampW + 14 : xl - 93, x1 = out > 0 ? rampE - 10 : rampE - 25, n = Math.round((x1 - x0) / 36), step = (x1 - x0) / n;
-        for (let k = 0; k < n; k++) raceFence(x0 + k * step, x0 + (k + 1) * step, z, DECK, out, (k + (out > 0 ? 1 : 0)) % 2 ? -1 : k + (out > 0 ? 2 : 0)); // (a banner on every other length, the two sides out of step)
+        for (let k = 0; k < n; k++) raceFence(x0 + k * step, x0 + (k + 1) * step, z, DECK, out, (k + (out > 0 ? 3 : 1)) % 4 ? -1 : k + (out > 0 ? 2 : 0)); // (a sponsor on every fourth length, the two sides out of step: it was every other, and "so many sponsors close together")
         grandstand(sx0, sx1, z + out * 1.3, DECK, out);
         for (const [c0, c1] of [[x0 + 0.6, sx0 - 0.6], [sx1 + 0.6, x1 - 0.6]]) crowd(c0, c1, z + out * 0.9, z + out * 5.6, DECK + 0.02, Math.round((c1 - c0) * 0.5), out);
       }
@@ -4393,17 +4400,13 @@ function buildMall(track, rnd) {
     for (let x = X0 + 4; x < X1; x += 9) if ((x + 3.4 < R0 || x > R1) && roadGap(track, x, 0) > hw + 6) decal(x, -0.15, x + 3.4, 0.15, LINE, 0.08);
     for (let k = -5; k <= 5; k++) decal(-62.2, k * 2.2 - 0.6, -57.8, k * 2.2 + 0.6, LINE, 0.08); // the zebra crossing under the walkway
     decal(samples[i0].p.x - 34, B[3], samples[i0].p.x + 30, -WIDE - 6, C(0xe2dccb), 0.06); decal(samples[i1].p.x - 34, B[3], samples[i1].p.x + 34, -19, C(0xe2dccb), 0.06); // paving outside the doors (never under another strip: two that nearly touch flicker)
-    // the median: concrete sides (a proper barrier between cars going opposite ways, so it carries sponsors'
-    // banners), soil and shrubs on top, and lamps with an arm over each carriageway
+    // the median: concrete sides (a proper barrier between cars going opposite ways), soil and shrubs on top, and
+    // lamps with an arm over each carriageway
     {
       const { x0, x1, half, h } = MED, cx = (x0 + x1) / 2;
       box(world, x1 - x0, h, 2 * half, 0xd4d7dc, cx, h / 2, 0); box(world, x1 - x0 - 0.5, 0.14, 2 * half - 0.5, 0x6f8f52, cx, h + 0.03, 0);
       solidRect(x0, -half, x1, half, 0);
-      for (let k = 0; k < 6; k++) for (const sd of [1, -1]) { // two rows of three on each face (the same six banners, which hung one every 22 m), the two faces out of step
-        const x = (x0 + x1) / 2 + (sd > 0 ? -18 : 18) + (k - 2.5) * 5.2, z = sd * (half + 0.08); // (4.7: one long row of six, the two faces out of step)
-        if (x + 2.4 > x1) continue;
-        addBanner(sd > 0 ? 0 : 2, { x: x - 2.25, y: 0, z }, { x: x + 2.25, y: 0, z }, 0.14, 0.98, 0, 1, x, sd * street.LN);
-      }
+      // (no banners on its sides now: with the barriers' rows and the bridges, Oxford Street had "so many sponsors close together")
       for (let x = x0 + 9, k = 0; x < x1 - 4; x += 7, k++) { // shrubs, with a gap under the bridge
         if (Math.abs(x - BRIDGE.x) < BRIDGE.half + 2) continue;
         const m = add(world, new THREE.IcosahedronGeometry(1.1, 0), [0x3f9a4a, 0x4fae54, 0x3a8a44][k % 3], x, h + 0.75, ((k % 2) - 0.5) * 1.6); m.scale.y = 0.8;
@@ -4428,11 +4431,12 @@ function buildMall(track, rnd) {
       for (const w of walls) for (const [ex, ez] of [[w.ax, w.az], [w.bx, w.bz]]) if (ex < X0 - 2 && ex > X0 - 30 && Math.abs(ez + ZB) < 4 && Math.abs(w.y ?? 0) < 1.5 && (!rail || ex > rail[0])) rail = [ex, ez];
       for (const out of [-1, 1]) raceFence(X0, X1, out * ZB, 0, out);
       if (rail) raceFenceTo(rail[0], rail[1], X0, -ZB, 0, -1);
-      // a sponsor's stretch of the barrier, 54 m with the name nine times, in every 96 m; the two sides out of step
-      // (4.7: "long rows". It was 24 m with the name three times, on every other 36 m.)
-      for (const out of [-1, 1]) for (let r = 0, x = X0 + (out > 0 ? 0 : 48); x + 30 <= X1 - 2; x += 96, r++) {
-        const e = Math.min(x + 54, X1 - 2), z = out * (ZB - 0.33);
-        paintBarrier(r * 2 + (out > 0 ? 1 : 3), { x, y: 0, z }, { x: e, y: 0, z }, 0.02, 0.98, (x + e) / 2, z - out * 10);
+      // one sponsor's stretch of each barrier, 30 m with the name five times, at the hairpin end: well clear of the
+      // sponsor bridges at the other, and the median hides each from the cars going the other way. (4.7 had 54 m
+      // in every 96 m, and the owner: "don't have so many sponsors close together".)
+      for (const out of [-1, 1]) {
+        const x = X0 + 2, e = x + 30, z = out * (ZB - 0.33);
+        paintBarrier(out > 0 ? 1 : 3, { x, y: 0, z }, { x: e, y: 0, z }, 0.02, 0.98, (x + e) / 2, z - out * 10);
       }
       for (let k = 0, x = X0; x + 24 <= MED.x1 - 2; x += 36, k++) for (const out of [-1, 1]) {
         crowd(x + 0.6, x + 23.4, out * (WIDE + 1.2), out * (WIDE + 5.4), 0.09, 14, out, pillars);
@@ -4517,7 +4521,7 @@ function buildMall(track, rnd) {
       for (const sd of [1, -1]) { // +1: the side towards +x (the left, going up the ramp)
         const xf = cx + sd * FENCE;
         raceFenceTo(cx + sd * DOOR, zd + 0.25, xf, z0, 0, -sd, -1, 1.4); // in from the edge of the doorway
-        for (let k = 0; k < LENGTHS; k++) raceFenceTo(xf, z0 + k * step, xf, z0 + (k + 1) * step, 0, -sd, (k + (sd > 0 ? 0 : 1)) % 2 ? -1 : k + (sd > 0 ? 1 : 3), 1.4); // across the street (a banner on every other length, the two sides out of step)
+        for (let k = 0; k < LENGTHS; k++) raceFenceTo(xf, z0 + k * step, xf, z0 + (k + 1) * step, 0, -sd, -1, 1.4); // across the street (plain: it carried a sponsor on every other length, a few metres from Oxford Street's own)
         raceFenceTo(xf, zm, cx + sd * LIP, zf, 0.2, -sd, -1, 1.6); // in to the foot of the ramp
         // two steps for the crowd, and the crowd
         const STEPS = [[0.7, 0.3, 0xcfd3d8], [2.9, 0.75, 0xb9bdc5]], sz0 = z0 + 0.5, sz1 = zm - 0.5;
@@ -4984,10 +4988,10 @@ function buildRoseBay(track, rnd, randIn) {
           span(prev, q);
           const dx = q[0] - prev[0], dz = q[2] - prev[2], len = Math.hypot(dx, dz);
           const nth = lengths++;
-          if (len > 5.4 && nth % 12 >= 3 && nth % 12 < 9) { // (4.7: six in a row) // a sponsor's banner on three lengths in a row out of nine, on the road side (it was one in three, each a different sponsor)
+          if (len > 5.4 && nth % 24 >= 3 && nth % 24 < 9) { // (4.7: six in a row; 4.11: out of 24 lengths, not 12) // a sponsor's banner on three lengths in a row out of nine, on the road side (it was one in three, each a different sponsor)
             const ins = (len - 4.4) / 2 / len, nx = s.p.x - x, nz = s.p.z - z, nl = Math.hypot(nx, nz) || 1;
             const on = (f) => ({ x: prev[0] + dx * f + (nx / nl) * 0.33, y: prev[1] + (q[1] - prev[1]) * f, z: prev[2] + dz * f + (nz / nl) * 0.33 });
-            addBanner(Math.floor(nth / 12), on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
+            addBanner(Math.floor(nth / 24), on(ins), on(1 - ins), 0.2, 1.0, 0, 1, s.p.x, s.p.z);
           }
         } else { const e = end(i - 1, i, sd, q[1]); if (e) span(e, q); }
         if (last) { const e = end(i + 1, i, sd, q[1]); if (e) span(q, e); }
@@ -5217,9 +5221,9 @@ function buildRoseBay(track, rnd, randIn) {
     const bayClear = (i) => { const [ax, az] = P(i, LAT + 1.6), [bx, bz] = P(i + 3, LAT + 1.6), mx = (ax + bx) / 2, mz = (az + bz) / 2, y = samples[wrap(i + 1)].p.y + TOP - 1; return !solids.some((c) => c.r >= 1.2 && Math.abs(c.y - y) < 3 && Math.hypot(c.x - mx, c.z - mz) < c.r + 2.6); };
     for (let i = w0; i < w1; i++) {
       ribbon(i, 1, LAT, LAT + 0.02, -1.5, TOP, STONE); ribbon(i, 1, LAT + 0.7, LAT + 0.72, -1.5, TOP, STONE); ribbon(i, 1, LAT, LAT + 0.7, TOP, TOP, COPING);
-      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 12 >= 3 && Math.floor((i - w0) / 3) % 12 < 9 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 13.5
+      if (samples[wrap(i)].p.x > -20 && Math.floor((i - w0) / 3) % 24 >= 3 && Math.floor((i - w0) / 3) % 24 < 9 && bayClear(i - ((i - w0) % 3))) { // beside the road above: a sponsor's banner on the top of it, 4.5 m in every 13.5
         const a = samples[wrap(i)], b = samples[wrap(i + 1)], [ax, az] = P(i, LAT + 0.82), [bx, bz] = P(i + 1, LAT + 0.82), [tx, tz] = P(i, LAT + 12), f = ((i - w0) % 3) / 3;
-        addBanner(Math.floor((i - w0) / 36), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
+        addBanner(Math.floor((i - w0) / 72), { x: ax, y: a.p.y, z: az }, { x: bx, y: b.p.y, z: bz }, TOP - 1.0, TOP - 0.16, f, f + 1 / 3, tx, tz);
       }
       if ((i - w0) % 3 === 0) { // solid from either level
         const y = samples[wrap(i)].p.y, [ax, az] = P(i, LAT + 0.35), [bx, bz] = P(Math.min(i + 3, w1), LAT + 0.35);
@@ -5325,7 +5329,10 @@ function buildRoseBay(track, rnd, randIn) {
       // each of the stretch's samples, which third of the name it carries, or -1 for plain paint
       // (4.7: "long rows": the name up to six times, 44 m, and three only where the barrier is too short for more)
       const PAINT = Array.from({ length: Math.max(3, Math.min(6, Math.floor((n - 20) / 5))) }).flatMap(() => [-1, 0, 1, 2, -1]);
-      for (let j = 12; ads && j + PAINT.length <= n - 8; j += 54) {
+      // (4.11: every 160 m on a side, not every 80, and the two sides of the road out of step by 80 m, counted round
+      // the lap: "don't have so many sponsors close together")
+      let j0 = 12; while ((((i0 + j0) % 108) + 108) % 108 !== (sd > 0 ? 0 : 54)) j0++;
+      for (let j = j0; ads && j + PAINT.length <= n - 8; j += 108) {
         if (track.cps.some((c) => Math.abs(((i0 + j + PAINT.length / 2 - c) % N + N + N / 2) % N - N / 2) < 9)) continue;
         PAINT.forEach((third, k) => { const i = i0 + j + k, a = samples[wrap(i)]; addBanner(nb, pt(i, sd, lat - 0.1, 0), pt(i + 1, sd, lat - 0.1, 0), 0.1, 0.86, Math.max(third, 0) / 3, (Math.max(third, 0) + 1) / 3, a.p.x, a.p.z, false, third < 0); });
         nb++;
