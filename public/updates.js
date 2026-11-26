@@ -8,6 +8,14 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.4', date: '26 Nov 2026', title: 'Two new tracks: Double Bay and Eastgate',
+    items: [
+      'Circuit de Double Bay, the longest lap in the game at 2.1 km: along the beach, up Bay Street, past the shops on New South Head Road (Sushi Maru and NAB among them), up the hill and through the gatehouse of Cranbrook School past its oval, then a chicane and an S back down to the bay.',
+      'Eastgate Circuit, the shortest at 1.4 km, raced at sunset: a figure of eight that climbs round a long loop, crosses over its own start straight on a bridge, runs across the rooftop car park of Eastgate between the parked cars and its two towers, and drops back down.',
+      'Each has its own leaderboard, and both count towards the Drift King championship.',
+    ],
+  },
+  {
     v: '4.3', date: '26 Nov 2026', title: 'What\'s new waits to be asked',
     items: [
       'This list no longer opens by itself after an update. The What\'s new button in the corner shows a dot when there is something you haven\'t read.',
