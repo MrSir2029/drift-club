@@ -8,6 +8,12 @@
 // seen it.
 export const UPDATES = [
   {
+    v: '4.1', date: '26 Nov 2026', title: 'Racing lines are private again',
+    items: [
+      'You can no longer see other players\' racing lines on the leaderboard, or race the record holder\'s ghost. People were leaking each other\'s methods. In Polytrack mode you still race the ghost of your own best lap.',
+    ],
+  },
+  {
     v: '4.0', date: '26 Nov 2026', title: 'Liveries in famous F1 colours',
     items: [
       'Every car colour is now a livery in a famous Formula 1 team\'s colours: Ferrari red, McLaren papaya, Jordan yellow, Sauber green, Mercedes silver, Williams blue, Red Bull navy, Alpine pink, Haas white, Lotus black and gold, and Renault sky blue and yellow. The colours only: your name, your number and DRIFT CLUB are still what\'s written on the car.',
