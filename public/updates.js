@@ -8,6 +8,13 @@
 // opens by itself (4.3: the owner asked).
 export const UPDATES = [
   {
+    v: '4.6', date: '26 Nov 2026', title: 'A tidier home screen',
+    items: [
+      'The home panel is narrower again, now that the version number is back in the corner.',
+      'Every car colour has a black border, and the one you have picked has an orange border and stands a little proud of the rest.',
+    ],
+  },
+  {
     v: '4.5', date: '26 Nov 2026', title: 'Sponsors in rows of three',
     items: [
       'Sponsors are now in two places only: on the barriers and walls, and across the top of the gates over the track. Each gate carries one sponsor\'s name three times.',
