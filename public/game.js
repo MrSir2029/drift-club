@@ -10,7 +10,10 @@ const VISITED_BEFORE = (() => { try { return localStorage.getItem('dc-defaults')
 // ---------------------------------------------------------------------------
 // constants
 // ---------------------------------------------------------------------------
-const CAR_COLORS = [0xff4d4d, 0xff8a3d, 0xffd23f, 0x7ed957, 0x2ec4b6, 0x3d8bff, 0x8c6bff, 0xff6bcb, 0xf5f0e6, 0x2b2f3a, 0x8b5a2b, 0x9ad0ff, 0x13806a, 0xf0b02e]; // the last two: the secret racing green livery (LIVERY_HASH), and the Drift King's gold (KING)
+// Each is the main colour of a livery in a famous Formula 1 team's colours (TEAM, below): red, papaya, yellow, bright
+// green, silver, blue, navy, pink, white, black, (brown: not offered), sky blue. Until 3.81 they were plain colours,
+// with teal where the silver is and purple where the navy is.
+const CAR_COLORS = [0xe10600, 0xff8000, 0xffd200, 0x3fd94a, 0xb8c0c8, 0x1463d8, 0x1b2757, 0xff87bc, 0xf5f5f0, 0x15181f, 0x8b5a2b, 0x7cc7f2, 0x13806a, 0xf0b02e]; // the last two: the secret racing green livery (LIVERY_HASH), and the Drift King's gold (KING)
 const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 // the colours on the home screen: all but brown (10), which was taken out so the
 // secret livery fits on the same row; the numbers don't change
@@ -187,10 +190,33 @@ const COVER = [0.56, 0.66, 2.1, null, [0.28, 0.3, -0.18], 0, 0.72, -1.15];
 const PLATE = [0.045, 0.22, 0.85, null, null, 0.6, 1.35, -2.25];
 const AIRBOX = [0.34, 0.32, 2.0, null, [0.1, 0.469, -0.475], 0, 1.2, -1.075]; // the airbox running back into the fin
 const FRONT_PLATE = [0.05, 0.3, 0.62, [1, 0.6, -0.05], null, 1.0, 0.27, 3.12];
-// the pinstripe for each car colour (CAR_COLORS order)
-// (pairs real teams have raced: red and white, papaya and navy, black and gold,
-// powder blue and navy with orange tyres and helmet, like the old Gulf colours)
+// the pinstripe for each car colour (CAR_COLORS order): for the colours with no livery of their own below (brown, the
+// secret livery, the Drift King's)
 const STRIPES = [0xffffff, 0x1d2b5c, 0x1d2230, 0x1d2b5c, 0xff8a3d, 0xff8a3d, 0xffd23f, 0xffffff, 0xe6453a, 0xd9b44a, 0xf3e3c3, 0x1d2b5c, 0xc6f432, 0xb3261e];
+// Every colour a player can pick is a livery in the colours of a famous Formula 1 team (the owner: "have every livery
+// look like famous f1 team"). The paint and where it goes, and nothing else: no team's name, badge or sponsors (cars
+// carry made-up names only: DRIFT CLUB, the driver's name and number).
+//   second: what sweeps in over the back of the sidepods and the engine cover, and the rear wing's endplates (the
+//           same as the body where the car is one colour all over)
+//   stripe: the pinstripe along that split, down the nose and round the cockpit
+//   tip: the nose tip (the stripe's colour if not given)   nose: a band over the top of the nose
+//   air: the sides of the airbox                           wing: the upper flaps of both wings (the body's colour if not given)
+//   helmet: the driver's helmet, and the band on the tyres rim: the wheels   accent: the small top flap of the front wing, the mirrors
+const TEAM = {
+  0: { second: 0x15181f, stripe: 0xffffff, tip: 0xffd800, air: 0xffffff, helmet: 0xffd800 },                                                    // red, black behind, white line and airbox, a touch of yellow: Ferrari
+  1: { second: 0x23272e, stripe: 0x47c7fc, air: 0x23272e, helmet: 0x47c7fc, accent: 0x23272e },                                                 // papaya into anthracite with a blue line: McLaren
+  2: { second: 0x15181f, stripe: 0x15181f, tip: 0x15181f, nose: 0x15181f, wing: 0x15181f, helmet: 0xe10600 },                                   // yellow and black, black nose and wings: Jordan
+  3: { second: 0x15181f, stripe: 0xffffff, wing: 0x15181f, helmet: 0xffffff },                                                                  // bright green into black: Sauber
+  4: { second: 0x15181f, stripe: 0x00d2be, tip: 0x00d2be, air: 0x15181f, helmet: 0x00d2be, rim: 0x15181f },                                     // silver into black with a teal line: Mercedes
+  5: { second: 0xf5f5f0, stripe: 0xe10600, helmet: 0xf5f5f0 },                                                                                  // blue and white with a red line: Williams
+  6: { second: 0x1b2757, stripe: 0xe21b2c, tip: 0xffcc00, nose: 0xffcc00, air: 0xffcc00, helmet: 0xe21b2c, accent: 0xe21b2c },                  // navy all over, red line, yellow nose and airbox: Red Bull
+  7: { second: 0x1463d8, stripe: 0xffffff, helmet: 0x1463d8, accent: 0x1463d8 },                                                                // pink into blue: Alpine's pink car
+  8: { second: 0x15181f, stripe: 0xe10600, tip: 0xe10600, air: 0x15181f, helmet: 0xe10600 },                                                    // white into black with a red line: Haas
+  9: { second: 0x15181f, stripe: 0xd9b44a, tip: 0xd9b44a, air: 0xd9b44a, helmet: 0xd9b44a, rim: 0xd9b44a, accent: 0xd9b44a },                   // black and gold: Lotus
+  11: { second: 0xffd200, stripe: 0x1d2b5c, helmet: 0xffd200, accent: 0x1d2b5c },                                                               // sky blue into yellow: Renault's 2005 and 2006 cars
+};
+const luminance = (c) => (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
+const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 // only if the server didn't give one (an older server): one from the name
 function raceNumber(name) { let h = 7; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 2 + (h % 98); }
 function paintLivery(K, g, colorIdx, name, raceNum) {
@@ -212,13 +238,15 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
       // Like a modern F1 car: the colour sweeps back from the nose and black
       // takes over towards the back, with one pinstripe riding the split from
       // the nose tip, low along the tub, up the sidepods and the engine cover.
+      // (K.second: black, or the livery's second colour; none where the car is one colour all over)
       onPanel(g, NOSE, sx, 0, 0.9, 0.3, 0.365, stripe);
       onPanel(g, TUB, sx, 0.29, 1, 0.3, 0.365, stripe);
-      onPanel(g, POD, sx, 0, 1, 0, [0.88, 0.36], K.carbon);
+      if (!K.plain) onPanel(g, POD, sx, 0, 1, 0, [0.88, 0.36], K.second);
       onPanel(g, POD, sx, 0, 1, [0.88, 0.36], [0.95, 0.43], stripe);
-      onPanel(g, COVER, sx, 0, 0.524, 0, [0.88, 0.21], K.carbon);
+      if (!K.plain) onPanel(g, COVER, sx, 0, 0.524, 0, [0.88, 0.21], K.second);
       onPanel(g, COVER, sx, 0, 0.524, [0.88, 0.21], [0.95, 0.28], stripe);
-      onPanel(g, PLATE, sx, 0, 1, 0, 1, K.carbon);              // black rear wing endplates
+      onPanel(g, PLATE, sx, 0, 1, 0, 1, K.second);              // the rear wing's endplates
+      if (K.air) onPanel(g, AIRBOX, sx, 0.62, 1, 0, 1, K.air);  // the airbox's sides
     }
     onPanel(g, FRONT_PLATE, sx, 0, 1, 0.82, 0.93, stripe);   // the same colour on the front wing endplates
     K.box(0.48, 0.022, 0.06, stripe, sx * 0.72, 0.631, 0.36, false); // and on each sidepod intake
@@ -231,13 +259,14 @@ function paintLivery(K, g, colorIdx, name, raceNum) {
       lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, SPONSORS.wing));
       lettering(onPanel(g, NOSE, sx, 0.12, 0.6, 0.345, 0.41, null, SPONSORS.pods));
     } else {
-      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, K.king ? 'DRIFT KING' : SPONSORS.pods)); // DRIFT CLUB, big on the rear wing endplates (DRIFT KING on the champion's)
+      lettering(onPanel(g, PLATE, sx, 0.06, 0.94, 1.27, 1.43, null, K.king ? 'DRIFT KING' : SPONSORS.pods, K.plateInk)); // DRIFT CLUB, big on the rear wing endplates (DRIFT KING on the champion's)
       lettering(onPanel(g, COVER, sx, 0.6, 0.85, 0.745, 0.88, null, num, ink)); // the race number on the engine cover
     }
   }
   // the driver's name on each sidepod, up at the front in the car's colour (on the
   // secret livery, above its level lime line), clear of the black and the intake
   if (name) for (const sx of [-1, 1]) lettering(onPanel(g, POD, sx, 0.55, 0.97, 0.505, 0.6, null, name.toUpperCase(), ink));
+  if (K.noseBand) onTop(g, NOSE, 0.42, 0.96, -0.7, 0.7, K.noseBand); // a livery's band over the top of the nose, between the pinstripes
   lettering(onTop(g, TUB, 0.8, 0.96, -0.55, 0.55, null, num, ink)); // and on the nose, reading from in front like a real F1 car's
   // Lettering with the same texture (both sides' DRIFT CLUB, say) becomes one
   // mesh, so a car costs as few draw calls as possible.
@@ -6308,17 +6337,21 @@ function makeCarMesh(colorIdx, name, isMe, cls = app.carClass, cockpit = false, 
   if (isDriftKing(name)) colorIdx = KING; // (whatever colour they picked: the champion drives the champion's car)
   const color = CAR_COLORS[colorIdx] ?? CAR_COLORS[0];
   const king = colorIdx === KING;
-  const lightCar = colorIdx === 8 || colorIdx === 2 || colorIdx === 11 || king;
   const livery = colorIdx === LIVERY; // racing green with lime trim
+  const T = TEAM[colorIdx] || null;   // the colour's livery (none for brown, the secret livery and the Drift King's)
+  const lightCar = king || luminance(color) > 0.6; // a pale car: its lettering and trim are dark
   const L = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const K = {
     g, lightCar, livery, king,
-    body: L(color), accent: L(livery || king ? 0x16191f : lightCar ? 0x1d2230 : 0xf6f2e8), dark: L(0x1d2230), carbon: L(0x2b303b),
-    tyre: L(0x15181f), rim: L(livery ? 0x1d2230 : king ? 0xd9a520 : 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
-    helmet: L(livery ? 0xd8e81c : king ? 0xb3261e : lightCar ? 0xff8a3d : 0xffd23f), stripe: L(livery ? 0xc6f432 : STRIPES[colorIdx] ?? 0xffffff),
+    body: L(color), accent: L(livery || king ? 0x16191f : T?.accent ?? (lightCar ? 0x1d2230 : 0xf6f2e8)), dark: L(0x1d2230), carbon: L(0x2b303b),
+    tyre: L(0x15181f), rim: L(livery ? 0x1d2230 : king ? 0xd9a520 : T?.rim ?? 0xb9c0cc), glass: L(0x24303f), flap: L(0xb3261e),
+    helmet: L(livery ? 0xd8e81c : king ? 0xb3261e : T?.helmet ?? (lightCar ? 0xff8a3d : 0xffd23f)), stripe: L(livery ? 0xc6f432 : T?.stripe ?? STRIPES[colorIdx] ?? 0xffffff),
     brake: new THREE.MeshLambertMaterial({ color: 0x6a1212, emissive: 0x000000, flatShading: true }),
     lamp: new THREE.MeshLambertMaterial({ color: 0xfff6cf, emissive: 0x6b6440, flatShading: true }),
   };
+  // the livery's other colours (paintLivery, buildOpenBody)
+  K.second = T ? L(T.second) : K.carbon; K.plain = !!T && T.second === color; K.plateInk = T && luminance(T.second) > 0.6 ? '#1d2230' : '#f2f5f0';
+  K.tip = T?.tip != null ? L(T.tip) : K.stripe; K.air = T?.air != null ? L(T.air) : null; K.noseBand = T?.nose != null ? L(T.nose) : null; K.wing = T?.wing != null ? L(T.wing) : K.body;
   K.add = (geo, mat, x, y, z, shadow = true) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z); m.castShadow = shadow; g.add(m); return m;
@@ -6388,11 +6421,11 @@ function buildOpenBody(K) {
   // monocoque into the nose
   add(taperBox(0.78, 0.56, 2.3, [0.6, 0.58, -0.05], null), body, 0, 0.5, 0.85);
   add(taperBox(0.468, 0.325, 1.25, [0.45, 0.42, -0.1], null), body, 0, 0.45, 2.62);
-  add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), K.livery ? dark : K.stripe, 0, 0.35, 3.36); // nose tip, in the stripe colour
+  add(taperBox(0.21, 0.137, 0.22, [0.7, 0.7, -0.01], null), K.livery ? dark : K.tip, 0, 0.35, 3.36); // nose tip, in the stripe colour (or the livery's own)
   // front wing
   box(2.0, 0.045, 0.5, carbon, 0, 0.15, 3.15);
   for (const sx of [-1, 1]) {
-    box(0.78, 0.04, 0.3, K.livery ? carbon : body, sx * 0.6, 0.24, 3.02).rotation.x = -0.3;
+    box(0.78, 0.04, 0.3, K.livery ? carbon : K.wing, sx * 0.6, 0.24, 3.02).rotation.x = -0.3;
     box(0.78, 0.035, 0.22, accent, sx * 0.6, 0.33, 2.9).rotation.x = -0.45;
     add(taperBox(0.05, 0.3, 0.62, [1, 0.6, -0.05], null), body, sx * 1.0, 0.27, 3.12);
     box(0.05, 0.16, 0.2, dark, sx * 0.09, 0.25, 3.18, false);              // wing pylons under the nose
@@ -6424,7 +6457,7 @@ function buildOpenBody(K) {
   // and each is two stacked blocks of colour rather than a stripe laid over
   // the plate, which flickered)
   box(1.16, 0.05, 0.5, carbon, 0, 1.2, -2.25);
-  box(1.16, 0.045, 0.3, K.livery ? carbon : body, 0, 1.36, -2.4).rotation.x = 0.4;
+  box(1.16, 0.045, 0.3, K.livery ? carbon : K.wing, 0, 1.36, -2.4).rotation.x = 0.4;
   box(1.16, 0.04, 0.28, carbon, 0, 0.72, -2.2);
   for (const sx of [-1, 1]) {
     box(0.045, 0.62, 0.85, body, sx * 0.6, 0.93, -2.25);
@@ -6611,7 +6644,7 @@ function makeLabel(text, color) {
   roundRect(ctx, 128 - w / 2 + 3, 11, w - 6, 42, 11); ctx.fill();
   // dark writing, or light on a dark car colour (the black car's tag was unreadable)
   const [r, g, b] = [1, 3, 5].map(k => parseInt(color.slice(k, k + 2), 16));
-  ctx.fillStyle = 0.2126 * r + 0.7152 * g + 0.0722 * b < 90 ? '#f6f2e8' : '#1d2230';
+  ctx.fillStyle = 0.2126 * r + 0.7152 * g + 0.0722 * b < 100 ? '#f6f2e8' : '#1d2230';
   ctx.fillText(text, 128, 33);
   const tex = cleanTexture(c);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
@@ -8200,7 +8233,8 @@ function buildSwatches() {
     const css = COLOR_CSS[i];
     const s = document.createElement('div');
     s.className = 'swatch' + (i === app.color ? ' on' : '') + (i === LIVERY ? ' livery' : '');
-    s.style.background = i === LIVERY ? 'linear-gradient(135deg, #13806a 56%, #c6f432 56% 64%, #16191f 64%)' : css;
+    const T = TEAM[i]; // (a livery's swatch: its colour, its line, and what it sweeps into)
+    s.style.background = i === LIVERY ? 'linear-gradient(135deg, #13806a 56%, #c6f432 56% 64%, #16191f 64%)' : T ? `linear-gradient(135deg, ${css} 56%, ${hex(T.stripe)} 56% 64%, ${hex(T.second)} 64%)` : css;
     s.title = i === LIVERY ? 'Racing green livery' : `Colour ${i + 1}`;
     s.addEventListener('click', () => {
       app.color = i;
@@ -8546,7 +8580,7 @@ function drawMinimap() {
   mmCtx.strokeStyle = '#cfd6e0'; mmCtx.lineWidth = 5; mmCtx.stroke(mmPath.path);
   const dot = (x, z, css, r) => {
     mmCtx.beginPath(); mmCtx.arc(x * sc + ox, z * sc + oz, r, 0, Math.PI * 2);
-    mmCtx.fillStyle = css; mmCtx.fill(); mmCtx.strokeStyle = '#1d2230'; mmCtx.lineWidth = 2; mmCtx.stroke();
+    mmCtx.fillStyle = css; mmCtx.fill(); mmCtx.strokeStyle = luminance(parseInt(css.slice(1), 16)) < 0.2 ? '#f6f2e8' : '#1d2230'; mmCtx.lineWidth = 2; mmCtx.stroke(); // (a pale ring round a dark car's dot: the navy and the black ones)
   };
   // your next gate: an orange bar across the track
   if (app.local && app.phase === 'racing' && !app.finished) {
