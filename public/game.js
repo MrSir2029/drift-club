@@ -1087,7 +1087,8 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   // checkpoint gates
   track.gateMats = [];
   const gatePostGeo = new THREE.BoxGeometry(0.9, 9, 0.9); // also sunk 4 m
-  const gateBoard = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
+  // (The gates carry no sponsor. Each had a name three times across its top from 4.5, every other one in 4.9, and
+  // the owner asked "why are they over checkpoints": the sponsor bridges are the ones that hang over the track.)
   for (let k = 1; k < cps.length; k++) {
     const s = samples[cps[k]];
     const mat = new THREE.MeshLambertMaterial({ color: 0xffa030, flatShading: true, emissive: 0x000000 });
@@ -1116,25 +1117,6 @@ function buildWorld(trackId, car = app.worldCar || 'open') {
   buildSideStreets(track, !!look.night);
   buildHelicopter(track);
   buildSponsorBridges(track);
-  // A sponsor's name three times across the top of every other checkpoint gate, facing the cars coming. (The owner,
-  // when the billboards came down: "just have them on the barriers and those big overhang things that go over the
-  // track", "ideally in rows of 3 or more". Every gate had one until 4.9: "not over every single gate mate".) Of
-  // the two ways of taking every other gate, the one whose gates stand further from the sponsor bridges; the
-  // second and fourth on a tie. A dark board stands on the bar behind the names; the bar itself still glows.
-  {
-    const apart = (i, j) => { const d = Math.abs(i - j) % N; return Math.min(d, N - d); };
-    const room = (odd) => Math.min(...cps.flatMap((c, k) => (k > 0 && k % 2 === odd ? track.sponsorBridges.map((b) => apart(c, b)) : [])), N);
-    const odd = room(1) > room(0) ? 1 : 0;
-    track.sponsorGates = cps.map((c, k) => k).filter((k) => k > 0 && k % 2 === odd);
-    for (let k = 1; k < cps.length; k++) {
-      if (k % 2 !== odd) continue;
-      const s = samples[cps[k]], W = hw * 2 + 3.6, one = W / 3, h = one / (512 / 96), y0 = 5.5, ad = k - 1 + app.trackId;
-      const back = new THREE.Mesh(new THREE.BoxGeometry(W + 0.3, h + 0.24, 0.24), gateBoard);
-      back.position.copy(s.p); back.position.y += y0 + h / 2; back.rotation.y = Math.atan2(s.th.x, s.th.z); worldGroup.add(back);
-      const at = (lat) => ({ x: s.p.x + s.left.x * lat - s.th.x * 0.14, y: s.p.y, z: s.p.z + s.left.z * lat - s.th.z * 0.14 });
-      for (let j = 0; j < 3; j++) addBanner(ad, at(W / 2 - j * one), at(W / 2 - (j + 1) * one), y0, y0 + h, 0, 1, s.p.x - s.th.x * 30, s.p.z - s.th.z * 30);
-    }
-  }
   // the sponsors' posters and banners, every one in the world: a mesh for each kind
   for (const [kind, Q] of Object.entries(sponsorQuads)) {
     if (!Q.pos.length) continue;
@@ -1866,8 +1848,8 @@ function paintBarrier(k, p, q, y0, y1, tx, tz) {
 
 // Sponsor bridges: a steel gantry over a straight with one sponsor's name three times across it, facing the cars
 // coming, as over the straights at a grand prix. (The owner, once the barriers had their long rows: "you can have
-// some that hang over the track like irl".) Two a lap, each where the road runs straight or nearly, well away from
-// the start line and the checkpoint gates (which carry a name too), from each other, and from anything in the
+// some that hang over the track like irl".) Two a lap, each where the road runs straight or nearly, 170 m or more
+// from the start line, well away from the checkpoint gates and from each other, and from anything in the
 // way: another part of the circuit, a building, a tunnel, the harbour front. A track can name its own spots
 // instead (`sponsorBridges` in tracks.js, as [x, z]): Westfield does, for Oxford Street, where the usual rules
 // find no room. They go up last, on ground that nothing else has taken, and take none themselves: nothing else
@@ -1879,18 +1861,22 @@ function buildSponsorBridges(track) {
   const straight = (i, dir) => { let k = 0; const t = samples[i].th; while (k < n(140)) { const u = samples[wrap(i + dir * (k + 1))].th; if (t.x * u.x + t.z * u.z < 0.97) break; k++; } return k; }; // (how far the road runs on within 14 degrees of this heading)
   const free = (i) => {
     const s = samples[i];
-    if ([0, ...cps].some((c) => apart(i, c) < n(55))) return false;
+    if (apart(i, 0) < n(170) || cps.some((c) => apart(i, c) < n(55))) return false; // (the first Queens Park one stood 57 m past the line: "why is it so close to the start line")
     if (track.vergeDrop[i] > 0.6 || Math.abs(samples[wrap(i + 6)].p.y - samples[wrap(i - 6)].p.y) > 1.2) return false; // not up on a deck or a ramp, nor on a steep hill
     for (const b of track.def.blocks || []) if (s.p.x > b[0] - LEG && s.p.x < b[2] + LEG && s.p.z > b[1] - LEG && s.p.z < b[3] + LEG) return false;
     for (const d of [-1, 1]) if (!isFree(track, s.p.x + s.left.x * d * LEG, s.p.z + s.left.z * d * LEG, 1.3, 0)) return false;
     for (let j = 0; j < N; j += 2) if (apart(i, j) > n(60) && Math.hypot(samples[j].p.x - s.p.x, samples[j].p.z - s.p.z) < hw * 2 + 14) return false; // the circuit again, beside it, over it or under it
+    for (const o of track.localSpots || []) if (o.line) { // nor under a cable strung over the road (Thredbo's chairlift)
+      const [ax, az, bx, bz] = o.line, dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((s.p.x - ax) * dx + (s.p.z - az) * dz) / (dx * dx + dz * dz)));
+      if (Math.hypot(ax + dx * t - s.p.x, az + dz * t - s.p.z) < 50) return false;
+    }
     return true;
   };
   const spots = [];
   for (let i = 0; i < N; i += 2) { const back = straight(i, -1), on = straight(i, 1); if (back >= n(28) && on >= n(8) && free(i)) spots.push([Math.min(back, n(90)) + Math.min(on, n(40)), i]); }
   spots.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
   const picked = (track.def.sponsorBridges || []).map(([x, z]) => { let best = 0, bd = Infinity; samples.forEach((q, i) => { const d = Math.hypot(q.p.x - x, q.p.z - z); if (d < bd) { bd = d; best = i; } }); return best; });
-  for (const [, i] of spots) { if (picked.length < 2 && picked.every((j) => apart(i, j) > N / 3)) picked.push(i); }
+  for (const far of [N / 3, N / 5]) for (const [, i] of spots) { if (picked.length < 2 && picked.every((j) => apart(i, j) > far)) picked.push(i); } // (a third of a lap apart; a fifth, where that leaves only one)
   track.sponsorBridges = picked.sort((a, b) => a - b);
   const steel = new THREE.MeshLambertMaterial({ color: 0x8d93a0, flatShading: true }), dark = new THREE.MeshLambertMaterial({ color: 0x1d2230, flatShading: true });
   picked.forEach((i, k) => {

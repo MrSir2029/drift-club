@@ -67,10 +67,11 @@
     track"), and the ones on Sydney CBD's buildings with them. Don't put
     them back. Sponsors go in two places only: "just have them on the
     barriers and those big overhang things that go over the track", "ideally
-    in rows of 3 or more". So a checkpoint gate carries one sponsor's name
-    three times across its top (4.5), but only every other gate (4.9: with
-    the bridges up too, "not over every single gate mate"); the gates
-    between are plain. And no wall or barrier carries a
+    in rows of 3 or more". The checkpoint gates carry no sponsor: each had
+    a name across its top from 4.5 (the "overhang things" were taken to mean
+    the gates), every other one in 4.9 ("not over every single gate mate"),
+    and none from 4.10 ("why are they over checkpoints"). Don't put a
+    sponsor on a checkpoint gate or the start arch. And no wall or barrier carries a
     single banner. From 4.7 the rows are long ("keep all the advertisements
     on barriers but have them in long rows, you can add more if you need"):
     one name six times or more along a stretch (six on the walls, nine down
@@ -79,8 +80,9 @@
   - Sponsor bridges (4.8): "you can have some that hang over the track like
     irl". Two a lap on every track (`buildSponsorBridges` in `game.js`): a
     steel gantry with one name three times across, facing the cars coming,
-    away from the start line and the gates. Its legs aren't solid (like the
-    gates'). Westfield's two are side by side over Oxford Street
+    at least 170 m from the start line ("why is the meadow gp one so close
+    to the start line": Queens Park's first stood 57 m past it) and well
+    away from the gates. Its legs aren't solid (like the gates'). Westfield's two are side by side over Oxford Street
     (`sponsorBridges` in `tracks.js`). Two is "some": ask before adding more.
   - The 9LAT2 building's name signs are not lit from inside ("make 9 lat 2
     not illuminated"): they take the scene's light, dim at night.
