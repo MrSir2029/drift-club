@@ -129,6 +129,13 @@
   a change shipped without a new version never reaches the tabs already open.
 - **Players' ideas:** run them by the owner before building any ("run
   everything by me first").
+- **The vote** (4.12, `POLL` in `public/updates.js`): the owner had players
+  asked, when they open the game, whether to "fix all the corner cuts Luca
+  has been exploring and delete all lap times, or do nothing" ("people are
+  divided"). One answer a browser, both buttons alike, the count shown once
+  you've voted and on `/stats`. Don't fix the corner cuts or wipe any lap
+  times on the strength of the count: that is the owner's call, and he will
+  say. To end the vote set `POLL` to `null`; a new `id` asks everyone again.
 - **A new layout for a track** restarts its leaderboard (and its Drift King
   points): say so before doing it. Bump `v` in `tracks.js`, and
   `TRACK_VERSION` and `TRACK_LENGTH` in `server/core.js`; the saved copies

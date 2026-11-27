@@ -6,7 +6,24 @@
 // Players see the list behind the "What's new" button on the home screen. The
 // button shows a dot until they've looked at the newest entry. It no longer
 // opens by itself (4.3: the owner asked).
+// The vote that's on, or null for none. Players are asked when they open the game, once each (a browser keeps its
+// answer); the server counts (server/core.js, "the vote") and the count is on /stats. A new `id` is a new vote:
+// everyone is asked again. The owner's words for this one: "get them to vote on whether we should fix all the
+// corner cuts Luca has been exploring and delete all lap times, or do nothing".
+export const POLL = {
+  id: 'cornercuts',
+  title: 'Vote: corner cutting',
+  text: 'Should we fix all the corner cuts Luca has been exploring? Fixing them means deleting all lap times.',
+  options: [['fix', 'Fix the corner cuts and delete all lap times'], ['leave', 'Do nothing']],
+};
+
 export const UPDATES = [
+  {
+    v: '4.12', date: '27 Nov 2026', title: 'A vote on corner cutting',
+    items: [
+      'When you open the game you are asked to vote: fix the corner cuts and delete all lap times, or do nothing. One vote each, and you see the count once you have voted.',
+    ],
+  },
   {
     v: '4.11', date: '27 Nov 2026', title: 'Sponsors spread out',
     items: [

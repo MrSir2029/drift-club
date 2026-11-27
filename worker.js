@@ -3,7 +3,7 @@
 // GameServer, which runs the game server (server/core.js). It's created in
 // Oceania so races feel quick for players in Australia and New Zealand.
 import { createGame, beaconTag } from './server/core.js';
-import { UPDATES } from './public/updates.js'; // (What's new: its top entry is the game's version)
+import { UPDATES, POLL } from './public/updates.js'; // (What's new: its top entry is the game's version; and the vote that's on)
 
 export default {
   async fetch(request, env) {
@@ -30,7 +30,11 @@ export class GameServer {
     ctx.blockConcurrencyWhile(async () => {
       const saved = await ctx.storage.get('stats');
       const boards = await ctx.storage.get('boards');
+      const votes = POLL ? (await ctx.storage.get('votes:' + POLL.id)) || {} : null; // the vote that's on: each browser's answer
       this.game = createGame({
+        poll: POLL,
+        votes,
+        saveVote: (who, c) => { votes[who] = c; ctx.storage.put('votes:' + POLL.id, votes); },
         stats: saved || null,
         saveStats: (s) => { ctx.storage.put('stats', s); },
         boards: boards || null,

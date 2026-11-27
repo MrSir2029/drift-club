@@ -107,6 +107,19 @@ sells them at cost, around $10 a year) and add it to the Worker under
 | M | sound on / off |
 | Esc | menu: resume, restart your run and the record ghost's switch (Polytrack mode), settings, leave |
 
+### The vote
+
+A question can be put to everyone who opens the game: `POLL` in
+`public/updates.js` (its `id`, title, text and answers; `null` for none).
+A browser is asked until it has answered, then shown the count. It makes up
+an id for itself (`dc-voter`), keeps its answer (`dc-vote-<id>`) and sends
+it every time it connects, so a server that has restarted without its
+database gets the votes back as players return. The server (`server/core.js`,
+"the vote") keeps one answer for each id, takes one id from a connection,
+and saves each to Upstash when it's set up (a hash, `<key>:poll:<id>`). The
+count is on `/stats`. The first one (4.12) asks whether to fix the corner
+cuts and delete all lap times, or do nothing.
+
 Players can change any of these but Esc under **Settings → Change keys**
 (up to two keys each; kept in their browser, `ACTIONS` in `game.js`).
 

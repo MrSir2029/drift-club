@@ -116,11 +116,20 @@ export function beaconTag(token) {
 // version: the game's version (the top entry of What's new). Every tab is told
 // it when it connects, so that one left open since before an update can ask
 // its player to refresh (see "old tabs" below). Without it nobody is told.
-export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, paths: savedPaths = null, savePath = null, sign = null, dropSilent = false, version = '' } = {}) {
+export function createGame({ stats: savedStats = null, saveStats = null, note = '', pairStates = false, boards: savedBoards = null, saveBoards = null, paths: savedPaths = null, savePath = null, sign = null, dropSilent = false, version = '', poll = null, votes: savedVotes = null, saveVote = null } = {}) {
   const rooms = new Map();
   const conns = new Set();
   let nextPlayerId = 1;
   let tickTimer = null, sweepTimer = null;
+
+  // ---------- the vote ----------
+  // poll: { id, options: [[key, label], …] }, the vote that's on (public/updates.js), or null. One answer for each
+  // browser, which makes up an id for itself and keeps it; the answer can be sent again (a browser sends its own
+  // every time it connects, so a server that has forgotten the votes gets them back as the players return).
+  // votes: { who: key } as last saved; saveVote(who, key): for hosts that can keep them.
+  const pollKeys = poll ? poll.options.map(([k]) => k) : [];
+  const votes = new Map(Object.entries(savedVotes || {}).filter(([who, c]) => /^[A-Za-z0-9_-]{12,40}$/.test(who) && pollKeys.includes(c)));
+  const tally = () => { const n = Object.fromEntries(pollKeys.map((k) => [k, 0])); for (const c of votes.values()) n[c]++; return n; };
 
   // ---------- who's playing ----------
   const stats = { since: Date.now(), visits: 0, races: 0, peak: 0, peakAt: Date.now(), ...(savedStats || {}) };
@@ -138,7 +147,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     const online = conns.size;
     return { online, racing, lobby: inRooms - racing, home: Math.max(0, online - inRooms), rooms: rooms.size };
   }
-  const statsJson = () => ({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races });
+  const statsJson = () => ({ ...liveCounts(), since: stats.since, peak: stats.peak, peakAt: stats.peakAt, visits: stats.visits, races: stats.races, ...(poll ? { vote: { id: poll.id, ...tally() } } : {}) });
 
   // ---------- leaderboard: the best laps on each track (any car), by name ----------
   // No accounts: a name is a name, and anyone can race under any name. A host
@@ -537,6 +546,15 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         player.lapAt = Date.now();
         break;
       }
+      case 'vote': { // their answer to the vote that's on
+        if (!poll || msg.poll !== poll.id || !pollKeys.includes(msg.c) || typeof msg.who !== 'string' || !/^[A-Za-z0-9_-]{12,40}$/.test(msg.who)) return;
+        if (player.voter && player.voter !== msg.who) return;      // one voter to a connection
+        if (!votes.has(msg.who) && votes.size >= 5000) return;     // (and no end of them)
+        player.voter = msg.who;
+        if (votes.get(msg.who) !== msg.c) { votes.set(msg.who, msg.c); if (saveVote) saveVote(msg.who, msg.c); }
+        send(player, { t: 'poll', id: poll.id, n: tally() });
+        break;
+      }
       case 'path': { // someone wants to watch a lap that's on the leaderboard
         const now = Date.now();
         if (typeof msg.k !== 'string' || typeof msg.n !== 'string' || now - (player.pathAt || 0) < 120) return;
@@ -687,6 +705,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       sweepTimer ??= setInterval(sweep, 20000);
       if (version) send(p, { t: 'ver', v: version }); // (a tab that's behind asks its player to refresh: see "old tabs")
       send(p, { t: 'lbs', boards: Object.fromEntries(boards), sec: Object.fromEntries(secRecs), lay: TRACK_VERSION }); // the leaderboard (and best sectors), to start with, and the layouts they're for
+      if (poll) send(p, { t: 'poll', id: poll.id, n: tally() }); // the vote that's on, and how it stands
       return {
         message(raw) {
           p.seen = Date.now();
@@ -697,7 +716,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
       };
     },
     statsJson,
-    statsPage: () => statsPage(liveCounts(), stats, note),
+    statsPage: () => statsPage(liveCounts(), stats, note, poll ? { poll, n: tally() } : null),
     // save a leaderboard change that's still waiting (when the server is shutting down)
     flushBoards() {
       if (!boardsTimer) return null;
@@ -712,7 +731,7 @@ function ago(t) {
   return s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${Math.round(s / 86400)} days`;
 }
 
-function statsPage(c, stats, note) {
+function statsPage(c, stats, note, vote) {
   const box = (n, label) => `<div class="box"><b>${n}</b><span>${label}</span></div>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="30"><title>Who's playing</title>
@@ -731,6 +750,7 @@ ul { margin: 0; padding-left: 20px; line-height: 1.7; font-weight: 600; } .note 
 <div class="row">${box(c.racing, 'racing')}${box(c.lobby, 'in a lobby')}${box(c.home, 'on the home screen')}${box(c.rooms, c.rooms === 1 ? 'room open' : 'rooms open')}</div>
 <h2>Totals, counted for ${ago(stats.since)}</h2>
 <ul><li>Most online at once: <b>${stats.peak}</b>${stats.peak ? ` (${ago(stats.peakAt)} ago)` : ''}</li><li>Times the game was opened: <b>${stats.visits}</b></li><li>Races started: <b>${stats.races}</b></li></ul>
+${vote ? `<h2>${vote.poll.title}</h2><ul>${vote.poll.options.map(([k, label]) => `<li>${label}: <b>${vote.n[k]}</b></li>`).join('')}</ul>` : ''}
 <p class="note">Updates by itself every 30 seconds. ${note} For visitors over days and weeks, see Cloudflare Web Analytics.</p>
 </main></body></html>`;
 }
