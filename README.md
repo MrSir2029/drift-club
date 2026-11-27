@@ -133,8 +133,14 @@ from one steering button to the other, or onto the edge between Gas and
 Handbrake, which holds both. They do exactly what the keys do (the same
 all-or-nothing steering), so times are comparable. With them in the bottom
 corners the speed moves to the middle and the host's End Polytrack mode
-button to under the lap boxes; held upright, a phone is asked to turn
-sideways. (Until then the home screen said "Not for phones".)
+button to under the lap boxes, and the Menu button goes up beside the
+minimap (under it, on a phone in a browser with its bars showing, it came
+down onto the Handbrake); held upright, a phone is asked to turn sideways.
+The page runs to the phone's edges (`viewport-fit=cover`) so the picture
+fills the screen, and every `.screen` is inset by the safe area, so nothing
+laid over it sits under the notch. Added to a phone's home screen, the game
+opens full screen without the browser's bars (the `apple-mobile-web-app`
+tags in `index.html`). (Until then the home screen said "Not for phones".)
 
 Drive through the orange gates in order. The glowing one is your next gate.
 Going through one a little wide (a wheel on the grass, or just outside a

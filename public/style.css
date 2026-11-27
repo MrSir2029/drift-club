@@ -22,6 +22,9 @@ body {
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
 .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; pointer-events: none; }
+/* On a phone the page runs to the screen's edges (viewport-fit=cover), under the notch and round the corners: the
+   picture fills it, and everything laid over the picture keeps to the part that's clear */
+.screen { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); }
 .screen > * { pointer-events: auto; }
 .hidden { display: none !important; }
 
@@ -352,7 +355,7 @@ input:focus { border-color: var(--blue); }
 #laps-val { font-size: 22px; font-weight: 900; min-width: 30px; text-align: center; }
 .lobby-row { display: flex; gap: 10px; }
 .lobby-row .btn { flex: 1; min-width: 0; padding: 8px 4px; font-size: 12px; }
-.corner-btn { position: fixed; left: 12px; bottom: 12px; font-size: 11px; padding: 6px 10px; }
+.corner-btn { position: fixed; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); font-size: 11px; padding: 6px 10px; }
 .hud-delta { font-size: 14px; font-weight: 900; line-height: 1; }
 .hud-delta:empty { display: none; }
 .hud-delta.ahead { color: #2e9e44; }
@@ -364,8 +367,8 @@ input:focus { border-color: var(--blue); }
 .touch { display: none; position: absolute; inset: 0; pointer-events: none; }
 .touch-on .touch { display: block; }
 .touch .pad { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px; }
-.touch .steer { left: calc(16px + env(safe-area-inset-left, 0px)); grid-template-columns: 88px 88px; }
-.touch .pedals { right: calc(16px + env(safe-area-inset-right, 0px)); grid-template-columns: 80px 96px; align-items: end; }
+.touch .steer { left: 16px; grid-template-columns: 88px 88px; }                 /* (the race screen itself keeps clear of a phone's notch) */
+.touch .pedals { right: 16px; grid-template-columns: 80px 96px; align-items: end; }
 .tbtn {
   pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
   height: 84px; padding: 0; display: flex; align-items: center; justify-content: center;
@@ -393,6 +396,10 @@ input:focus { border-color: var(--blue); }
 .touch-on .endq { left: 16px; bottom: auto; top: 92px; }           /* under the lap and time boxes */
 .touch-on .respawn-tip { bottom: 84px; }
 .touch-on .standings { max-height: 84px; overflow: hidden; }
+/* the Menu button goes up beside the minimap: under it, on a phone, it came down onto the Handbrake */
+.touch-on #btn-menu { position: absolute; top: 0; right: calc(100% + 8px); }
+/* the menu and the results dim the whole picture, the strips beside the notch as well */
+#screen-race > .results { left: calc(0px - env(safe-area-inset-left, 0px)); right: calc(0px - env(safe-area-inset-right, 0px)); }
 .turn-phone { display: none; }
 @media (orientation: portrait) {
   .touch-on .turn-phone { display: block; position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: max-content; max-width: 86vw; text-align: center; background: var(--ink); color: #fff; border-radius: 14px; padding: 12px 18px; font-weight: 900; font-size: 17px; pointer-events: none; }
@@ -403,7 +410,8 @@ input:focus { border-color: var(--blue); }
   .touch .pedals { grid-template-columns: 66px 82px; }
 }
 @media (max-height: 430px) {
-  .touch .steer { grid-template-columns: 78px 78px; }
+  .touch .steer { left: 10px; grid-template-columns: 78px 78px; }
+  .touch .pedals { right: 10px; }
   .touch .pedals { grid-template-columns: 72px 86px; }
   .tbtn { height: 70px; }
   .tbtn.tap { height: 34px; }

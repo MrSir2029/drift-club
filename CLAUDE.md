@@ -243,7 +243,11 @@
   phones" warning is gone. They do what the keys do and no more (same
   steering, same grip): don't add tilt steering, auto-accelerate or assists
   unasked, they would change the lap times. He asked for no What's new entry
-  for them ("don't update the what's new").
+  for them ("don't update the what's new"). On a touch screen the Menu
+  button sits beside the minimap, not under it: under it, on his phone, it
+  came down onto the Handbrake (he sent a screenshot). The page runs to a
+  phone's edges (`viewport-fit=cover`) and every `.screen` is inset by the
+  safe area, so nothing laid over the picture sits under the notch.
 - **Testing:** headless Playwright (SwiftShader). For a phone, a context with
   `hasTouch` and `isMobile`. Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
