@@ -13,6 +13,10 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #8ad4f5; }
+/* A phone doesn't zoom the page: not on a double tap, not with two fingers (lists still scroll), and it doesn't
+   enlarge the text when turned sideways. Zoomed in, the game couldn't be pinched back out over the race, where
+   the fingers are for driving ("sometimes the phone zoomed in and you can't zoom out"). */
+html, body { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   color: var(--ink);

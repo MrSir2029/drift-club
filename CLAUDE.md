@@ -247,7 +247,11 @@
   button sits beside the minimap, not under it: under it, on his phone, it
   came down onto the Handbrake (he sent a screenshot). The page runs to a
   phone's edges (`viewport-fit=cover`) and every `.screen` is inset by the
-  safe area, so nothing laid over the picture sits under the notch.
+  safe area, so nothing laid over the picture sits under the notch. The page
+  doesn't zoom on a phone ("sometimes the phone zoomed in and you can't zoom
+  out"): the viewport tag, `touch-action` on `html`, and Safari's pinch
+  turned away in `setupTouch`. It can't be tried in the test browser, which
+  doesn't zoom: ask him how it goes on his phone.
 - **Testing:** headless Playwright (SwiftShader). For a phone, a context with
   `hasTouch` and `isMobile`. Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
