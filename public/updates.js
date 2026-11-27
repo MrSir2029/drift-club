@@ -8,12 +8,13 @@
 // opens by itself (4.3: the owner asked).
 // The vote that's on, or null for none. Players are asked when they open the game, once each (a browser keeps its
 // answer); the server counts (server/core.js, "the vote") and the count is on /stats. A new `id` is a new vote:
-// everyone is asked again. The owner's words for this one: "get them to vote on whether we should fix all the
-// corner cuts Luca has been exploring and delete all lap times, or do nothing".
+// everyone is asked again. This one: the owner had players asked whether to fix the corner cuts and delete all lap
+// times, or do nothing; then had the wording changed ("we" to "I", and no player named in it). Same vote, same
+// id: the answers given before the wording changed stand.
 export const POLL = {
   id: 'cornercuts',
   title: 'Vote: corner cutting',
-  text: 'Should we fix all the corner cuts Luca has been exploring? Fixing them means deleting all lap times.',
+  text: 'Should I fix all the corner cuts people use to cut the track? Fixing them means deleting all lap times.',
   options: [['fix', 'Fix the corner cuts and delete all lap times'], ['leave', 'Do nothing']],
 };
 
