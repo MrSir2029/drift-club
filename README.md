@@ -140,7 +140,13 @@ The page runs to the phone's edges (`viewport-fit=cover`) so the picture
 fills the screen, and every `.screen` is inset by the safe area, so nothing
 laid over it sits under the notch. Added to a phone's home screen, the game
 opens full screen without the browser's bars (the `apple-mobile-web-app`
-tags in `index.html`). (Until then the home screen said "Not for phones".)
+tags in `index.html`). The page doesn't zoom on a phone: zoomed in (a double
+tap, or the turn sideways), it couldn't be pinched back out over the race,
+where the fingers are for driving. So the viewport tag fixes the scale at 1,
+`html` has `touch-action: pan-x pan-y` (no double-tap or two-finger zoom;
+lists still scroll), Safari's own pinch is turned away (`gesturestart`), and
+if the page is zoomed all the same `setupTouch` sets the viewport again to
+put it back. (Until then the home screen said "Not for phones".)
 
 Drive through the orange gates in order. The glowing one is your next gate.
 Going through one a little wide (a wheel on the grass, or just outside a

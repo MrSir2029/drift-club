@@ -8594,6 +8594,21 @@ function setupTouch() {
   root.addEventListener('contextmenu', (e) => e.preventDefault()); // (a long press is a held button, not a menu)
   window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') app.setTouch(true); }, true);
   if (window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) app.setTouch(true);
+  // No zooming the page on a phone (see the viewport tag and `touch-action` on html): Safari's own pinch is turned
+  // away here, where it tells us it has begun. And if the page is zoomed in all the same, it's put back: setting
+  // the viewport again makes the browser lay the page out at the scale it allows. (A few times at most, a second
+  // apart: a browser that won't be told is left alone.)
+  for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+  const meta = document.querySelector('meta[name="viewport"]'), vv = window.visualViewport;
+  let tries = 0, last = 0;
+  const unzoom = () => {
+    if (!vv || !meta || vv.scale < 1.02 || tries >= 6 || performance.now() - last < 1000) return;
+    tries++; last = performance.now();
+    const c = meta.getAttribute('content');
+    meta.setAttribute('content', 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1');
+    setTimeout(() => meta.setAttribute('content', c), 60);
+  };
+  vv?.addEventListener('resize', unzoom); window.addEventListener('orientationchange', () => setTimeout(unzoom, 300));
 }
 
 // ---------------------------------------------------------------------------
