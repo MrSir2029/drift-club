@@ -110,9 +110,18 @@ sells them at cost, around $10 a year) and add it to the Worker under
 Players can change any of these but Esc under **Settings → Change keys**
 (up to two keys each; kept in their browser, `ACTIONS` in `game.js`).
 
-Drift Club is made for a computer with a keyboard. There are no touch
-controls, so phones and tablets get a "Not for phones" warning on the home
-screen.
+On a phone or tablet there are touch controls (`setupTouch` in `game.js`,
+`#touch` in `index.html`): steering buttons bottom left with Reset (and
+Restart, in Polytrack mode) over them, Brake and Gas bottom right with the
+Handbrake over the Gas. They show once the screen has been touched, or from
+the start on a touch-first device, never for a mouse, and go again if the
+driving keys are used. Each finger is followed wherever it slides: across
+from one steering button to the other, or onto the edge between Gas and
+Handbrake, which holds both. They do exactly what the keys do (the same
+all-or-nothing steering), so times are comparable. With them in the bottom
+corners the speed moves to the middle and the host's End Polytrack mode
+button to under the lap boxes; held upright, a phone is asked to turn
+sideways. (Until then the home screen said "Not for phones".)
 
 Drive through the orange gates in order. The glowing one is your next gate.
 Going through one a little wide (a wheel on the grass, or just outside a

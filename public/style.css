@@ -124,7 +124,9 @@ input:focus { border-color: var(--blue); }
 /* the tracks: four to a row, filling it. Past the first row the list scrolls
    (a slice of the next row shows, so you can tell there's more; the height is
    set from the cards in game.js) */
-.trackcards { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-height: 165px; overflow-y: auto; padding: 3px 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+.trackcards { position: relative; clear: both; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-height: 165px; overflow-y: auto; padding: 3px 4px 0 0; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+/* (clear: on a phone held upright the lap record wraps under the label, floated, and the cards were squeezed into the sliver beside it) */
+@media (max-width: 520px) { .trackcards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .trackcard {
   border: 3px solid var(--ink); border-radius: 12px; background: #fff; padding: 10px; cursor: pointer; text-align: left;
   font: inherit; color: var(--ink); transition: transform .08s;
@@ -346,12 +348,57 @@ input:focus { border-color: var(--blue); }
 .hud-delta.ahead { color: #2e9e44; }
 .hud-delta.behind { color: #d33b2f; }
 
-/* ---------- phones and tablets ----------
-   The game needs a keyboard, so touch-first devices get a warning on the home
-   screen. */
-.phone-warn { display: none; margin: 0 0 16px; background: #ffe1dc; border: 3px solid var(--ink); border-radius: 12px; padding: 10px 12px; font-weight: 700; font-size: 14px; line-height: 1.35; }
-.phone-warn b { display: block; font-size: 17px; font-weight: 900; color: #c2321f; text-transform: uppercase; letter-spacing: .04em; }
-@media (hover: none) and (pointer: coarse) { .phone-warn { display: block; } }
+/* ---------- phones and tablets: touch controls ----------
+   Buttons over the race for what the keys do. They show once the screen has
+   been touched (body.touch-on, set in game.js) and never for a mouse. */
+.touch { display: none; position: absolute; inset: 0; pointer-events: none; }
+.touch-on .touch { display: block; }
+.touch .pad { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px; }
+.touch .steer { left: calc(16px + env(safe-area-inset-left, 0px)); grid-template-columns: 88px 88px; }
+.touch .pedals { right: calc(16px + env(safe-area-inset-right, 0px)); grid-template-columns: 80px 96px; align-items: end; }
+.tbtn {
+  pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  height: 84px; padding: 0; display: flex; align-items: center; justify-content: center;
+  font: inherit; font-weight: 900; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink);
+  background: rgba(255,250,240,.7); border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink);
+}
+.tbtn svg { width: 44px; height: 44px; fill: var(--ink); }
+.tbtn.down { background: var(--orange); transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.tbtn.tap { height: 40px; font-size: 12px; border-radius: 12px; }
+.tbtn.tap:active { background: var(--orange); }
+.tbtn.only-poly { visibility: hidden; }
+.touch.poly .tbtn.only-poly { visibility: visible; }
+.tbtn.hand { grid-column: 2; height: 52px; font-size: 11px; letter-spacing: 0; }   /* over the accelerator: a thumb on the edge between them holds both */
+.tbtn.brake { grid-column: 1; grid-row: 2; }
+.tbtn.gas { grid-column: 2; grid-row: 2; font-size: 20px; }
+.by-touch { display: none; }
+.touch-on .by-touch { display: inline; }
+.touch-on .by-key { display: none; }
+.touch-on .foot { display: none; }                               /* the home screen's list of keys */
+#view { touch-action: none; }
+#screen-race { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; }   /* no pinching or double-tap zooming in a race (the menus over it still scroll) */
+/* with the buttons in the bottom corners, what stood there moves: the speed to the middle, the host's button to the top */
+.touch-on .hud-speed { right: auto; left: 50%; transform: translateX(-50%); bottom: 40px; font-size: 34px; -webkit-text-stroke-width: 2px; }
+.touch-on .hud-speed small { font-size: 12px; }
+.touch-on .endq { left: 16px; bottom: auto; top: 92px; }           /* under the lap and time boxes */
+.touch-on .respawn-tip { bottom: 84px; }
+.touch-on .standings { max-height: 84px; overflow: hidden; }
+.turn-phone { display: none; }
+@media (orientation: portrait) {
+  .touch-on .turn-phone { display: block; position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: max-content; max-width: 86vw; text-align: center; background: var(--ink); color: #fff; border-radius: 14px; padding: 12px 18px; font-weight: 900; font-size: 17px; pointer-events: none; }
+}
+@media (max-height: 520px) { .touch-on .endq { left: 8px; top: 62px; } }
+@media (max-width: 430px) { /* a phone held upright: the two pairs side by side with room between */
+  .touch .steer { grid-template-columns: 72px 72px; }
+  .touch .pedals { grid-template-columns: 66px 82px; }
+}
+@media (max-height: 430px) {
+  .touch .steer { grid-template-columns: 78px 78px; }
+  .touch .pedals { grid-template-columns: 72px 86px; }
+  .tbtn { height: 70px; }
+  .tbtn.tap { height: 34px; }
+  .tbtn.hand { height: 44px; }
+}
 
 /* short screens: the compact HUD, and menus that scroll */
 @media (max-height: 520px) {

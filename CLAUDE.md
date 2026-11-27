@@ -230,7 +230,14 @@
   hundred metres the two flicker, and the test renderer doesn't show it
   ("City flickers from far away"). Make the detail part of the surface
   (README, "Far-off things and depth").
-- **Testing:** headless Playwright (SwiftShader). Run the server with
+- **Touch controls** (`setupTouch` in `game.js`): the owner asked for them
+  ("also touch controls"), so phones and tablets can play; the "Not for
+  phones" warning is gone. They do what the keys do and no more (same
+  steering, same grip): don't add tilt steering, auto-accelerate or assists
+  unasked, they would change the lap times. He asked for no What's new entry
+  for them ("don't update the what's new").
+- **Testing:** headless Playwright (SwiftShader). For a phone, a context with
+  `hasTouch` and `isMobile`. Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
 - **Trying a build before deploying:** the owner likes to play an update
   before pressing Deploy. `npm run build-preview` writes `preview-build/` (not

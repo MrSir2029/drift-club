@@ -389,7 +389,8 @@ try {
   const b = JSON.parse(localStorage.getItem('dc-keys') || 'null');
   if (b && typeof b === 'object' && !Array.isArray(b)) for (const [a] of ACTIONS) if (Array.isArray(b[a])) app.bind[a] = b[a].filter(c => typeof c === 'string' && /^[A-Za-z0-9]{1,24}$/.test(c)).slice(0, 2);
 } catch {}
-const held = (a) => app.bind[a].some(c => app.keys[c]);     // is that action's key down?
+app.touch = {};                                             // the same actions, held on the touch controls (setupTouch)
+const held = (a) => !!app.touch[a] || app.bind[a].some(c => app.keys[c]); // is that action's key (or its button on a touch screen) down?
 const isKey = (a, code) => app.bind[a].includes(code);      // is this key one of that action's?
 const KEY_NAMES = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Space: 'Space', Backspace: 'Backspace', Enter: 'Enter', Tab: 'Tab', CapsLock: 'Caps Lock', Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', PageUp: 'Page Up', PageDown: 'Page Down', IntlBackslash: '\\' };
 function keyName(c) {
@@ -7744,6 +7745,7 @@ function beginRace(msg) {
   $('#results').classList.add('hidden');
   $('#hud-laps').textContent = app.mode === 'quali' ? '∞' : app.laps;
   $('#btn-endq').classList.toggle('hidden', !(app.mode === 'quali' && app.room?.hostId === app.myId));
+  $('#touch').classList.toggle('poly', app.mode === 'quali'); app.dropTouch?.();
   if (app.mode === 'quali') raceToast(`Polytrack mode: rolling start, your lap starts at the line!${app.bind.restart.length ? ` ${keyOf('restart')} restarts your run.` : ''}`, 4000);
   $('#sectors').classList.toggle('hidden', app.mode !== 'quali');
   if (app.spectate) { app.finished = true; raceToast('Race in progress — you can drive around, next race counts', 4000); }
@@ -8160,7 +8162,7 @@ function showScreen(name) {
 const inRace = () => app.phase === 'countdown' || app.phase === 'racing' || app.phase === 'results';
 function setMenu(open) {
   app.menuOpen = open;
-  if (open) app.keys = {};
+  if (open) { app.keys = {}; app.dropTouch?.(); }
   $('#pause').classList.toggle('hidden', !open);
   if (open) {
     const poly = app.mode === 'quali' && app.phase === 'racing';
@@ -8509,13 +8511,51 @@ function wireUI() {
     if (e.code === 'Escape' && !e.repeat && inRace()) { setMenu(!app.menuOpen); return; }
     if (app.menuOpen) return;
     app.keys[e.code] = true;
+    if (app.touchOn && !e.repeat && ['up', 'down', 'left', 'right'].some((a) => isKey(a, e.code))) app.setTouch(false); // driving on the keys after all: the buttons go
     // arrows and Space would scroll the page; in a race, so might any other key you drive with
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code) || (inRace() && ACTIONS.some(([a]) => isKey(a, e.code)))) e.preventDefault();
     if (isKey('reset', e.code) && app.local && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local);
     if (isKey('restart', e.code) && !e.repeat) restartRun();
   });
   window.addEventListener('keyup', (e) => { app.keys[e.code] = false; });
-  window.addEventListener('blur', () => { app.keys = {}; });
+  window.addEventListener('blur', () => { app.keys = {}; app.dropTouch?.(); });
+  setupTouch();
+}
+
+// Touch controls, for phones and tablets: buttons over the race for what the keys do. Steering either way,
+// the accelerator, the brake and the handbrake are held; Reset (and Restart, in Polytrack mode) are taps. The
+// buttons show once the screen has been touched, or from the start on a touch-first device, never for a mouse,
+// and go again if the driving keys are used. A finger is followed wherever it slides: across from one steering
+// button to the other without lifting, or onto the edge between the accelerator and the handbrake, which holds
+// both. (The owner asked for touch controls; until then the home screen said "Not for phones".)
+function setupTouch() {
+  const root = $('#touch'), fingers = new Map(); // (fingers: pointer id -> where it is now)
+  const steer = root.querySelector('.steer'), pedals = [...root.querySelectorAll('.pedals [data-act]')], all = [...root.querySelectorAll('[data-act]')];
+  const paint = () => { for (const b of all) b.classList.toggle('down', !!app.touch[b.dataset.act]); };
+  const read = () => {
+    const t = {}, [l, r] = ['left', 'right'].map((a) => steer.querySelector(`[data-act="${a}"]`).getBoundingClientRect());
+    for (const f of fingers.values()) {
+      if (f.pad === steer) t[f.x < (l.right + r.left) / 2 ? 'left' : 'right'] = true;                 // whichever half of the pair it is over
+      else for (const b of pedals) { const q = b.getBoundingClientRect(), m = 9; if (f.x >= q.left - m && f.x <= q.right + m && f.y >= q.top - m && f.y <= q.bottom + m) t[b.dataset.act] = true; }
+    }
+    app.touch = app.menuOpen ? {} : t; paint();
+  };
+  app.dropTouch = () => { fingers.clear(); app.touch = {}; paint(); };
+  app.setTouch = (on) => { if (!!app.touchOn === on) return; app.touchOn = on; document.body.classList.toggle('touch-on', on); if (!on) app.dropTouch(); };
+  const tap = { reset: () => { if (app.local && !app.menuOpen && (app.phase === 'racing' || app.phase === 'results')) respawn(app.local); }, restart: () => restartRun() };
+  root.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.tbtn'); if (!b) return;
+    e.preventDefault(); initAudio();
+    if (b.dataset.tap) { tap[b.dataset.tap](); return; }
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY, pad: b.closest('.pad') });
+    try { b.setPointerCapture(e.pointerId); } catch {} // (so the finger is still ours when it slides off the button)
+    read();
+  });
+  root.addEventListener('pointermove', (e) => { const f = fingers.get(e.pointerId); if (f) { f.x = e.clientX; f.y = e.clientY; read(); } });
+  for (const ev of ['pointerup', 'pointercancel']) root.addEventListener(ev, (e) => { if (fingers.delete(e.pointerId)) read(); });
+  root.addEventListener('contextmenu', (e) => e.preventDefault()); // (a long press is a held button, not a menu)
+  window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') app.setTouch(true); }, true);
+  if (window.matchMedia?.('(hover: none) and (pointer: coarse)').matches) app.setTouch(true);
 }
 
 // ---------------------------------------------------------------------------

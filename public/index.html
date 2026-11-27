@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Drift Club</title>
   <meta name="description" content="Race your friends. Host a room, share the code, go.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233d8bff'/%3E%3Cpath d='M7 20l5-9h8l5 9z' fill='%23ffffff'/%3E%3Ccircle cx='11' cy='22' r='3' fill='%23ffd23f'/%3E%3Ccircle cx='21' cy='22' r='3' fill='%23ffd23f'/%3E%3C/svg%3E">
@@ -17,7 +17,6 @@
     <div class="panel home">
       <h1 class="logo"><span>DRIFT</span><span>CLUB</span></h1>
       <p class="tag">Race your friends. No downloads, no sign-ups.</p>
-      <div class="phone-warn"><b>Not for phones</b>Drift Club needs a keyboard. Play it on a computer.</div>
 
       <div class="field">
         <div class="labelrow"><label for="name">Your name</label><label for="num" title="Your car number, 0 to 99. Leave it empty for a random one.">Number</label></div>
@@ -122,16 +121,31 @@
       <button id="btn-menu" class="btn small" title="Esc opens the menu">Menu</button>
     </div>
     <div class="hud-speed"><span id="hud-speed">0</span><small>km/h</small></div>
+    <!-- touch controls: phones and tablets (setupTouch in game.js) -->
+    <div id="touch" class="touch">
+      <div class="pad steer">
+        <button class="tbtn tap" data-tap="reset">Reset</button>
+        <button class="tbtn tap only-poly" data-tap="restart">Restart</button>
+        <button class="tbtn" data-act="left" aria-label="Steer left"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 3.5v17L5 12z"/></svg></button>
+        <button class="tbtn" data-act="right" aria-label="Steer right"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 3.5v17L19 12z"/></svg></button>
+      </div>
+      <div class="pad pedals">
+        <button class="tbtn hand" data-act="hand">Handbrake</button>
+        <button class="tbtn brake" data-act="down">Brake</button>
+        <button class="tbtn gas" data-act="up">Gas</button>
+      </div>
+    </div>
+    <div class="turn-phone">Turn your phone sideways to drive</div>
     <div id="lights" class="lights hidden"><span></span><span></span><span></span><span></span><span></span></div>
     <div id="countdown" class="countdown hidden"></div>
     <div id="toast-race" class="toast-race hidden"></div>
     <div id="gate-nav" class="race-nav gate-nav hidden"><svg id="gate-arrow" class="nav-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21.5 11.5h-6v11h-7v-11h-6z"/></svg><b>Missed a gate!</b><span>Go back through it, or press <b>R</b></span><span id="gate-dist"></span></div>
-    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or press <b>R</b> to reset</div>
+    <div id="respawn-tip" class="respawn-tip hidden">Off the track &mdash; drive back on, or <span class="by-key">press <b>R</b> to reset</span><span class="by-touch">tap <b>Reset</b></span></div>
     <button id="btn-endq" class="btn small endq hidden">End Polytrack mode</button>
     <div class="podium-bars"><i></i><i></i></div>
     <div id="podium-flash" class="podium-flash"></div>
     <div id="podium-ui" class="podium-ui hidden"><div id="podium-title" class="podium-title"></div></div>
-    <div class="podium-skip">Click to skip</div>
+    <div class="podium-skip"><span class="by-key">Click</span><span class="by-touch">Tap</span> to skip</div>
 
     <div id="pause" class="results hidden">
       <div class="panel pausepanel">
