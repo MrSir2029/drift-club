@@ -289,6 +289,16 @@ input:focus { border-color: var(--blue); }
 
 .whatsnew { margin-top: 14px; width: 100%; position: relative; }
 .dot-new { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e6453a; border: 2px solid var(--ink); margin-left: 6px; vertical-align: middle; }
+/* the vote, asked when the game is opened */
+.poll { width: min(460px, 100%); }
+.poll-text { margin: 6px 0 14px; font-size: 17px; font-weight: 800; line-height: 1.35; }
+.poll-options { display: flex; flex-direction: column; gap: 10px; }
+.poll-options .btn { white-space: normal; line-height: 1.25; }
+.poll-count { display: flex; align-items: center; gap: 10px; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; font-weight: 800; background: #fff; }
+.poll-count.mine { background: var(--paper-2); }
+.poll-count b { margin-left: auto; font-size: 22px; font-weight: 900; }
+.poll-count small { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; background: var(--ink); color: #fff; border-radius: 999px; padding: 2px 7px; }
+#btn-poll-close { margin-top: 14px; width: 100%; }
 .overlay { position: fixed; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; background: rgba(29,34,48,.45); padding: 16px; }
 .updates { width: min(520px, 100%); max-height: 86vh; display: flex; flex-direction: column; }
 .updates-list { overflow: auto; margin-bottom: 14px; }

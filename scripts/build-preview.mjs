@@ -60,9 +60,10 @@ write('local-server.js', `// Drift Club's server, running in this page. The game
 // each message straight to the server's own code (core.js). One player, and nothing leaves the browser: the
 // leaderboard starts as the live one was when last saved, and is this page's own from there.
 import { createGame } from './core.js';
+import { POLL } from './updates.js';
 const SAVED = ${JSON.stringify(saved)}, SAVED_PATHS = ${JSON.stringify(savedPaths)};
 const sign = (text) => { let a = 2166136261, b = 5381; for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = (Math.imul(b, 33) + c) | 0; } return ((a >>> 0).toString(36) + (b >>> 0).toString(36)).padStart(12, '0').slice(0, 12); };
-const game = createGame({ note: 'A preview: these totals are this page\\'s own.', sign, boards: SAVED, paths: SAVED_PATHS });
+const game = createGame({ note: 'A preview: these totals are this page\\'s own.', sign, boards: SAVED, paths: SAVED_PATHS, poll: POLL }); // (the vote: counted in this page only)
 class LocalSocket {
   constructor() {
     this.readyState = 0; this.onopen = this.onclose = this.onmessage = this.onerror = null;

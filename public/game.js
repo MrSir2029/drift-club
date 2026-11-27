@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TRACKS, buildTrack, locate, startSlot, CHECKPOINT_COUNT } from '/tracks.js';
-import { UPDATES } from '/updates.js';
+import { UPDATES, POLL } from '/updates.js';
 
 // Has this browser opened the game before? (Asked first thing, before the game
 // saves any settings of its own: What's new opens by itself after an update
@@ -7593,6 +7593,7 @@ function connect() {
     // our copy of the leaderboard: fills it back in if the server has restarted
     const seed = JSON.stringify({ t: 'lbseed', boards: app.lbKeep, sec: app.secKeep });
     if (seed.length > 30 && seed.length < 12000) ws.send(seed);
+    sendVote(); // our answer to the vote that's on, again: the server may have forgotten it
   };
   ws.onclose = () => {
     toast('Connection lost. Reconnecting…');
@@ -7618,10 +7619,46 @@ function send(msg) {
   if (app.ws && app.ws.readyState === WebSocket.OPEN) app.ws.send(JSON.stringify(msg));
 }
 
+// ---- the vote (POLL in updates.js). Asked when the game is opened, until this browser has answered; then the
+// count is shown. The browser makes up an id for itself and keeps it with its answer, and sends the answer every
+// time it connects (a server that has restarted without its database gets the votes back that way).
+const voteKey = () => 'dc-vote-' + POLL.id;
+const voter = () => {
+  try {
+    let id = localStorage.getItem('dc-voter');
+    if (!/^[A-Za-z0-9_-]{12,40}$/.test(id || '')) { id = [...crypto.getRandomValues(new Uint8Array(15))].map((b) => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[b & 63]).join(''); localStorage.setItem('dc-voter', id); }
+    return id;
+  } catch { return (app.voterId ??= 'tab' + String(Math.random()).slice(2, 14) + String(Math.random()).slice(2, 8)); } // (no storage: one for this tab)
+};
+function myVote() { if (!POLL) return ''; try { const c = localStorage.getItem(voteKey()) || app.voted || ''; return POLL.options.some(([k]) => k === c) ? c : ''; } catch { return app.voted || ''; } }
+function sendVote() { const c = myVote(); if (c) send({ t: 'vote', poll: POLL.id, who: voter(), c }); }
+function renderPoll() {
+  if (!POLL) return;
+  const mine = myVote(), n = app.pollCount;
+  $('#poll-title').textContent = POLL.title; $('#poll-text').textContent = POLL.text;
+  $('#poll-options').innerHTML = mine
+    ? POLL.options.map(([k, label]) => `<div class="poll-count${k === mine ? ' mine' : ''}">${esc(label)}${k === mine ? '<small>Your vote</small>' : ''}<b>${n && Number.isInteger(n[k]) ? Math.max(n[k], k === mine ? 1 : 0) : k === mine ? 1 : '…'}</b></div>`).join('')
+    : POLL.options.map(([k, label]) => `<button class="btn" data-vote="${esc(k)}">${esc(label)}</button>`).join(''); // (all alike: neither answer is the highlighted one)
+  $('#btn-poll-close').classList.toggle('hidden', !mine);
+}
+function setupPoll() {
+  if (!POLL) return;
+  $('#poll-options').addEventListener('click', (e) => {
+    const k = e.target.closest('[data-vote]')?.dataset.vote;
+    if (!k || myVote()) return;
+    app.voted = k; try { localStorage.setItem(voteKey(), k); } catch {}
+    sendVote(); renderPoll();
+  });
+  $('#btn-poll-close').addEventListener('click', () => $('#poll').classList.add('hidden'));
+  renderPoll();
+  if (!myVote()) $('#poll').classList.remove('hidden'); // asked on opening the game, until answered
+}
+
 function handle(msg) {
   switch (msg.t) {
     case 'error': toast(msg.msg); break;
     case 'ver': onVersion(msg.v); break;
+    case 'poll': if (POLL && msg.id === POLL.id && msg.n && typeof msg.n === 'object') { app.pollCount = msg.n; renderPoll(); } break;
     case 'joined':
       app.myId = msg.id;
       if (typeof msg.name === 'string' && msg.name !== app.name) {
@@ -8400,6 +8437,7 @@ function wireUI() {
   $('#btn-refresh').addEventListener('click', () => location.reload()); // (the notice of a newer version)
   if (seen !== latest && !back) markSeen();
   $('#btn-updates-close').addEventListener('click', () => $('#updates').classList.add('hidden'));
+  setupPoll();
   $('#updates').addEventListener('click', (e) => { if (e.target.id === 'updates') $('#updates').classList.add('hidden'); });
   $('#btn-endq').addEventListener('click', (e) => { e.currentTarget.blur(); send({ t: 'endquali' }); });
   $('#lobby-tip').addEventListener('click', (e) => { e.currentTarget.blur(); showTip(); });

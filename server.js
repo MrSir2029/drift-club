@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createGame, beaconTag, thisLayoutOnly } from './server/core.js';
-import { UPDATES } from './public/updates.js'; // (What's new: its top entry is the game's version)
+import { UPDATES, POLL } from './public/updates.js'; // (What's new: its top entry is the game's version; and the vote that's on)
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
@@ -132,7 +132,25 @@ if (KV_URL && KV_TOKEN) {
 const savePath = KV_URL && KV_TOKEN
   ? (key, g) => kv(g ? ['HSET', KV_KEY + ':paths', key, JSON.stringify(g)] : ['HDEL', KV_KEY + ':paths', key]).catch((e) => console.warn(`Leaderboard: couldn't save a lap's path to Upstash (${e.message})`))
   : null;
+// The vote that's on (public/updates.js): each browser's answer, a hash beside the leaderboard. Without Upstash
+// the server forgets them when it restarts, and gets them back as the players return (their browsers send their
+// answers again every time they connect).
+let savedVotes = null;
+if (POLL && KV_URL && KV_TOKEN) {
+  try {
+    const flat = await kv(['HGETALL', `${KV_KEY}:poll:${POLL.id}`]);
+    savedVotes = {};
+    for (let i = 0; i + 1 < (flat || []).length; i += 2) savedVotes[flat[i]] = flat[i + 1];
+    console.log(`The vote: ${Object.keys(savedVotes).length} answers loaded from Upstash`);
+  } catch (e) { console.warn(`The vote: couldn't load the answers from Upstash (${e.message}); players' browsers will send theirs again`); }
+}
+const saveVote = POLL && KV_URL && KV_TOKEN
+  ? (who, c) => kv(['HSET', `${KV_KEY}:poll:${POLL.id}`, who, c]).catch((e) => console.warn(`The vote: couldn't save an answer to Upstash (${e.message})`))
+  : null;
 const game = createGame({
+  poll: POLL,
+  votes: savedVotes,
+  saveVote,
   note: 'The totals start again from zero whenever the server restarts.',
   sign: (text) => crypto.createHmac('sha256', LB_KEY).update(text).digest('base64url').slice(0, 12),
   boards: savedBoards,
