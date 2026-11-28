@@ -20,6 +20,13 @@ export const POLL = {
 
 export const UPDATES = [
   {
+    v: '4.13', date: '28 Nov 2026', title: 'The other cars are where you see them',
+    items: [
+      'In a race the other cars are now drawn where they are, not where they were a moment ago. With a slow connection each car showed up to 15 m behind its real place, so two cars side by side each looked ahead on their own driver\'s screen.',
+      'The position on your screen and bumps between cars now agree with what the other driver sees.',
+    ],
+  },
+  {
     v: '4.12', date: '27 Nov 2026', title: 'A vote on corner cutting',
     items: [
       'When you open the game you are asked to vote: fix the corner cuts and delete all lap times, or do nothing. One vote each, and you see the count once you have voted.',

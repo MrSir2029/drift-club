@@ -252,6 +252,16 @@
   out"): the viewport tag, `touch-action` on `html`, and Safari's pinch
   turned away in `setupTouch`. It can't be tried in the test browser, which
   doesn't zoom: ask him how it goes on his phone.
+- **Other players' cars are drawn where they are now** (4.13, `carriedOn`
+  and `stepRemotes` in `game.js`): the owner reported "a major delay issue
+  between racers, both are often in the lead in each computer". Each game
+  times its lag to the server (`ping`), the server shares them, and a car is
+  carried on along the road for as long as its newest position took to
+  arrive. Don't go back to drawing them in the past. To measure it: two
+  pages through a proxy that holds every byte (the scratch test `net/lag.cjs`
+  did 100 ms each way: 14 m out before, under 1 m after), with the pages'
+  drawing switched off, or two software-rendered pages manage 5 frames a
+  second and the timing means nothing.
 - **Testing:** headless Playwright (SwiftShader). For a phone, a context with
   `hasTouch` and `isMobile`. Run the server with
   `CF_BEACON_TOKEN=` so the analytics script doesn't hang page loads.
