@@ -19,6 +19,7 @@ const COLOR_CSS = CAR_COLORS.map(c => '#' + c.toString(16).padStart(6, '0'));
 // secret livery fits on the same row; the numbers don't change
 const PICKER_COLORS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11];
 const SEND_HZ = 30; // positions a second (sent two at a time when the server asks: see 'joined')
+const NET_HOLD = 10; // ms a position waits at the server, on average, before it's passed on
 // Each track's look. The meadow is the default; the desert turns the grass to
 // sand and red rock, the trees to cacti and the green hills to mesas; snow
 // gives white ground, snowy pines, white mountains, snowmen and falling snow;
@@ -7400,11 +7401,24 @@ function stepLocal(car, dt, canDrive) {
 
 // Other players' cars. Every position a player sends is stamped with their own
 // clock. We work out how that clock lines up with ours (the quickest packet
-// seen lately is the best guess), then draw each car a little in the past so
-// there are always two real positions either side of the moment being drawn.
-// The curve between them uses the car's velocity, so it bends through corners
-// instead of cutting them. How far in the past adapts to how bumpy the
-// connection is: smooth connections get ~60 ms, rough ones more.
+// seen lately is the best guess).
+//
+// Each car is drawn where it is NOW. Its newest position is old by the time it
+// gets here: its sender's lag to the server, a moment held there, and our lag
+// from it (each game times its own, see ping, and the server tells us the
+// others'). A quarter of a second, with the server across an ocean, is 14 m at
+// racing speed: drawn where they had been, two cars side by side each looked
+// well ahead on their own driver's screen ("both are often in the lead in each
+// computer"). So the car is carried on from its newest position for that long,
+// along the road at the speed it had (carriedOn), and eased towards that spot.
+// It's a guess: a car that brakes or hits something in that quarter second is
+// drawn a little long, then eased back.
+//
+// A car whose lag we haven't been told (a tab still on an older version) is
+// drawn as all of them used to be: a little in the past, so there are always
+// two real positions either side of the moment being drawn, with a curve
+// between them that uses the car's velocity. How far in the past adapts to how
+// bumpy the connection is: smooth connections get ~60 ms, rough ones more.
 function pushRemoteState(c, s, recv) {
   const t = s[1], buf = c.buf, newest = buf[buf.length - 1];
   if (newest && t <= newest.t) {
@@ -7421,9 +7435,31 @@ function pushRemoteState(c, s, recv) {
   c.jit = Math.max(c.jit, d - c.off);
 }
 
+// Where a car last heard of at `a` is e seconds on: along the road at the speed it had, keeping its place across the
+// road (drifting across it at a little over half the rate it was) and the angle it was at to the road, so a slide
+// stays a slide round the bend. Off the road, stopped or the wrong way round there's no road to follow: straight on.
+function carriedOn(c, a, e) {
+  const T = app.track, S = T.samples, N = T.N, hw = T.hw;
+  let loc = locate(T, a, c.hintI ?? -1);
+  if (!loc || loc.dist > 25) loc = locate(T, a, -1); // (it has been put somewhere else: look everywhere)
+  const straight = () => ({ x: a.x + a.vx * e, y: a.y, z: a.z + a.vz * e, h: a.h + a.yaw * Math.min(e, 0.25), vx: a.vx, vz: a.vz, i: loc ? loc.i : -1 });
+  if (!loc) return straight();
+  c.hintI = loc.i;
+  const s = loc.s, vs = a.vx * s.th.x + a.vz * s.th.z, vl = a.vx * s.left.x + a.vz * s.left.z;
+  if (Math.abs(loc.lateral) > hw + 5 || vs < 4) return straight();
+  const f = loc.i + (loc.along + vs * e) / (T.length / N), i0 = Math.floor(f), u = f - i0;
+  const p0 = S[((i0 % N) + N) % N], p1 = S[(((i0 + 1) % N) + N) % N];
+  const lx = lerp(p0.left.x, p1.left.x, u), lz = lerp(p0.left.z, p1.left.z, u), tx = lerp(p0.th.x, p1.th.x, u), tz = lerp(p0.th.z, p1.th.z, u);
+  const lat = clamp(loc.lateral + vl * e * 0.6, -(hw + 5), hw + 5), turn = Math.atan2(tx, tz) - Math.atan2(s.th.x, s.th.z);
+  return {
+    x: lerp(p0.p.x, p1.p.x, u) + lx * lat, y: a.y + lerp(p0.p.y, p1.p.y, u) - loc.y, z: lerp(p0.p.z, p1.p.z, u) + lz * lat,
+    h: a.h + Math.atan2(Math.sin(turn), Math.cos(turn)), vx: tx * vs + lx * vl * 0.6, vz: tz * vs + lz * vl * 0.6, i: ((Math.round(f) % N) + N) % N,
+  };
+}
+
 function stepRemotes(now, dt) {
   const dtms = dt * 1000;
-  for (const c of app.cars.values()) {
+  for (const [id, c] of app.cars) {
     // lettering on a car more than 60 m away can't be read: don't draw it
     const dec = c.mesh.decals;
     if (dec) { const far = c.mesh.group.position.distanceToSquared(camera.position) > 3600; if (far !== c.decalsFar) { c.decalsFar = far; for (const d of dec) d.visible = !far; } }
@@ -7431,7 +7467,10 @@ function stepRemotes(now, dt) {
     if (!buf.length) continue;
     c.jit *= Math.exp(-dt / 5);
     const delay = clamp(1000 / SEND_HZ + 12 + c.jit * 1.2, 55, 400);
-    const target = now - c.off - delay;
+    // lead: how old its newest position was when it got here, at best (null: we don't know its lag, so it's drawn in the past)
+    const theirs = app.lags?.get(id), lead = theirs != null && app.lag != null ? Math.min(app.lag + theirs + NET_HOLD, 450) : null;
+    const target = lead == null ? now - c.off - delay : now - c.off + lead;
+    c.pidx = -1;
     if (c.play === undefined || Math.abs(target - c.play) > 400) c.play = target;
     else c.play += dtms + clamp(target - c.play - dtms, -dtms * 0.08, dtms * 0.08); // speed up or slow down by up to 8%, never jump
     const tp = c.play;
@@ -7450,6 +7489,10 @@ function stepRemotes(now, dt) {
       y = lerp(a.y, b.y, u); h = lerpAngle(a.h, b.h, u);
       pitch = lerp(a.pitch, b.pitch, u); roll = lerp(a.roll, b.roll, u); lp = lerp(a.lp, b.lp, u); lr = lerp(a.lr, b.lr, u);
       vx = lerp(a.vx, b.vx, u); vz = lerp(a.vz, b.vz, u);
+    } else if (tp > a.t && lead != null) {
+      // where it is now: carried on along the road from the newest we have (never more than half a second)
+      const q = carriedOn(c, a, Math.min((tp - a.t) / 1000, 0.5));
+      x = q.x; y = q.y; z = q.z; h = q.h; vx = q.vx; vz = q.vz; c.pidx = q.i;
     } else if (tp > a.t) {
       // nothing newer has arrived yet: carry on along the last known heading for a moment
       const e = Math.min((tp - a.t) / 1000, 0.25);
@@ -7458,7 +7501,10 @@ function stepRemotes(now, dt) {
     // a light filter on top hides whatever small corrections are left
     const g = c.mesh.group;
     if (c.shown && (x - c.sx) ** 2 + (z - c.sz) ** 2 < 144) {
-      const k = 1 - Math.exp(-dt * 30);
+      // (a car that's carried on is moved along at its speed first, so the easing doesn't leave it trailing; and
+      // eased more gently, to hide the corrections when a newer position shows the guess was a little out)
+      const k = 1 - Math.exp(-dt * (lead == null ? 30 : 14));
+      if (lead != null) { c.sx += vx * dt; c.sz += vz * dt; }
       c.sx = lerp(c.sx, x, k); c.sy = lerp(c.sy, y, k); c.sz = lerp(c.sz, z, k); c.sh = lerpAngle(c.sh, h, k);
     } else { c.sx = x; c.sy = y; c.sz = z; c.sh = h; c.shown = true; }
     g.position.set(c.sx, c.sy, c.sz);
@@ -7594,6 +7640,7 @@ function connect() {
     const seed = JSON.stringify({ t: 'lbseed', boards: app.lbKeep, sec: app.secKeep });
     if (seed.length > 30 && seed.length < 12000) ws.send(seed);
     sendVote(); // our answer to the vote that's on, again: the server may have forgotten it
+    app.rtts = []; app.lag = undefined; app.lags = new Map(); ping();
   };
   ws.onclose = () => {
     toast('Connection lost. Reconnecting…');
@@ -7614,6 +7661,10 @@ setInterval(() => { if (app.room) fetch('/healthz', { cache: 'no-store' }).catch
 // A heartbeat, so the server can tell a quiet player in the lobby from one
 // whose connection has died.
 setInterval(() => send({ t: 'hb' }), 25000);
+// How long a message takes to reach the server (our lag): timed there and back every two seconds, the quickest of
+// the last eight halved. The server passes each player's on to the others in the room (see "Other players' cars").
+function ping() { send({ t: 'ping', c: Math.round(performance.now()), lag: app.lag ?? -1 }); }
+setInterval(ping, 2000);
 
 function send(msg) {
   if (app.ws && app.ws.readyState === WebSocket.OPEN) app.ws.send(JSON.stringify(msg));
@@ -7658,6 +7709,12 @@ function handle(msg) {
   switch (msg.t) {
     case 'error': toast(msg.msg); break;
     case 'ver': onVersion(msg.v); break;
+    case 'pong': {
+      const rtt = performance.now() - msg.c;
+      if (rtt >= 0 && rtt < 5000) { app.rtts = [...(app.rtts || []), rtt].slice(-8); app.lag = Math.min(...app.rtts) / 2; }
+      app.lags = new Map(Array.isArray(msg.l) ? msg.l.filter((e) => Array.isArray(e) && e[1] >= 0 && e[1] <= 2000) : []);
+      break;
+    }
     case 'poll': if (POLL && msg.id === POLL.id && msg.n && typeof msg.n === 'object') { app.pollCount = msg.n; renderPoll(); } break;
     case 'joined':
       app.myId = msg.id;
@@ -8639,7 +8696,7 @@ function standingsOrder() {
   for (const p of app.room?.players || []) {
     if (p.id === app.myId || (p.spec && app.mode !== 'quali')) continue; // joined part-way through: watching, not racing
     const c = app.cars.get(p.id);
-    entries.push({ id: p.id, name: p.name, color: p.color, finished: !!c?.finished, place: c?.place || 0, lap: c?.lap || 1, key: c ? raceKey(c.lap, c.cp, Math.round(c.pr * N) % N) : -N, me: false });
+    entries.push({ id: p.id, name: p.name, color: p.color, finished: !!c?.finished, place: c?.place || 0, lap: c?.lap || 1, key: c ? raceKey(c.lap, c.cp, c.pidx >= 0 ? c.pidx : Math.round(c.pr * N) % N) : -N, me: false }); // (where it is now, if we know: see carriedOn)
   }
   if (app.mode === 'quali') {
     for (const e of entries) { e.best = e.me ? (app.bestLap || null) : (app.bests?.get(e.id) ?? null); e.finished = false; }

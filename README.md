@@ -703,9 +703,20 @@ at the top of the list.
   Codespaces, or any Node host), over WebSockets with the `ws` package. It
   gzips the game's files and tags them, so a returning browser gets a tiny
   "not modified" instead of downloading everything again.
-- Other players' cars are drawn a fraction of a second in the past, on a
-  curve between two real positions, so they glide however unevenly the
-  network delivers the packets. The delay adapts to the connection.
+- Other players' cars are drawn where they are now (4.13). A car's newest
+  position is old when it arrives: its sender's lag to the server, a moment
+  held there, and our lag from it. Each game times its own lag (`ping`, every
+  two seconds: the quickest of the last eight round trips, halved) and the
+  server hands each player's to the others in the room (`pong`). The car is
+  then carried on from its newest position for that long, along the road at
+  the speed it had, keeping its place across the road and its angle to it
+  (`carriedOn`), and eased towards that spot. Until 4.13 they were drawn a
+  fraction of a second in the past, between two real positions; with the
+  server an ocean away that was a quarter of a second, 14 m at racing speed,
+  and two cars side by side each looked ahead on their own driver's screen.
+  A car whose lag isn't known (a tab on an older version) is still drawn
+  that way. The server passes positions on 60 times a second (30 on
+  Cloudflare, where messages are counted).
 - `public/game.js`: Three.js scene, car physics, camera, HUD and networking.
 - `public/tracks.js`: tracks are a list of control points. Add a new one by
   adding an entry to `TRACKS`, bumping `TRACK_COUNT` in `server/core.js` and

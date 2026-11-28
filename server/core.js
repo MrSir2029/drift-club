@@ -396,7 +396,7 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
     setTimeout(() => { if (room.phase === 'countdown') room.phase = 'racing'; }, COUNTDOWN_MS);
     if (room.endTimer) clearTimeout(room.endTimer);
     room.endTimer = null; // Polytrack mode ('quali') runs until the host ends it
-    tickTimer ??= setInterval(tick, 1000 / BROADCAST_HZ);
+    tickTimer ??= setInterval(tick, 1000 / (pairStates ? BROADCAST_HZ : BROADCAST_HZ * 2)); // (twice as often where messages aren't counted: a position waits 8 ms here on average, not 17)
   }
   function startMessage(room, extra) {
     return { t: 'start', mode: room.mode, startAt: room.startAt, trackId: room.trackId, car: room.car, laps: room.laps, grid: room.mode !== 'quali' ? room.grid : null, sectors: room.mode === 'quali' ? room.sectors : null, now: Date.now(), ...extra };
@@ -544,6 +544,16 @@ export function createGame({ stats: savedStats = null, saveStats = null, note = 
         // has just crossed the line, so their lap starts now
         if (!room || room.phase !== 'racing' || room.mode !== 'quali' || player.finished) return;
         player.lapAt = Date.now();
+        break;
+      }
+      case 'ping': { // how long a message takes to get here and back: the game times it, and tells us half of it (its lag)
+        const now = Date.now();
+        if (now - (player.pingAt || 0) < 400) return;
+        player.pingAt = now;
+        const lag = +msg.lag, c = +msg.c;
+        if (lag >= 0 && lag <= 2000) player.lag = Math.round(lag);
+        // back with it: the lags of the others in the room, so each game can work out how old their positions are
+        send(player, { t: 'pong', c: c >= 0 && c < 1e13 ? c : 0, l: room ? [...room.players.values()].filter((p) => p !== player && p.lag != null).map((p) => [p.id, p.lag]) : [] });
         break;
       }
       case 'vote': { // their answer to the vote that's on
